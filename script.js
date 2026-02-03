@@ -278,7 +278,9 @@ function fitLiveLabel(lbl){
   s.hyphens = 'none';
 
   // Start large and shrink only if needed
-  var maxPx = text.length <= 4 ? 22 : 18;
+  var maxPx = 26;
+  if (text.length > 6) maxPx = 18;
+  else if (text.length > 4) maxPx = 22;
   var minPx = 11;
   s.fontSize = maxPx + 'px';
 
@@ -544,8 +546,10 @@ function enableMobileTouchDrag(node){
 
     var ghost=node.cloneNode(true); ghost.classList.add('drag-ghost'); document.body.appendChild(ghost);
     var originParent=node.parentElement, originNext=node.nextElementSibling;
+
+    // Show a placeholder gap where the token was, and enable smooth sibling animation
     node.classList.add('drag-hidden');
-    node.style.opacity='0'; // fully hide original while dragging
+    originParent.classList.add('reorder-active');
 
     var r=node.getBoundingClientRect(), offsetX=e.clientX-r.left, offsetY=e.clientY-r.top, x=e.clientX, y=e.clientY;
     var lastInsertZone=null, lastInsertBefore=null, moved=false;
@@ -554,12 +558,17 @@ function enableMobileTouchDrag(node){
       x=ev.clientX; y=ev.clientY;
       ghost.style.transform='translate3d('+(x-offsetX)+'px,'+(y-offsetY)+'px,0)';
 
-      // Live preview: move the hidden token to the insertion point for visual reflow
+      // Hit-test through the ghost
       ghost.style.pointerEvents='none';
       var el=document.elementFromPoint(x,y);
       ghost.style.pointerEvents='';
       var zone=el?getDropZoneFromElement(el):null;
       if(zone){
+        // Enable reorder-active on new zone too
+        if(zone!==lastInsertZone){
+          if(lastInsertZone) lastInsertZone.classList.remove('reorder-active');
+          zone.classList.add('reorder-active');
+        }
         var beforeTok=insertBeforeForPoint(zone,x,y,node);
         if(zone!==lastInsertZone || beforeTok!==lastInsertBefore){
           if(beforeTok) zone.insertBefore(node,beforeTok); else zone.appendChild(node);
@@ -573,8 +582,11 @@ function enableMobileTouchDrag(node){
       document.removeEventListener('pointermove',move,_supportsPassive?{passive:true}:false);
       document.removeEventListener('pointerup',up,false);
       if(ghost&&ghost.parentNode)ghost.parentNode.removeChild(ghost);
-      node.classList.remove('drag-hidden'); node.style.opacity='';
+      node.classList.remove('drag-hidden');
       document.body.classList.remove('dragging-item');
+
+      // Clean up reorder-active from all zones
+      $$('.reorder-active').forEach(function(z){ z.classList.remove('reorder-active'); });
 
       // Token is already at its new position from live preview
       var currentParent=node.parentElement;
@@ -584,7 +596,6 @@ function enableMobileTouchDrag(node){
         recordPlacement(node.id,fromId,toId,originBeforeId);
         moved=true;
       } else if(currentParent===originParent && node.nextElementSibling!==originNext){
-        // Reordered within same zone
         var fromId2=ensureId(originParent,'zone');
         var originBeforeId2=originNext?ensureId(originNext,'tok'):'';
         recordPlacement(node.id,fromId2,fromId2,originBeforeId2);
@@ -595,7 +606,6 @@ function enableMobileTouchDrag(node){
         var rr=node.closest('.tier-row'); live('Moved "'+(node.innerText||'item')+'" to '+(rr?rowLabel(rr):'Image Storage'));
         vib(6);
       } else {
-        // Return to original position if not moved
         if(originNext&&originNext.parentElement===originParent)originParent.insertBefore(node,originNext);
         else originParent.appendChild(node);
       }
@@ -811,28 +821,36 @@ on($('#saveBtn'),'click', function(){
   clone.style.maxWidth = '1200px';
 
   // Export styles: hide delete buttons, center labels large, pad title
+  // NOTE: html2canvas doesn't render flex centering well, so we use
+  // display:table/table-cell + vertical-align:middle for reliable centering
   var style = document.createElement('style');
   style.textContent = `
     .row-del{ display:none !important; }
+    .token{
+      display:table !important;
+    }
     .token .label{
+      display:table-cell !important;
+      vertical-align:middle !important;
+      text-align:center !important;
       font-weight:900 !important;
       text-shadow:none !important;
-      display:flex !important;
-      align-items:center !important;
-      justify-content:center !important;
-      text-align:center !important;
-      width:100% !important;
-      height:100% !important;
-      padding:8px !important;
+      padding:6px !important;
       line-height:1.15 !important;
       white-space:normal !important;
       word-break:break-word !important;
       overflow:hidden !important;
+      width:110px !important;
+      height:110px !important;
+    }
+    .label-chip{
+      display:table-cell !important;
+      vertical-align:middle !important;
+      text-align:center !important;
     }
     .board-title-wrap{
-      justify-content:center !important;
-      margin-bottom:18px !important;
-      padding-bottom:4px !important;
+      text-align:center !important;
+      margin-bottom:20px !important;
     }
     .board-title{
       text-align:center !important;
@@ -850,12 +868,15 @@ on($('#saveBtn'),'click', function(){
     if (wrap && wrap.parentNode) wrap.parentNode.removeChild(wrap);
   }
 
-  // Fit labels at export size (110px circles, large readable text)
+  // Set large readable font sizes for export
   var cloneLabels = $$('.token .label', clone);
   cloneLabels.forEach(function(lbl){
     var text = (lbl.textContent || '').trim();
-    var maxPx = text.length <= 4 ? 22 : 18;
-    lbl.style.fontSize = maxPx + 'px';
+    // Bigger sizes: short names get 26px, medium get 22px, long get 18px
+    var px = 26;
+    if (text.length > 6) px = 18;
+    else if (text.length > 4) px = 22;
+    lbl.style.fontSize = px + 'px';
   });
 
   cloneWrap.appendChild(clone);
