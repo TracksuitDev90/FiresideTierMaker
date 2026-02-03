@@ -150,6 +150,24 @@ function tintFrom(color){
 function ensureId(el, prefix){ if(!el.id){ el.id=(prefix||'id')+'-'+uid(); } return el.id; }
 function rowLabel(row){ var chip=row?row.querySelector('.label-chip'):null; return chip?chip.textContent.replace(/\s+/g,' ').trim():'row'; }
 
+/* ---------- Chip label auto-sizer ---------- */
+function fitChipLabel(chip){
+  if (!chip) return;
+  var text = chip.textContent.replace(/\s+/g,' ').trim();
+  // Default short labels (1-3 chars) get max size
+  if (text.length <= 3) {
+    chip.style.fontSize = '';
+    return;
+  }
+  // Longer custom text: shrink to fit, allow wrapping
+  var maxPx = 24, minPx = 11;
+  chip.style.fontSize = maxPx + 'px';
+  for (var px = maxPx; px >= minPx; px--) {
+    chip.style.fontSize = px + 'px';
+    if (chip.scrollHeight <= chip.clientHeight && chip.scrollWidth <= chip.clientWidth) break;
+  }
+}
+
 /* ---------- Create / wire a new row ---------- */
 function createRow(cfg){
   var dom = buildRowDom();
@@ -165,7 +183,10 @@ function createRow(cfg){
   var tint = tintFrom(cfg.color);
   drop.style.background = tint; drop.dataset.manual = 'false';
 
+  on(chip,'input', function(){ fitChipLabel(chip); });
   on(chip,'keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); chip.blur(); } });
+  on(chip,'blur', function(){ fitChipLabel(chip); });
+  fitChipLabel(chip);
   on(del,'click', function(){
     var tokens = $$('.token', drop);
     flipZones([drop,tray], function(){ tokens.forEach(function(t){ tray.appendChild(t); }); });
@@ -193,36 +214,36 @@ var tierIdx = 0; function nextTierColor(){ var c=TIER_CYCLE[tierIdx%TIER_CYCLE.l
 var communityCast = [
   "American Ray","Anette","Authority","B7","Camryn","Cindy","Clamy","Clay","Cody","Cookies",
   "Denver","Devon","Dexy","Domo","Gavin","Harry","Jeremy","Katie","Kiev","Kikki",
-  "Meegan","Mew","Neil","NJ","Paper","Ray","Safoof","Sky","Versse","Xavier"
+  "Meegan","Mew","Neil","NJ","Paper","Ray","Safoof","Sky","Tubawk","Versse","Xavier"
 ];
 
 /* ---------- PRE-RENDERED CIRCLE PALETTE (20% less pale) ---------- */
 var BASE_PALETTE = [
-  '#FCE38A','#F3A683','#F5CD7A','#F7D794',
-  '#778BEB','#EB8688','#CF6A87','#786FA6',
-  '#F8A5C2','#64CDDB','#3EC1D3','#E77F67',
-  '#FA991C','#FAD4C9','#7FC4D4','#A7B3E9',
-  '#FBD78B','#EFA7A7','#9FD8DF','#C8B6FF',
-  '#B8E1FF','#FFD6A5','#C3F0CA','#FFE5EC',
-  '#F4B942','#9EE493','#8AC6D1','#FF8FAB','#B0A8F0'
+  '#FFD54F','#FF8A65','#FFB74D','#FFC107',
+  '#7986CB','#EF5350','#E91E63','#9575CD',
+  '#F48FB1','#4DD0E1','#26C6DA','#FF7043',
+  '#FF9800','#FFAB91','#4FC3F7','#7E57C2',
+  '#FFCA28','#EF9A9A','#80DEEA','#B39DDB',
+  '#81D4FA','#FFCC80','#A5D6A7','#F8BBD0',
+  '#FFA726','#66BB6A','#4DB6AC','#FF80AB','#9FA8DA'
 ];
 
 function contrastForBlack(hex){ var L=relativeLuminance(hexToRgb(hex)); return (L + 0.05) / 0.05; }
 
-/* 
-  Make colors readable on black text with LESS lightening:
-  - target contrast: 4.2:1 (still very readable for bold/large)
-  - after reaching target, pull 20% back toward the original base (less pale)
+/*
+  Make colors readable on black text:
+  - target contrast: 4.0:1 (readable for bold/large text)
+  - after reaching target, pull 10% back toward original to keep vibrancy
   - if that pull drops below target, nudge back up in tiny steps
 */
 function ensureForBlack(hex){
-  var target = 4.2;
+  var target = 4.0;
   var safe = hex, steps = 0;
   while (contrastForBlack(safe) < target && steps < 8){
     safe = lighten(safe, 0.03); steps++;
   }
-  // pull 20% toward the original (darker) to reduce paleness
-  var toned = mixHex(safe, hex, 0.20);
+  // pull 10% toward the original to keep vibrancy
+  var toned = mixHex(safe, hex, 0.10);
   var guard = 0;
   while (contrastForBlack(toned) < target && guard < 4){
     toned = lighten(toned, 0.01); guard++;
@@ -238,34 +259,33 @@ function fitLiveLabel(lbl){
   if (!lbl) return;
   var token = lbl.parentElement;
   var D = token.clientWidth;
-  var pad = 10;
+  if (!D) return;
+  var pad = 8;
 
   var s = lbl.style;
-  s.whiteSpace = 'nowrap';
-  s.lineHeight = '1';
+  s.whiteSpace = 'normal';
+  s.wordBreak = 'break-word';
+  s.lineHeight = '1.1';
   s.display = 'flex';
   s.alignItems = 'center';
   s.justifyContent = 'center';
+  s.textAlign = 'center';
+  s.width = '100%';
   s.height = '100%';
-  s.padding = '0 ' + pad + 'px';
-  s.wordBreak = 'normal';
-  s.hyphens = 'none';
+  s.padding = pad + 'px';
   s.overflow = 'hidden';
+  s.hyphens = 'none';
 
-  var lo = Math.max(12, Math.floor(D * 0.18));
-  var hi = Math.floor(D * 0.44);
-  var best = lo;
+  // Uniform font size: 16px for all tokens; allows natural wrapping
+  var fontSize = 16;
+  s.fontSize = fontSize + 'px';
 
-  function fits(px){
-    s.fontSize = px + 'px';
-    return (lbl.scrollWidth <= D - pad * 2) && (lbl.scrollHeight <= D - pad * 2);
+  // If text still overflows at 16px, shrink down
+  var lo = 11, hi = fontSize;
+  while (lbl.scrollHeight > D - pad * 2 && hi > lo) {
+    hi--;
+    s.fontSize = hi + 'px';
   }
-  while (lo <= hi){
-    var mid = (lo + hi) >> 1;
-    if (fits(mid)) { best = mid; lo = mid + 1; }
-    else { hi = mid - 1; }
-  }
-  s.fontSize = best + 'px';
 }
 function refitAllLabels(){ $$('.token .label').forEach(fitLiveLabel); }
 on(window,'resize', debounce(refitAllLabels, 120));
@@ -756,20 +776,10 @@ on($('#saveBtn'),'click', function(){
 
   var panel = $('#boardPanel');
 
-  // Capture live computed styles from each label BEFORE cloning
+  // Capture live font size from each label BEFORE cloning
   var liveLabels = $$('.token .label', panel);
-  var liveStyles = liveLabels.map(function(lbl){
-    var cs = getComputedStyle(lbl);
-    return {
-      fontSize: cs.fontSize,
-      padding: cs.padding,
-      lineHeight: cs.lineHeight,
-      whiteSpace: cs.whiteSpace,
-      display: cs.display,
-      alignItems: cs.alignItems,
-      justifyContent: cs.justifyContent,
-      height: cs.height
-    };
+  var liveFontSizes = liveLabels.map(function(lbl){
+    return getComputedStyle(lbl).fontSize;
   });
 
   var cloneWrap = document.createElement('div');
@@ -779,13 +789,24 @@ on($('#saveBtn'),'click', function(){
   clone.style.width = '1200px';
   clone.style.maxWidth = '1200px';
 
-  // Only hide row X; preserve label styles as-is from live rendering
+  // Hide row X, center title, fix label centering for export
   var style = document.createElement('style');
   style.textContent = `
     .row-del{ display:none !important; }
     .token .label{
       font-weight:900 !important;
       text-shadow:none !important;
+      display:flex !important;
+      align-items:center !important;
+      justify-content:center !important;
+      text-align:center !important;
+      width:100% !important;
+      height:100% !important;
+      padding:8px !important;
+      line-height:1.1 !important;
+      white-space:normal !important;
+      word-break:break-word !important;
+      overflow:hidden !important;
     }
     .board-title-wrap{
       justify-content:center !important;
@@ -805,18 +826,11 @@ on($('#saveBtn'),'click', function(){
     if (wrap && wrap.parentNode) wrap.parentNode.removeChild(wrap);
   }
 
-  // Apply captured live styles directly to cloned labels (no recalculation)
+  // Apply captured live font sizes to cloned labels
   var cloneLabels = $$('.token .label', clone);
   cloneLabels.forEach(function(lbl, i){
-    if (liveStyles[i]) {
-      lbl.style.fontSize = liveStyles[i].fontSize;
-      lbl.style.padding = liveStyles[i].padding;
-      lbl.style.lineHeight = liveStyles[i].lineHeight;
-      lbl.style.whiteSpace = liveStyles[i].whiteSpace;
-      lbl.style.display = liveStyles[i].display;
-      lbl.style.alignItems = liveStyles[i].alignItems;
-      lbl.style.justifyContent = liveStyles[i].justifyContent;
-      lbl.style.height = liveStyles[i].height;
+    if (liveFontSizes[i]) {
+      lbl.style.fontSize = liveFontSizes[i];
     }
   });
 

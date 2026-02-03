@@ -31,8 +31,13 @@
       </div>
 
       <div class="creator-line">
-        <label class="sr" for="imageInput">Upload images</label>
-        <input id="imageInput" type="file" accept="image/*" multiple />
+        <input id="imageInput" class="sr" type="file" accept="image/*" multiple />
+        <button id="uploadBtn" class="btn" type="button" onclick="document.getElementById('imageInput').click()">
+          <span class="ico">
+            <svg viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/></svg>
+          </span>
+          <span>Upload Images</span>
+        </button>
       </div>
 
       <p class="help">
