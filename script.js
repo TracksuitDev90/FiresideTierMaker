@@ -761,6 +761,23 @@ on($('#saveBtn'),'click', function(){
   $$('.dropzone.drag-over').forEach(function(z){ z.classList.remove('drag-over'); });
 
   var panel = $('#boardPanel');
+
+  // Capture live computed styles from each label BEFORE cloning
+  var liveLabels = $$('.token .label', panel);
+  var liveStyles = liveLabels.map(function(lbl){
+    var cs = getComputedStyle(lbl);
+    return {
+      fontSize: cs.fontSize,
+      padding: cs.padding,
+      lineHeight: cs.lineHeight,
+      whiteSpace: cs.whiteSpace,
+      display: cs.display,
+      alignItems: cs.alignItems,
+      justifyContent: cs.justifyContent,
+      height: cs.height
+    };
+  });
+
   var cloneWrap = document.createElement('div');
   cloneWrap.style.position='fixed'; cloneWrap.style.left='-99999px'; cloneWrap.style.top='0';
 
@@ -768,14 +785,12 @@ on($('#saveBtn'),'click', function(){
   clone.style.width = '1200px';
   clone.style.maxWidth = '1200px';
 
-  // Only hide row X and enforce label layout; DO NOT change token size/grid
+  // Only hide row X; preserve label styles as-is from live rendering
   var style = document.createElement('style');
   style.textContent = `
     .row-del{ display:none !important; }
     .token .label{
       font-weight:900 !important;
-      display:flex !important; align-items:center !important; justify-content:center !important;
-      line-height:1 !important; white-space:nowrap !important; padding:0 6px !important;
       text-shadow:none !important;
     }
   `;
@@ -788,8 +803,20 @@ on($('#saveBtn'),'click', function(){
     if (wrap && wrap.parentNode) wrap.parentNode.removeChild(wrap);
   }
 
-  // Fit labels to the on-screen circle size
-  $$('.token .label', clone).forEach(fitExportLabel);
+  // Apply captured live styles directly to cloned labels (no recalculation)
+  var cloneLabels = $$('.token .label', clone);
+  cloneLabels.forEach(function(lbl, i){
+    if (liveStyles[i]) {
+      lbl.style.fontSize = liveStyles[i].fontSize;
+      lbl.style.padding = liveStyles[i].padding;
+      lbl.style.lineHeight = liveStyles[i].lineHeight;
+      lbl.style.whiteSpace = liveStyles[i].whiteSpace;
+      lbl.style.display = liveStyles[i].display;
+      lbl.style.alignItems = liveStyles[i].alignItems;
+      lbl.style.justifyContent = liveStyles[i].justifyContent;
+      lbl.style.height = liveStyles[i].height;
+    }
+  });
 
   cloneWrap.appendChild(clone);
   document.body.appendChild(cloneWrap);
