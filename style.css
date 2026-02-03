@@ -139,8 +139,8 @@ a{color:inherit;text-decoration:none}
 
 /* FLIP animation */
 .token.flip-anim{transition:transform 180ms ease}
-.drag-ghost{position:fixed;left:0;top:0;z-index:50;pointer-events:none;width:110px;height:110px;border-radius:999px;opacity:.92;transform:translate3d(0,0,0)}
-.drag-hidden{opacity:.25}
+.drag-ghost{position:fixed;left:0;top:0;z-index:50;pointer-events:none;width:110px;height:110px;border-radius:999px;opacity:.92;transform:translate3d(0,0,0) scale(1.08);box-shadow:0 12px 32px rgba(0,0,0,.4)}
+.drag-hidden{opacity:0}
 body.dragging-item{cursor:grabbing;user-select:none;-webkit-user-select:none}
 @keyframes pop-in{from{transform:scale(.94)}to{transform:scale(1)}}
 .animate-drop{animation:pop-in .18s ease}
