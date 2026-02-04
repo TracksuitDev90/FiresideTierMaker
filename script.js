@@ -250,7 +250,12 @@ function ensureForBlack(hex){
   }
   return toned;
 }
-var presetPalette = BASE_PALETTE.map(ensureForBlack);
+/* Fisher-Yates shuffle so tokens get different colors each page load */
+function shuffleArray(arr){
+  for(var i=arr.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var tmp=arr[i]; arr[i]=arr[j]; arr[j]=tmp; }
+  return arr;
+}
+var presetPalette = shuffleArray(BASE_PALETTE.map(ensureForBlack));
 var pIndex = 0;
 function nextPreset(){ var c = presetPalette[pIndex % presetPalette.length]; pIndex++; return c; }
 
@@ -261,7 +266,6 @@ function fitLiveLabel(lbl){
   var D = token.clientWidth;
   if (!D) return;
   var pad = 8;
-  var text = (lbl.textContent || '').trim();
 
   var s = lbl.style;
   s.whiteSpace = 'normal';
@@ -277,16 +281,15 @@ function fitLiveLabel(lbl){
   s.overflow = 'hidden';
   s.hyphens = 'none';
 
-  // Start large and shrink only if needed
-  var maxPx = 26;
-  if (text.length > 6) maxPx = 18;
-  else if (text.length > 4) maxPx = 22;
-  var minPx = 11;
-  s.fontSize = maxPx + 'px';
+  // ONE uniform large size for all names — long names line-break
+  s.fontSize = '22px';
 
-  for (var px = maxPx; px >= minPx; px--) {
-    s.fontSize = px + 'px';
-    if (lbl.scrollHeight <= D - pad * 2) break;
+  // Only shrink as absolute last resort for very long custom names
+  if (lbl.scrollHeight > D) {
+    for (var px = 21; px >= 16; px--) {
+      s.fontSize = px + 'px';
+      if (lbl.scrollHeight <= D) break;
+    }
   }
 }
 function refitAllLabels(){ $$('.token .label').forEach(fitLiveLabel); }
@@ -821,43 +824,36 @@ on($('#saveBtn'),'click', function(){
   clone.style.maxWidth = '1200px';
 
   // Export styles: hide delete buttons, center labels large, pad title
-  // NOTE: html2canvas doesn't render flex centering well, so we use
-  // display:table/table-cell + vertical-align:middle for reliable centering
+  // html2canvas doesn't render flex centering well, so use table/table-cell
   var style = document.createElement('style');
-  style.textContent = `
-    .row-del{ display:none !important; }
-    .token{
-      display:table !important;
-    }
-    .token .label{
-      display:table-cell !important;
-      vertical-align:middle !important;
-      text-align:center !important;
-      font-weight:900 !important;
-      text-shadow:none !important;
-      padding:6px !important;
-      line-height:1.15 !important;
-      white-space:normal !important;
-      word-break:break-word !important;
-      overflow:hidden !important;
-      width:110px !important;
-      height:110px !important;
-    }
-    .label-chip{
-      display:table-cell !important;
-      vertical-align:middle !important;
-      text-align:center !important;
-    }
-    .board-title-wrap{
-      text-align:center !important;
-      margin-bottom:20px !important;
-    }
-    .board-title{
-      text-align:center !important;
-      font-size:28px !important;
-    }
-    .title-pen{ display:none !important; }
-  `;
+  style.textContent = [
+    '.row-del{ display:none !important; }',
+    '.token{ display:table !important; }',
+    '.token .label{',
+    '  display:table-cell !important;',
+    '  vertical-align:middle !important;',
+    '  text-align:center !important;',
+    '  font-weight:900 !important;',
+    '  font-size:22px !important;',
+    '  text-shadow:none !important;',
+    '  padding:6px !important;',
+    '  line-height:1.15 !important;',
+    '  white-space:normal !important;',
+    '  word-break:break-word !important;',
+    '  overflow:hidden !important;',
+    '  width:110px !important;',
+    '  height:110px !important;',
+    '}',
+    '.tier-label{ display:table !important; }',
+    '.label-chip{',
+    '  display:table-cell !important;',
+    '  vertical-align:middle !important;',
+    '  text-align:center !important;',
+    '}',
+    '.board-title-wrap{ text-align:center !important; margin-bottom:20px !important; }',
+    '.board-title{ text-align:center !important; font-size:28px !important; }',
+    '.title-pen{ display:none !important; }'
+  ].join('\n');
   clone.appendChild(style);
 
   // drop empty title for export — strip if user hasn't typed anything
@@ -867,17 +863,6 @@ on($('#saveBtn'),'click', function(){
     var wrap = title ? title.parentElement : null;
     if (wrap && wrap.parentNode) wrap.parentNode.removeChild(wrap);
   }
-
-  // Set large readable font sizes for export
-  var cloneLabels = $$('.token .label', clone);
-  cloneLabels.forEach(function(lbl){
-    var text = (lbl.textContent || '').trim();
-    // Bigger sizes: short names get 26px, medium get 22px, long get 18px
-    var px = 26;
-    if (text.length > 6) px = 18;
-    else if (text.length > 4) px = 22;
-    lbl.style.fontSize = px + 'px';
-  });
 
   cloneWrap.appendChild(clone);
   document.body.appendChild(cloneWrap);
