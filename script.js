@@ -269,7 +269,7 @@ function fitLiveLabel(lbl){
 
   var s = lbl.style;
   s.whiteSpace = 'normal';
-  s.wordBreak = 'break-word';
+  s.overflowWrap = 'break-word';
   s.lineHeight = '1.15';
   s.display = 'flex';
   s.alignItems = 'center';
@@ -279,7 +279,8 @@ function fitLiveLabel(lbl){
   s.height = '100%';
   s.padding = pad + 'px';
   s.overflow = 'hidden';
-  s.hyphens = 'none';
+  s.hyphens = 'auto';
+  s.textWrap = 'balance';
 
   // ONE uniform large size for all names — long names line-break
   s.fontSize = '22px';
@@ -839,7 +840,9 @@ on($('#saveBtn'),'click', function(){
     '  padding:6px !important;',
     '  line-height:1.15 !important;',
     '  white-space:normal !important;',
-    '  word-break:break-word !important;',
+    '  overflow-wrap:break-word !important;',
+    '  hyphens:auto !important;',
+    '  text-wrap:balance !important;',
     '  overflow:hidden !important;',
     '  width:110px !important;',
     '  height:110px !important;',
