@@ -208,9 +208,14 @@ var defaultTiers = [
   { label:'D', color:'#a78bfa' }
 ];
 
-/* Bright cycle for new tiers (no repeats quickly) */
-var TIER_CYCLE = ['#ff6b6b','#f6c02f','#22c55e','#3b82f6','#a78bfa','#06b6d4','#e11d48','#16a34a','#f97316','#0ea5e9'];
-var tierIdx = 0; function nextTierColor(){ var c=TIER_CYCLE[tierIdx%TIER_CYCLE.length]; tierIdx++; return c; }
+/* Fresh colors for new tiers (avoids default S/A/B/C/D colors) */
+var NEW_TIER_COLORS = ['#06b6d4','#e11d48','#16a34a','#f97316','#0ea5e9','#8b5cf6','#ec4899','#14b8a6','#f59e0b','#6366f1','#84cc16','#ef4444'];
+function shuffleNewTierColors(){
+  for(var i=NEW_TIER_COLORS.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var tmp=NEW_TIER_COLORS[i]; NEW_TIER_COLORS[i]=NEW_TIER_COLORS[j]; NEW_TIER_COLORS[j]=tmp; }
+}
+shuffleNewTierColors();
+var tierIdx = 0;
+function nextTierColor(){ var c=NEW_TIER_COLORS[tierIdx%NEW_TIER_COLORS.length]; tierIdx++; return c; }
 
 var communityCast = [
   "American Ray","Anette","Authority","B7","Camryn","Cindy","Clamy","Clay","Cody","Cookies",
@@ -269,9 +274,8 @@ function fitLiveLabel(lbl){
   var pad = 8;
 
   var s = lbl.style;
-  s.whiteSpace = 'normal';
-  s.overflowWrap = 'break-word';
-  s.lineHeight = '1.15';
+  s.whiteSpace = 'nowrap';
+  s.lineHeight = '1.1';
   s.display = 'flex';
   s.alignItems = 'center';
   s.justifyContent = 'center';
@@ -280,28 +284,38 @@ function fitLiveLabel(lbl){
   s.height = '100%';
   s.padding = pad + 'px';
   s.overflow = 'hidden';
-  s.hyphens = 'auto';
-  s.textWrap = 'balance';
 
-  // ONE uniform large size for all names — long names line-break
-  s.fontSize = '22px';
-
-  // Only shrink as absolute last resort for very long custom names
-  if (lbl.scrollHeight > D) {
-    for (var px = 21; px >= 16; px--) {
-      s.fontSize = px + 'px';
-      if (lbl.scrollHeight <= D) break;
-    }
+  // Start at 20px, shrink until text fits on single line
+  var maxW = D - pad * 2;
+  for (var px = 20; px >= 10; px--) {
+    s.fontSize = px + 'px';
+    if (lbl.scrollWidth <= maxW) break;
   }
 }
 function refitAllLabels(){ $$('.token .label').forEach(fitLiveLabel); }
 on(window,'resize', debounce(refitAllLabels, 120));
 
 /* ---------- Tokens ---------- */
-function buildTokenBase(){
+function buildTokenBase(isCustom){
   var el = document.createElement('div');
   el.className='token'; el.id = uid(); el.setAttribute('tabindex','0'); el.setAttribute('role','listitem');
   el.style.touchAction='none'; el.setAttribute('draggable','false');
+  if (isCustom) el.dataset.custom = 'true';
+
+  // Add delete button for custom tokens
+  if (isCustom) {
+    var delBtn = document.createElement('button');
+    delBtn.className = 'token-del';
+    delBtn.type = 'button';
+    delBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M18.3 5.7L12 12l-6.3-6.3-1.4 1.4 6.3 6.3-6.3 6.3 1.4 1.4 6.3-6.3 6.3 6.3 1.4-1.4-6.3-6.3 6.3-6.3z"/></svg>';
+    delBtn.setAttribute('aria-label', 'Delete');
+    on(delBtn, 'click', function(ev){
+      ev.stopPropagation();
+      el.remove();
+      scheduleSave();
+    });
+    el.appendChild(delBtn);
+  }
 
   // Attach all drag handlers; each checks isSmall() at event time
   if (window.PointerEvent) enablePointerDrag(el);
@@ -323,8 +337,8 @@ function buildTokenBase(){
   on(el,'keydown',function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); el.click(); } });
   return el;
 }
-function buildNameToken(name, color, forceBlack){
-  var el = buildTokenBase();
+function buildNameToken(name, color, forceBlack, isCustom){
+  var el = buildTokenBase(isCustom);
   el.style.background = color;
   var label = document.createElement('div'); label.className='label'; label.textContent=name;
   label.style.color = forceBlack ? '#111' : contrastColor(color);
@@ -333,7 +347,7 @@ function buildNameToken(name, color, forceBlack){
   return el;
 }
 function buildImageToken(src, alt){
-  var el = buildTokenBase();
+  var el = buildTokenBase(true); // images are always custom
   var img = document.createElement('img'); img.src=src; img.alt=alt||''; img.draggable=false; el.appendChild(img);
   return el;
 }
@@ -844,14 +858,10 @@ on($('#saveBtn'),'click', function(){
     '  vertical-align:middle !important;',
     '  text-align:center !important;',
     '  font-weight:900 !important;',
-    '  font-size:22px !important;',
     '  text-shadow:none !important;',
     '  padding:6px !important;',
-    '  line-height:1.15 !important;',
-    '  white-space:normal !important;',
-    '  overflow-wrap:break-word !important;',
-    '  hyphens:auto !important;',
-    '  text-wrap:balance !important;',
+    '  line-height:1.1 !important;',
+    '  white-space:nowrap !important;',
     '  overflow:hidden !important;',
     '  width:110px !important;',
     '  height:110px !important;',
@@ -878,6 +888,16 @@ on($('#saveBtn'),'click', function(){
 
   cloneWrap.appendChild(clone);
   document.body.appendChild(cloneWrap);
+
+  // Size each label to fit on single line (matching live behavior)
+  var cloneLabels = $$('.token .label', clone);
+  cloneLabels.forEach(function(lbl){
+    var maxW = 110 - 12; // token width minus padding
+    for (var px = 20; px >= 10; px--) {
+      lbl.style.fontSize = px + 'px';
+      if (lbl.scrollWidth <= maxW) break;
+    }
+  });
 
   html2canvas(clone, {
     backgroundColor: cssVar('--surface') || null,
@@ -975,10 +995,11 @@ function saveTierList(){
     $$('.token', drop).forEach(function(tok){
       var lbl = tok.querySelector('.label');
       var img = tok.querySelector('img');
+      var isCustom = tok.dataset.custom === 'true';
       if (lbl) {
-        rowData.tokens.push({ type: 'name', name: lbl.textContent, color: tok.style.background, textColor: lbl.style.color });
+        rowData.tokens.push({ type: 'name', name: lbl.textContent, color: tok.style.background, textColor: lbl.style.color, custom: isCustom });
       } else if (img) {
-        rowData.tokens.push({ type: 'image', src: img.src, alt: img.alt });
+        rowData.tokens.push({ type: 'image', src: img.src, alt: img.alt, custom: true });
       }
     });
     data.rows.push(rowData);
@@ -987,10 +1008,11 @@ function saveTierList(){
   $$('.token', tray).forEach(function(tok){
     var lbl = tok.querySelector('.label');
     var img = tok.querySelector('img');
+    var isCustom = tok.dataset.custom === 'true';
     if (lbl) {
-      data.tray.push({ type: 'name', name: lbl.textContent, color: tok.style.background, textColor: lbl.style.color });
+      data.tray.push({ type: 'name', name: lbl.textContent, color: tok.style.background, textColor: lbl.style.color, custom: isCustom });
     } else if (img) {
-      data.tray.push({ type: 'image', src: img.src, alt: img.alt });
+      data.tray.push({ type: 'image', src: img.src, alt: img.alt, custom: true });
     }
   });
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e){}
@@ -1014,7 +1036,7 @@ function loadTierList(){
       var drop = node.querySelector('.tier-drop');
       rowData.tokens.forEach(function(tokData){
         if (tokData.type === 'name') {
-          var tok = buildNameToken(tokData.name, tokData.color || '#7da7ff', false);
+          var tok = buildNameToken(tokData.name, tokData.color || '#7da7ff', false, !!tokData.custom);
           var lbl = tok.querySelector('.label');
           if (lbl && tokData.textColor) lbl.style.color = tokData.textColor;
           drop.appendChild(tok);
@@ -1027,7 +1049,7 @@ function loadTierList(){
     // Restore tray
     data.tray.forEach(function(tokData){
       if (tokData.type === 'name') {
-        var tok = buildNameToken(tokData.name, tokData.color || '#7da7ff', false);
+        var tok = buildNameToken(tokData.name, tokData.color || '#7da7ff', false, !!tokData.custom);
         var lbl = tok.querySelector('.label');
         if (lbl && tokData.textColor) lbl.style.color = tokData.textColor;
         tray.appendChild(tok);
@@ -1072,8 +1094,8 @@ document.addEventListener('DOMContentLoaded', function start(){
   if (!restored) {
     // rows
     defaultTiers.forEach(function(t){ board.appendChild(createRow(t)); });
-    // tray defaults (pre-rendered with black labels)
-    communityCast.forEach(function(n){ tray.appendChild(buildNameToken(n, nextPreset(), true)); });
+    // tray defaults (pre-rendered with black labels, not custom)
+    communityCast.forEach(function(n){ tray.appendChild(buildNameToken(n, nextPreset(), true, false)); });
   }
 
   // Start auto-save after initial load
@@ -1090,7 +1112,7 @@ document.addEventListener('DOMContentLoaded', function start(){
   function addNameFromInput(){
     var name = $('#nameInput').value.trim();
     if (!name) return;
-    tray.appendChild(buildNameToken(name, $('#nameColor').value, false));
+    tray.appendChild(buildNameToken(name, $('#nameColor').value, false, true)); // custom=true
     $('#nameInput').value=''; $('#nameColor').value = nextPreset();
     refitAllLabels();
     scheduleSave();
@@ -1126,7 +1148,7 @@ document.addEventListener('DOMContentLoaded', function start(){
       (isSmall()
        ? 'Phone: tap a circle in Image Storage to choose a row. Once placed, drag to reorder or move back.'
        : 'Desktop/iPad: drag circles into rows. Reorder or drag back to Image Storage.') +
-      ' Tap the X on a tier label to delete that row. Click the title above the board to customize it.';
+      ' Tap the X on a tier label to delete that row.<br>Click the title above the board to customize it.';
   }
 
   enableClickToPlace(tray);

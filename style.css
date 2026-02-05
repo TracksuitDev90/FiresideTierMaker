@@ -129,13 +129,24 @@ a{color:inherit;text-decoration:none}
 .token:active{transform:translateY(0)}
 .token:focus-visible{outline:3px solid var(--accent);outline-offset:4px}
 .token .label{
-  padding:8px;text-align:center;font-weight:900;font-size:22px;line-height:1.15;
-  overflow-wrap:break-word;white-space:normal;hyphens:auto;text-wrap:balance;
+  padding:8px;text-align:center;font-weight:900;font-size:20px;line-height:1.1;
+  white-space:nowrap;
   display:flex;align-items:center;justify-content:center;
   width:100%;height:100%;overflow:hidden;
 }
 .token img{width:100%;height:100%;object-fit:cover;border-radius:999px;pointer-events:none}
 .token.selected{outline:3px solid var(--accent);outline-offset:4px}
+
+/* Delete button for custom tokens - only visible when selected in tray */
+.token-del{
+  position:absolute;top:-6px;right:-6px;width:28px;height:28px;border-radius:999px;
+  background:#ef4444;color:#fff;border:2px solid var(--surface-raised);
+  display:none;place-items:center;z-index:10;
+  box-shadow:0 2px 8px rgba(0,0,0,.3);cursor:pointer;
+}
+.token-del svg{width:14px;height:14px;fill:currentColor}
+.token-del:hover{background:#dc2626;transform:scale(1.1)}
+#tray .token.selected[data-custom="true"] .token-del{display:grid}
 
 /* FLIP animation */
 .token.flip-anim{transition:transform 180ms ease}
