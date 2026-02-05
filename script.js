@@ -891,11 +891,11 @@ on($('#saveBtn'),'click', function(){
   cloneWrap.appendChild(clone);
   document.body.appendChild(cloneWrap);
 
-  // Size each label to fit on single line (slightly larger for export)
+  // Size each label to fit on single line (larger for bold readable export)
   var cloneLabels = $$('.token .label', clone);
   cloneLabels.forEach(function(lbl){
     var maxW = 110 - 12; // token width minus padding
-    for (var px = 23; px >= 10; px--) {
+    for (var px = 26; px >= 10; px--) {
       lbl.style.fontSize = px + 'px';
       if (lbl.scrollWidth <= maxW) break;
     }
