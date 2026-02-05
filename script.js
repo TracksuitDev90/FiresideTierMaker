@@ -285,9 +285,9 @@ function fitLiveLabel(lbl){
   s.padding = pad + 'px';
   s.overflow = 'hidden';
 
-  // Start at 20px, shrink until text fits on single line
+  // Start at 21px, shrink until text fits on single line
   var maxW = D - pad * 2;
-  for (var px = 20; px >= 10; px--) {
+  for (var px = 21; px >= 10; px--) {
     s.fontSize = px + 'px';
     if (lbl.scrollWidth <= maxW) break;
   }
@@ -828,8 +828,10 @@ on(window, 'resize', refreshRadialOptions);
 
 /* ---------- Clear / Undo ---------- */
 on($('#trashClear'),'click', function(){
-  if (!confirm('Clear the entire tier board? This moves all placed items back to Image Storage.')) return;
-  $$('.tier-drop .token').forEach(function(tok){ tray.appendChild(tok); });
+  if (!confirm('Reset everything? This will restore the tier list to its original state.')) return;
+  // Clear saved data and reload for a fresh start
+  try { localStorage.removeItem(STORAGE_KEY); } catch(e){}
+  location.reload();
 });
 on($('#undoBtn'),'click', function(){ undoLast(); });
 
@@ -852,25 +854,25 @@ on($('#saveBtn'),'click', function(){
   var style = document.createElement('style');
   style.textContent = [
     '.row-del{ display:none !important; }',
-    '.token{ display:table !important; }',
+    '.token-del{ display:none !important; }',
     '.token .label{',
-    '  display:table-cell !important;',
-    '  vertical-align:middle !important;',
+    '  display:block !important;',
+    '  width:110px !important;',
+    '  height:110px !important;',
+    '  line-height:110px !important;',
     '  text-align:center !important;',
     '  font-weight:900 !important;',
     '  text-shadow:none !important;',
-    '  padding:6px !important;',
-    '  line-height:1.1 !important;',
+    '  padding:0 !important;',
     '  white-space:nowrap !important;',
     '  overflow:hidden !important;',
-    '  width:110px !important;',
-    '  height:110px !important;',
+    '  box-sizing:border-box !important;',
     '}',
-    '.tier-label{ display:table !important; }',
     '.label-chip{',
-    '  display:table-cell !important;',
-    '  vertical-align:middle !important;',
+    '  display:block !important;',
+    '  line-height:86px !important;',
     '  text-align:center !important;',
+    '  padding:0 8px !important;',
     '}',
     '.board-title-wrap{ text-align:center !important; margin-bottom:20px !important; }',
     '.board-title{ text-align:center !important; font-size:28px !important; }',
@@ -893,7 +895,7 @@ on($('#saveBtn'),'click', function(){
   var cloneLabels = $$('.token .label', clone);
   cloneLabels.forEach(function(lbl){
     var maxW = 110 - 12; // token width minus padding
-    for (var px = 20; px >= 10; px--) {
+    for (var px = 21; px >= 10; px--) {
       lbl.style.fontSize = px + 'px';
       if (lbl.scrollWidth <= maxW) break;
     }

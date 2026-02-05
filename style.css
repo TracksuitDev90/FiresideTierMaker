@@ -129,7 +129,7 @@ a{color:inherit;text-decoration:none}
 .token:active{transform:translateY(0)}
 .token:focus-visible{outline:3px solid var(--accent);outline-offset:4px}
 .token .label{
-  padding:8px;text-align:center;font-weight:900;font-size:20px;line-height:1.1;
+  padding:8px;text-align:center;font-weight:900;font-size:21px;line-height:1.1;
   white-space:nowrap;
   display:flex;align-items:center;justify-content:center;
   width:100%;height:100%;overflow:hidden;
