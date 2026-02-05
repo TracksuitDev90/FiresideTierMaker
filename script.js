@@ -930,12 +930,15 @@ on(document,'keydown',function(e){
 /* ---------- Image compression for uploads ---------- */
 function compressImage(file, maxSize, callback){
   var img = new Image();
+  var blobUrl = URL.createObjectURL(file);
   img.onload = function(){
+    URL.revokeObjectURL(blobUrl); // Free memory
     var w = img.width, h = img.height;
     if (w <= maxSize && h <= maxSize) {
       // Already small enough, just read as-is
       var reader = new FileReader();
       reader.onload = function(ev){ callback(ev.target.result); };
+      reader.onerror = function(){ callback(null); };
       reader.readAsDataURL(file);
       return;
     }
@@ -948,8 +951,8 @@ function compressImage(file, maxSize, callback){
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
     callback(canvas.toDataURL('image/jpeg', 0.85));
   };
-  img.onerror = function(){ callback(null); };
-  img.src = URL.createObjectURL(file);
+  img.onerror = function(){ URL.revokeObjectURL(blobUrl); callback(null); };
+  img.src = blobUrl;
 }
 
 /* ---------- LocalStorage persistence ---------- */
