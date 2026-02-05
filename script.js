@@ -78,6 +78,7 @@ function mixHex(aHex,bHex,t){ var a=hexToRgb(aHex), b=hexToRgb(bHex);
     root.setAttribute('data-theme', mode); localStorage.setItem('tm_theme', mode);
     var target = mode==='dark' ? 'Light' : 'Dark';
     if(text) text.textContent = target;
+    toggle.setAttribute('aria-pressed', mode==='light' ? 'true' : 'false');
     if(icon) icon.innerHTML = (target==='Light'
       ? '<svg viewBox="0 0 24 24"><path d="M6.76 4.84l-1.8-1.79L3.17 4.84l1.79 1.79 1.8-1.79zM1 13h3v-2H1v2zm10 10h2v-3h-2v3zM4.22 19.78l1.79-1.79 1.8 1.79-1.8 1.8-1.79-1.8zM20 13h3v-2h-3v2zM12 1h2v3h-2V1zm6.01 3.05l1.79 1.79 1.8-1.79-1.8-1.8-1.79 1.8zM12 6a6 6 0 100 12A6 6 0 0012 6z"/></svg>'
       : '<svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z"/></svg>');
@@ -130,7 +131,7 @@ function buildRowDom(){
   labelWrap.appendChild(chip); labelWrap.appendChild(del);
 
   var drop=document.createElement('div');
-  drop.className='tier-drop dropzone'; drop.setAttribute('tabindex','0');
+  drop.className='tier-drop dropzone'; drop.setAttribute('tabindex','0'); drop.setAttribute('role','list');
 
   row.appendChild(labelWrap); row.appendChild(drop);
   return { row: row, chip: chip, del: del, drop: drop, labelWrap: labelWrap };
@@ -524,7 +525,7 @@ function enableMouseTouchDragFallback(node){
 
   on(node,'touchstart', function(e){ var t=e.touches[0]; start(e,t.clientX,t.clientY);
     on(document,'touchmove', onTouchMove, _supportsPassive?{passive:true}:false);
-    on(document,'touchend', onTouchEnd, false); }, _supportsPassive?{passive:true}:false);
+    on(document,'touchend', onTouchEnd, false); }, _supportsPassive?{passive:false}:false);
   function onTouchMove(e){ var t=e.touches[0]; if(t) move(t.clientX,t.clientY); }
   function onTouchEnd(){ document.removeEventListener('touchmove', onTouchMove, false); document.removeEventListener('touchend', onTouchEnd, false); end(); }
 
@@ -620,8 +621,16 @@ function enableMobileTouchDrag(node){
 }
 
 /* ---------- Row reorder ---------- */
+var _rowPlaceholder = null;
+var _rowDragoverAttached = false;
+
+function _rowAfterY(container, y){
+  var rows = Array.prototype.filter.call(container.querySelectorAll('.tier-row'), function(r){ return r!==_rowPlaceholder && r.style.display!=='none'; });
+  for (var i=0;i<rows.length;i++){ var r=rows[i], rect=r.getBoundingClientRect(); if (y < rect.top + rect.height/2) return r; }
+  return null;
+}
+
 function enableRowReorder(labelArea, row){
-  var placeholder=null;
   function arm(e){
     var chip=$('.label-chip',row); if(document.activeElement===chip) return;
     if (isSmall() && (('ontouchstart' in window)||navigator.maxTouchPoints>0)) return;
@@ -632,29 +641,29 @@ function enableRowReorder(labelArea, row){
 
   on(row,'dragstart', function(){
     document.body.classList.add('dragging-item');
-    placeholder = document.createElement('div');
-    placeholder.className='tier-row';
-    placeholder.style.height = row.getBoundingClientRect().height+'px';
-    placeholder.style.borderRadius='12px';
-    placeholder.style.border='2px dashed rgba(139,125,255,.25)';
-    board.insertBefore(placeholder, row.nextSibling);
+    _rowPlaceholder = document.createElement('div');
+    _rowPlaceholder.className='tier-row';
+    _rowPlaceholder.style.height = row.getBoundingClientRect().height+'px';
+    _rowPlaceholder.style.borderRadius='12px';
+    _rowPlaceholder.style.border='2px dashed rgba(139,125,255,.25)';
+    board.insertBefore(_rowPlaceholder, row.nextSibling);
     setTimeout(function(){ row.style.display='none'; },0);
   });
   on(row,'dragend', function(){
     row.style.display='';
-    if (placeholder && placeholder.parentNode){ board.insertBefore(row, placeholder); placeholder.parentNode.removeChild(placeholder); }
-    row.removeAttribute('draggable'); placeholder=null;
+    if (_rowPlaceholder && _rowPlaceholder.parentNode){ board.insertBefore(row, _rowPlaceholder); _rowPlaceholder.parentNode.removeChild(_rowPlaceholder); }
+    row.removeAttribute('draggable'); _rowPlaceholder=null;
     document.body.classList.remove('dragging-item');
   });
-  on(board,'dragover', function(e){
-    if(!placeholder) return; e.preventDefault();
-    var after = rowAfterY(board, e.clientY);
-    if (after) board.insertBefore(placeholder, after); else board.appendChild(placeholder);
-  });
-  function rowAfterY(container, y){
-    var rows = Array.prototype.filter.call(container.querySelectorAll('.tier-row'), function(r){ return r!==placeholder && r.style.display!=='none'; });
-    for (var i=0;i<rows.length;i++){ var r=rows[i], rect=r.getBoundingClientRect(); if (y < rect.top + rect.height/2) return r; }
-    return null;
+
+  // Attach dragover listener only once
+  if (!_rowDragoverAttached && board) {
+    on(board,'dragover', function(e){
+      if(!_rowPlaceholder) return; e.preventDefault();
+      var after = _rowAfterY(board, e.clientY);
+      if (after) board.insertBefore(_rowPlaceholder, after); else board.appendChild(_rowPlaceholder);
+    });
+    _rowDragoverAttached = true;
   }
 }
 
@@ -878,10 +887,30 @@ on($('#saveBtn'),'click', function(){
     windowWidth: 1200
   }).then(function(canvas){
     var a=document.createElement('a'); a.href=canvas.toDataURL('image/png'); a.download='tier-list.png';
-    document.body.appendChild(a); a.click(); a.remove();
+    document.body.appendChild(a); a.click();
+    // Delay removal to ensure download starts
+    setTimeout(function(){ a.remove(); }, 100);
     cloneWrap.remove();
-  }).catch(function(){ cloneWrap.remove(); });
+    // Show brief feedback
+    showSaveToast('Saved!');
+  }).catch(function(err){
+    cloneWrap.remove();
+    showSaveToast('Export failed — try again');
+    console.error('PNG export error:', err);
+  });
 });
+
+/* ---------- Save toast feedback ---------- */
+function showSaveToast(msg){
+  var existing = $('#saveToast');
+  if (existing) existing.remove();
+  var toast = document.createElement('div');
+  toast.id = 'saveToast';
+  toast.textContent = msg;
+  toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#22c55e;color:#fff;padding:12px 24px;border-radius:12px;font-weight:700;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.3);animation:toast-in .25s ease';
+  document.body.appendChild(toast);
+  setTimeout(function(){ toast.remove(); }, 2200);
+}
 
 /* ---------- Keyboard quick-jump (1..N) ---------- */
 on(document,'keydown',function(e){
@@ -898,48 +927,203 @@ on(document,'keydown',function(e){
   }
 });
 
+/* ---------- Image compression for uploads ---------- */
+function compressImage(file, maxSize, callback){
+  var img = new Image();
+  img.onload = function(){
+    var w = img.width, h = img.height;
+    if (w <= maxSize && h <= maxSize) {
+      // Already small enough, just read as-is
+      var reader = new FileReader();
+      reader.onload = function(ev){ callback(ev.target.result); };
+      reader.readAsDataURL(file);
+      return;
+    }
+    // Scale down
+    var scale = maxSize / Math.max(w, h);
+    var canvas = document.createElement('canvas');
+    canvas.width = Math.round(w * scale);
+    canvas.height = Math.round(h * scale);
+    var ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    callback(canvas.toDataURL('image/jpeg', 0.85));
+  };
+  img.onerror = function(){ callback(null); };
+  img.src = URL.createObjectURL(file);
+}
+
+/* ---------- LocalStorage persistence ---------- */
+var STORAGE_KEY = 'tm_tierlist';
+
+function saveTierList(){
+  var data = { rows: [], tray: [], title: '' };
+  // Save title
+  var titleEl = $('.board-title');
+  if (titleEl) data.title = titleEl.textContent || '';
+  // Save rows
+  $$('.tier-row').forEach(function(row){
+    var chip = row.querySelector('.label-chip');
+    var drop = row.querySelector('.tier-drop');
+    var rowData = {
+      label: chip ? chip.textContent : '',
+      color: chip ? chip.dataset.color : '#ff6b6b',
+      tokens: []
+    };
+    $$('.token', drop).forEach(function(tok){
+      var lbl = tok.querySelector('.label');
+      var img = tok.querySelector('img');
+      if (lbl) {
+        rowData.tokens.push({ type: 'name', name: lbl.textContent, color: tok.style.background, textColor: lbl.style.color });
+      } else if (img) {
+        rowData.tokens.push({ type: 'image', src: img.src, alt: img.alt });
+      }
+    });
+    data.rows.push(rowData);
+  });
+  // Save tray
+  $$('.token', tray).forEach(function(tok){
+    var lbl = tok.querySelector('.label');
+    var img = tok.querySelector('img');
+    if (lbl) {
+      data.tray.push({ type: 'name', name: lbl.textContent, color: tok.style.background, textColor: lbl.style.color });
+    } else if (img) {
+      data.tray.push({ type: 'image', src: img.src, alt: img.alt });
+    }
+  });
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e){}
+}
+
+function loadTierList(){
+  try {
+    var json = localStorage.getItem(STORAGE_KEY);
+    if (!json) return false;
+    var data = JSON.parse(json);
+    if (!data || !data.rows) return false;
+    // Restore title
+    var titleEl = $('.board-title');
+    if (titleEl && data.title) titleEl.textContent = data.title;
+    // Clear default rows and tray
+    board.innerHTML = '';
+    tray.innerHTML = '';
+    // Restore rows
+    data.rows.forEach(function(rowData){
+      var node = createRow({ label: rowData.label, color: rowData.color });
+      var drop = node.querySelector('.tier-drop');
+      rowData.tokens.forEach(function(tokData){
+        if (tokData.type === 'name') {
+          var tok = buildNameToken(tokData.name, tokData.color || '#7da7ff', false);
+          var lbl = tok.querySelector('.label');
+          if (lbl && tokData.textColor) lbl.style.color = tokData.textColor;
+          drop.appendChild(tok);
+        } else if (tokData.type === 'image') {
+          drop.appendChild(buildImageToken(tokData.src, tokData.alt));
+        }
+      });
+      board.appendChild(node);
+    });
+    // Restore tray
+    data.tray.forEach(function(tokData){
+      if (tokData.type === 'name') {
+        var tok = buildNameToken(tokData.name, tokData.color || '#7da7ff', false);
+        var lbl = tok.querySelector('.label');
+        if (lbl && tokData.textColor) lbl.style.color = tokData.textColor;
+        tray.appendChild(tok);
+      } else if (tokData.type === 'image') {
+        tray.appendChild(buildImageToken(tokData.src, tokData.alt));
+      }
+    });
+    return true;
+  } catch(e){ return false; }
+}
+
+// Auto-save on changes (debounced)
+var _saveTimeout = null;
+function scheduleSave(){
+  clearTimeout(_saveTimeout);
+  _saveTimeout = setTimeout(saveTierList, 800);
+}
+
+// Hook into mutations for auto-save
+var _saveObserver = null;
+function startAutoSave(){
+  if (_saveObserver) return;
+  _saveObserver = new MutationObserver(scheduleSave);
+  _saveObserver.observe(board, { childList: true, subtree: true, characterData: true });
+  _saveObserver.observe(tray, { childList: true, subtree: true });
+  var titleEl = $('.board-title');
+  if (titleEl) {
+    on(titleEl, 'input', scheduleSave);
+  }
+}
+
 /* ---------- Init ---------- */
 document.addEventListener('DOMContentLoaded', function start(){
   board = $('#tierBoard'); tray = $('#tray');
 
-  // rows
-  defaultTiers.forEach(function(t){ board.appendChild(createRow(t)); });
+  // Initialize color picker to a preset color (not black)
+  var colorPicker = $('#nameColor');
+  if (colorPicker) colorPicker.value = nextPreset();
 
-  // tray defaults (pre-rendered with black labels)
-  communityCast.forEach(function(n){ tray.appendChild(buildNameToken(n, nextPreset(), true)); });
+  // Try to restore saved tier list, otherwise use defaults
+  var restored = loadTierList();
+  if (!restored) {
+    // rows
+    defaultTiers.forEach(function(t){ board.appendChild(createRow(t)); });
+    // tray defaults (pre-rendered with black labels)
+    communityCast.forEach(function(n){ tray.appendChild(buildNameToken(n, nextPreset(), true)); });
+  }
+
+  // Start auto-save after initial load
+  startAutoSave();
 
   // add tier
   on($('#addTierBtn'),'click', function(){
     board.appendChild(createRow({label:'NEW', color: nextTierColor()}));
     refreshRadialOptions();
+    scheduleSave();
   });
 
   // creators
-  on($('#addNameBtn'),'click', function(){
+  function addNameFromInput(){
     var name = $('#nameInput').value.trim();
     if (!name) return;
     tray.appendChild(buildNameToken(name, $('#nameColor').value, false));
     $('#nameInput').value=''; $('#nameColor').value = nextPreset();
     refitAllLabels();
+    scheduleSave();
+  }
+  on($('#addNameBtn'),'click', addNameFromInput);
+  // Enter key submits name (item 7)
+  on($('#nameInput'),'keydown', function(e){
+    if (e.key === 'Enter') { e.preventDefault(); addNameFromInput(); }
   });
+
+  // Wire upload button (moved from inline onclick)
+  on($('#uploadBtn'),'click', function(){ $('#imageInput').click(); });
+
+  // Image upload with compression
   on($('#imageInput'),'change', function(e){
     Array.prototype.forEach.call(e.target.files, function(file){
       if(!file.type || file.type.indexOf('image/')!==0) return;
-      var reader = new FileReader();
-      reader.onload = function(ev){ tray.appendChild(buildImageToken(ev.target.result, file.name)); };
-      reader.readAsDataURL(file);
+      compressImage(file, 200, function(dataUrl){
+        if (dataUrl) {
+          tray.appendChild(buildImageToken(dataUrl, file.name));
+          scheduleSave();
+        }
+      });
     });
+    e.target.value = ''; // Reset so same file can be uploaded again
   });
 
-  // Help copy
+  // Help copy (updated to mention editable title)
   var help=$('#helpText') || $('.help');
   if(help){
     help.innerHTML =
       '<strong>Help</strong><br>' +
       (isSmall()
-       ? 'Phone: tap a circle in Image Storage to choose a row. Once placed, drag to reorder or drag back to Image Storage.'
-       : 'Desktop/iPad: drag circles into rows. You can reorder or drag back to Image Storage.') +
-      ' Tap the small X on a tier label to delete that row (its items return to Image Storage).';
+       ? 'Phone: tap a circle in Image Storage to choose a row. Once placed, drag to reorder or move back.'
+       : 'Desktop/iPad: drag circles into rows. Reorder or drag back to Image Storage.') +
+      ' Tap the X on a tier label to delete that row. Click the title above the board to customize it.';
   }
 
   enableClickToPlace(tray);

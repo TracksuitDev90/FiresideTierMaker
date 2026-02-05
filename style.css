@@ -184,3 +184,6 @@ body.dragging-item{cursor:grabbing;user-select:none;-webkit-user-select:none}
 @media (max-width:768px){.hide-on-desktop{display:initial}}
 @media print{body{background:#fff;color:#000}.panel,#tray,.controls,.creator-grid{box-shadow:none;border-color:#ddd}.token.selected,.token:focus-visible{outline-color:#000}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* ---------- Toast notification ---------- */
+@keyframes toast-in{from{opacity:0;transform:translateX(-50%) translateY(20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}

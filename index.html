@@ -4,6 +4,12 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#0f1115" />
+  <meta name="description" content="Create and share custom tier lists. Drag and drop to rank your favorites, then save as PNG." />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <!-- Open Graph -->
+  <meta property="og:title" content="FIRESIDE Tier Maker" />
+  <meta property="og:description" content="Create and share custom tier lists. Drag and drop to rank your favorites." />
+  <meta property="og:type" content="website" />
   <title>FIRESIDE tier maker</title>
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -20,7 +26,7 @@
 
       <div class="creator-line">
         <label class="sr" for="nameInput">Name circle</label>
-        <input id="nameInput" class="input" type="text" placeholder="Type a name..." autocomplete="off" />
+        <input id="nameInput" class="input" type="text" placeholder="Type a name..." autocomplete="off" maxlength="24" />
         <input id="nameColor" class="color-dot" type="color" title="Circle color" />
         <button id="addNameBtn" class="btn" type="button">
           <span class="ico">
@@ -32,7 +38,7 @@
 
       <div class="creator-line">
         <input id="imageInput" class="sr" type="file" accept="image/*" multiple />
-        <button id="uploadBtn" class="btn" type="button" onclick="document.getElementById('imageInput').click()">
+        <button id="uploadBtn" class="btn" type="button">
           <span class="ico">
             <svg viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/></svg>
           </span>
@@ -98,7 +104,7 @@
     <!-- Items tray -->
     <section class="panel">
       <h2 class="section-title">Image Storage</h2>
-      <div id="tray"></div>
+      <div id="tray" role="list"></div>
     </section>
 
     <!-- Mobile radial picker -->
