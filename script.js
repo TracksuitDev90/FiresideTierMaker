@@ -895,7 +895,7 @@ on($('#saveBtn'),'click', function(){
   var cloneLabels = $$('.token .label', clone);
   cloneLabels.forEach(function(lbl){
     var maxW = 110 - 12; // token width minus padding
-    for (var px = 22; px >= 10; px--) {
+    for (var px = 23; px >= 10; px--) {
       lbl.style.fontSize = px + 'px';
       if (lbl.scrollWidth <= maxW) break;
     }
