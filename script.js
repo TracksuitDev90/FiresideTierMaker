@@ -178,7 +178,7 @@ function createRow(cfg){
   chip.textContent = cfg.label;
   chip.dataset.color = cfg.color;
   chip.style.background = cfg.color;
-  chip.style.color = 'FFFFFF';
+  chip.style.color = '#ffffff'; // Always white text on tier labels
   del.style.background = darken(cfg.color, 0.35);
 
   var tint = tintFrom(cfg.color);
