@@ -178,7 +178,7 @@ function createRow(cfg){
   chip.textContent = cfg.label;
   chip.dataset.color = cfg.color;
   chip.style.background = cfg.color;
-  chip.style.color = contrastColor(cfg.color);
+  chip.style.color = '#ffffff';
   del.style.background = darken(cfg.color, 0.35);
 
   var tint = tintFrom(cfg.color);
@@ -863,17 +863,17 @@ on($('#saveBtn'),'click', function(){
   clone.style.width = '1200px';
   clone.style.maxWidth = '1200px';
 
-  // Export styles: hide delete buttons, center labels large, pad title
-  // html2canvas doesn't render flex centering well, so use table/table-cell
+  // Export styles: hide delete buttons, center labels, pad title
   var style = document.createElement('style');
   style.textContent = [
     '.row-del{ display:none !important; }',
     '.token-del{ display:none !important; }',
     '.token .label{',
-    '  display:block !important;',
+    '  display:flex !important;',
+    '  align-items:center !important;',
+    '  justify-content:center !important;',
     '  width:110px !important;',
     '  height:110px !important;',
-    '  line-height:110px !important;',
     '  text-align:center !important;',
     '  font-weight:900 !important;',
     '  text-shadow:none !important;',
@@ -883,8 +883,9 @@ on($('#saveBtn'),'click', function(){
     '  box-sizing:border-box !important;',
     '}',
     '.label-chip{',
-    '  display:block !important;',
-    '  line-height:86px !important;',
+    '  display:flex !important;',
+    '  align-items:center !important;',
+    '  justify-content:center !important;',
     '  text-align:center !important;',
     '  padding:0 8px !important;',
     '}',
