@@ -863,35 +863,14 @@ on($('#saveBtn'),'click', function(){
   clone.style.width = '1200px';
   clone.style.maxWidth = '1200px';
 
-  // Export styles: hide delete buttons, center labels, pad title
+  // Export styles: hide buttons and title pen (centering done via inline styles below)
   var style = document.createElement('style');
   style.textContent = [
     '.row-del{ display:none !important; }',
     '.token-del{ display:none !important; }',
-    '.token .label{',
-    '  display:flex !important;',
-    '  align-items:center !important;',
-    '  justify-content:center !important;',
-    '  width:110px !important;',
-    '  height:110px !important;',
-    '  text-align:center !important;',
-    '  font-weight:900 !important;',
-    '  text-shadow:none !important;',
-    '  padding:0 !important;',
-    '  white-space:nowrap !important;',
-    '  overflow:hidden !important;',
-    '  box-sizing:border-box !important;',
-    '}',
-    '.label-chip{',
-    '  display:flex !important;',
-    '  align-items:center !important;',
-    '  justify-content:center !important;',
-    '  text-align:center !important;',
-    '  padding:0 8px !important;',
-    '}',
-    '.board-title-wrap{ text-align:center !important; margin-bottom:20px !important; }',
-    '.board-title{ text-align:center !important; font-size:28px !important; }',
-    '.title-pen{ display:none !important; }'
+    '.board-title-wrap{ text-align:center; margin-bottom:20px; }',
+    '.board-title{ text-align:center; font-size:28px; }',
+    '.title-pen{ display:none; }'
   ].join('\n');
   clone.appendChild(style);
 
@@ -906,16 +885,41 @@ on($('#saveBtn'),'click', function(){
   cloneWrap.appendChild(clone);
   document.body.appendChild(cloneWrap);
 
-  // Size each label to fit on single line (canvas measurement for accuracy)
+  // Inline-style token labels for html2canvas (flex is unreliable in html2canvas)
   var cloneLabels = $$('.token .label', clone);
   cloneLabels.forEach(function(lbl){
     var text = lbl.textContent;
-    var maxW = 104; // token 110px minus small margin
+    var maxW = 104;
     var px = 25;
     for (; px >= 10; px--) {
       if (measureText(text, '900', px) <= maxW) break;
     }
+    lbl.style.display = 'block';
+    lbl.style.width = '110px';
+    lbl.style.height = '110px';
+    lbl.style.lineHeight = '110px';
+    lbl.style.textAlign = 'center';
+    lbl.style.fontWeight = '900';
     lbl.style.fontSize = px + 'px';
+    lbl.style.whiteSpace = 'nowrap';
+    lbl.style.overflow = 'hidden';
+    lbl.style.padding = '0';
+    lbl.style.boxSizing = 'border-box';
+    lbl.style.textShadow = 'none';
+    lbl.style.alignItems = '';
+    lbl.style.justifyContent = '';
+  });
+
+  // Inline-style label chips for html2canvas
+  var cloneChips = $$('.label-chip', clone);
+  cloneChips.forEach(function(chip){
+    chip.style.display = 'block';
+    chip.style.lineHeight = '86px';
+    chip.style.textAlign = 'center';
+    chip.style.padding = '0 8px';
+    chip.style.color = '#ffffff';
+    chip.style.alignItems = '';
+    chip.style.justifyContent = '';
   });
 
   if (typeof html2canvas !== 'function') {
