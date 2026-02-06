@@ -52,10 +52,10 @@ function isSmall(){ return window.matchMedia && window.matchMedia('(max-width: 7
 function debounce(fn, ms){ var t; return function(){ clearTimeout(t); t=setTimeout(fn, ms); }; }
 
 /* ---------- Color helpers ---------- */
-function hexToRgb(hex){ var h=hex.replace('#',''); if(h.length===3){ h=h.split('').map(function(x){return x+x;}).join(''); } var n=parseInt(h,16); return {r:(n>>16)&255,g:(n>>8)&255,b:n&255}; }
+function hexToRgb(hex){ var m=hex.match(/rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/); if(m) return {r:parseInt(m[1],10),g:parseInt(m[2],10),b:parseInt(m[3],10)}; var h=hex.replace('#',''); if(h.length===3){ h=h.split('').map(function(x){return x+x;}).join(''); } var n=parseInt(h,16); return {r:(n>>16)&255,g:(n>>8)&255,b:n&255}; }
 function rgbToHex(r,g,b){ return '#'+[r,g,b].map(function(v){return v.toString(16).padStart(2,'0');}).join(''); }
 function relativeLuminance(rgb){ function srgb(v){ v/=255; return v<=0.03928? v/12.92 : Math.pow((v+0.055)/1.055,2.4); } return 0.2126*srgb(rgb.r)+0.7152*srgb(rgb.g)+0.0722*srgb(rgb.b); }
-function contrastColor(bgHex){ var L=relativeLuminance(hexToRgb(bgHex)); return L>0.58 ? '#000000' : '#ffffff'; }
+function contrastColor(bgHex){ var L=relativeLuminance(hexToRgb(bgHex)); return L>0.179 ? '#000000' : '#ffffff'; }
 function darken(hex,p){ var c=hexToRgb(hex); var f=(1-(p||0)); return rgbToHex(Math.round(c.r*f),Math.round(c.g*f),Math.round(c.b*f)); }
 function lighten(hex,p){ var c=hexToRgb(hex), f=p||0; return rgbToHex(Math.round(c.r+(255-c.r)*f), Math.round(c.g+(255-c.g)*f), Math.round(c.b+(255-c.b)*f)); }
 function mixHex(aHex,bHex,t){ var a=hexToRgb(aHex), b=hexToRgb(bHex);
@@ -265,6 +265,14 @@ var presetPalette = shuffleArray(BASE_PALETTE.map(ensureForBlack));
 var pIndex = 0;
 function nextPreset(){ var c = presetPalette[pIndex % presetPalette.length]; pIndex++; return c; }
 
+/* ---------- Canvas text measurement (avoids scrollWidth bugs) ---------- */
+var _measureCtx = null;
+function measureText(text, fontWeight, px){
+  if(!_measureCtx) _measureCtx = document.createElement('canvas').getContext('2d');
+  _measureCtx.font = fontWeight + ' ' + px + 'px ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial';
+  return _measureCtx.measureText(text).width;
+}
+
 /* ---------- Live label fitter (UI) ---------- */
 function fitLiveLabel(lbl){
   if (!lbl) return;
@@ -272,8 +280,16 @@ function fitLiveLabel(lbl){
   var D = token.clientWidth;
   if (!D) return;
   var pad = 8;
+  var maxW = D - pad * 2;
+  var text = lbl.textContent;
+
+  var px = 21;
+  for (; px >= 10; px--) {
+    if (measureText(text, '900', px) <= maxW) break;
+  }
 
   var s = lbl.style;
+  s.fontSize = px + 'px';
   s.whiteSpace = 'nowrap';
   s.lineHeight = '1.1';
   s.display = 'flex';
@@ -284,13 +300,6 @@ function fitLiveLabel(lbl){
   s.height = '100%';
   s.padding = pad + 'px';
   s.overflow = 'hidden';
-
-  // Start at 21px, shrink until text fits on single line
-  var maxW = D - pad * 2;
-  for (var px = 21; px >= 10; px--) {
-    s.fontSize = px + 'px';
-    if (lbl.scrollWidth <= maxW) break;
-  }
 }
 function refitAllLabels(){ $$('.token .label').forEach(fitLiveLabel); }
 on(window,'resize', debounce(refitAllLabels, 120));
@@ -698,6 +707,11 @@ function refreshRadialOptions(){
 
 function openRadial(token){
   if(!radial||!isSmall()) return;
+  // Remove existing backdrop handler to prevent listener leaks on re-open
+  if(radial._backdropHandler){
+    radial.removeEventListener('pointerdown', radial._backdropHandler);
+    delete radial._backdropHandler;
+  }
   radialForToken = token;
 
   // Save scroll position to prevent drift
@@ -891,16 +905,23 @@ on($('#saveBtn'),'click', function(){
   cloneWrap.appendChild(clone);
   document.body.appendChild(cloneWrap);
 
-  // Size each label to fit on single line (larger for bold readable export)
+  // Size each label to fit on single line (canvas measurement for accuracy)
   var cloneLabels = $$('.token .label', clone);
   cloneLabels.forEach(function(lbl){
-    var maxW = 110 - 12; // token width minus padding
-    for (var px = 26; px >= 10; px--) {
-      lbl.style.fontSize = px + 'px';
-      if (lbl.scrollWidth <= maxW) break;
+    var text = lbl.textContent;
+    var maxW = 104; // token 110px minus small margin
+    var px = 25;
+    for (; px >= 10; px--) {
+      if (measureText(text, '900', px) <= maxW) break;
     }
+    lbl.style.fontSize = px + 'px';
   });
 
+  if (typeof html2canvas !== 'function') {
+    cloneWrap.remove();
+    showSaveToast('Export library failed to load — check your connection');
+    return;
+  }
   html2canvas(clone, {
     backgroundColor: cssVar('--surface') || null,
     useCORS: true,
@@ -910,10 +931,8 @@ on($('#saveBtn'),'click', function(){
   }).then(function(canvas){
     var a=document.createElement('a'); a.href=canvas.toDataURL('image/png'); a.download='tier-list.png';
     document.body.appendChild(a); a.click();
-    // Delay removal to ensure download starts
-    setTimeout(function(){ a.remove(); }, 100);
+    setTimeout(function(){ a.remove(); }, 300);
     cloneWrap.remove();
-    // Show brief feedback
     showSaveToast('Saved!');
   }).catch(function(err){
     cloneWrap.remove();
