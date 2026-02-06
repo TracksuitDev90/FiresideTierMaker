@@ -218,9 +218,9 @@ var tierIdx = 0;
 function nextTierColor(){ var c=NEW_TIER_COLORS[tierIdx%NEW_TIER_COLORS.length]; tierIdx++; return c; }
 
 var communityCast = [
-  "American Ray","Anette","Authority","B7","Camryn","Cindy","Clamy","Clay","Cody","Cookies",
+  "Ray","Anette","Authority","B7","Camryn","Cindy","Clamy","Clay","Cody","Cookies",
   "Denver","Devon","Dexy","Domo","Gavin","Harry","Jeremy","Katie","Kiev","Kikki",
-  "Meegan","Mew","Neil","NJ","Paper","Ray","Safoof","Sky","Tubawk","Versse","Xavier"
+  "Meegan","Mew","Neil","NJ","Paper","Raymond","Safoof","Sky","Tubawk","Versse","Xavier"
 ];
 
 /* ---------- PRE-RENDERED CIRCLE PALETTE (20% less pale) ---------- */
