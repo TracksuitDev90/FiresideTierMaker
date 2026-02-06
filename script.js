@@ -178,7 +178,7 @@ function createRow(cfg){
   chip.textContent = cfg.label;
   chip.dataset.color = cfg.color;
   chip.style.background = cfg.color;
-  chip.style.color = contrastColor(cfg.color);
+  chip.style.color = 'FFFFFF';
   del.style.background = darken(cfg.color, 0.35);
 
   var tint = tintFrom(cfg.color);
