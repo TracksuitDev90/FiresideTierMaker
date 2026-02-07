@@ -930,7 +930,7 @@ on($('#saveBtn'),'click', function(){
   cloneLabels.forEach(function(lbl){
     var text = lbl.textContent;
     var maxW = 100; // token width with small margin
-    var px = 25; // start at 25px for bold readable export
+    var px = 24; // start at 24px for bold readable export
     for (; px >= 10; px--) {
       if (measureText(text, '900', px) <= maxW) break;
     }
