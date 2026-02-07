@@ -849,7 +849,7 @@ on($('#trashClear'),'click', function(){
 });
 on($('#undoBtn'),'click', function(){ undoLast(); });
 
-/* ===== Save PNG (keeps on-screen circle size) ===== */
+/* ===== Save Image (keeps on-screen circle size) ===== */
 on($('#saveBtn'),'click', function(){
   $$('.token.selected').forEach(function(t){ t.classList.remove('selected'); });
   $$('.dropzone.drag-over').forEach(function(z){ z.classList.remove('drag-over'); });
@@ -863,30 +863,48 @@ on($('#saveBtn'),'click', function(){
   clone.style.width = '1200px';
   clone.style.maxWidth = '1200px';
 
-  // Export styles: hide delete buttons, center labels large, pad title
-  // html2canvas doesn't render flex centering well, so use table/table-cell
+  // Export styles: hide delete buttons, center labels using absolute positioning (most reliable for html2canvas)
   var style = document.createElement('style');
   style.textContent = [
     '.row-del{ display:none !important; }',
     '.token-del{ display:none !important; }',
-    '.token .label{',
-    '  display:block !important;',
+    // Token container - relative positioning for absolute child
+    '.token{',
+    '  position:relative !important;',
     '  width:110px !important;',
     '  height:110px !important;',
-    '  line-height:110px !important;',
+    '}',
+    // Token label - absolute center using transform
+    '.token .label{',
+    '  position:absolute !important;',
+    '  top:50% !important;',
+    '  left:50% !important;',
+    '  transform:translate(-50%,-50%) !important;',
+    '  width:100px !important;',
     '  text-align:center !important;',
     '  font-weight:900 !important;',
     '  text-shadow:none !important;',
-    '  padding:0 !important;',
     '  white-space:nowrap !important;',
-    '  overflow:hidden !important;',
-    '  box-sizing:border-box !important;',
-    '}',
-    '.label-chip{',
     '  display:block !important;',
-    '  line-height:86px !important;',
+    '  padding:0 !important;',
+    '  margin:0 !important;',
+    '}',
+    // Tier label container - relative positioning
+    '.tier-label{',
+    '  position:relative !important;',
+    '  width:100% !important;',
+    '  height:100% !important;',
+    '}',
+    // Tier label chip - absolute center using transform
+    '.label-chip{',
+    '  position:absolute !important;',
+    '  top:50% !important;',
+    '  left:50% !important;',
+    '  transform:translate(-50%,-50%) !important;',
+    '  width:calc(100% - 20px) !important;',
     '  text-align:center !important;',
-    '  padding:0 8px !important;',
+    '  color:#ffffff !important;',
+    '  display:block !important;',
     '}',
     '.board-title-wrap{ text-align:center !important; margin-bottom:20px !important; }',
     '.board-title{ text-align:center !important; font-size:28px !important; }',
@@ -909,8 +927,8 @@ on($('#saveBtn'),'click', function(){
   var cloneLabels = $$('.token .label', clone);
   cloneLabels.forEach(function(lbl){
     var text = lbl.textContent;
-    var maxW = 104; // token 110px minus small margin
-    var px = 25;
+    var maxW = 100; // token width with small margin
+    var px = 26; // start at 26px for bold readable export
     for (; px >= 10; px--) {
       if (measureText(text, '900', px) <= maxW) break;
     }
