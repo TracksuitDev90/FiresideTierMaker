@@ -176,7 +176,7 @@ body.dragging-item{cursor:grabbing;user-select:none;-webkit-user-select:none}
 .radial-option.radial-btn{width:min(280px, 70vw);height:auto}
 .radial-option .dot{
   width:100%;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;
-  font-weight:900;font-size:18px;background:#fff;color:#111;
+  font-weight:900;font-size:18px;background:#fff;color:#fff;
   border:2px solid transparent;box-shadow:0 4px 16px rgba(0,0,0,.25);
   transform:scale(.7);opacity:0;transition:transform .18s ease,opacity .18s ease,box-shadow .12s ease,border-color .12s ease;
 }
