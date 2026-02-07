@@ -218,9 +218,9 @@ var tierIdx = 0;
 function nextTierColor(){ var c=NEW_TIER_COLORS[tierIdx%NEW_TIER_COLORS.length]; tierIdx++; return c; }
 
 var communityCast = [
-  "Ray","Anette","Authority","B7","Camryn","Cindy","Clamy","Clay","Cody","Cookies",
+  "Anette","Authority","B7","Camryn","Cindy","Clamy","Clay","Cody","Cookies",
   "Denver","Devon","Dexy","Domo","Gavin","Harry","Jeremy","Katie","Kiev","Kikki",
-  "Meegan","Mew","Neil","NJ","Paper","Raymond","Safoof","Sky","Tubawk","Versse","Xavier"
+  "Meegan","Mew's","Neil","NJ","Paper","Ray","Raymond","Safoof","Sky","Tubawk","Versse","Xavier"
 ];
 
 /* ---------- PRE-RENDERED CIRCLE PALETTE (20% less pale) ---------- */
@@ -928,7 +928,7 @@ on($('#saveBtn'),'click', function(){
   cloneLabels.forEach(function(lbl){
     var text = lbl.textContent;
     var maxW = 100; // token width with small margin
-    var px = 26; // start at 26px for bold readable export
+    var px = 25; // start at 25px for bold readable export
     for (; px >= 10; px--) {
       if (measureText(text, '900', px) <= maxW) break;
     }
