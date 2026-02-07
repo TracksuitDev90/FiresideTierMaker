@@ -218,8 +218,8 @@ var tierIdx = 0;
 function nextTierColor(){ var c=NEW_TIER_COLORS[tierIdx%NEW_TIER_COLORS.length]; tierIdx++; return c; }
 
 var communityCast = [
-  "Anette","Authority","B7","Camryn","Cindy","Clamy","Clay","Cody","Cookies",
-  "Denver","Devon","Dexy","Domo","Gavin","Harry","Jeremy","Katie","Kiev","Kikki",
+  "Anette","Andruw","Authority","B7","Camryn","Cindy","Clamy","Clay","Cody","Cookies",
+  "Denver","Devon","Dexy","Domo","Gavin","Harry","Katie","Kiev","Kikki",
   "Meegan","Mew's","Neil","NJ","Paper","Ray","Raymond","Safoof","Sky","Tubawk","Versse","Xavier"
 ];
 
