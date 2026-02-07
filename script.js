@@ -863,48 +863,50 @@ on($('#saveBtn'),'click', function(){
   clone.style.width = '1200px';
   clone.style.maxWidth = '1200px';
 
-  // Export styles: hide delete buttons, center labels using absolute positioning (most reliable for html2canvas)
+  // Export styles: hide delete buttons, center labels using line-height (most reliable for html2canvas)
   var style = document.createElement('style');
   style.textContent = [
     '.row-del{ display:none !important; }',
     '.token-del{ display:none !important; }',
-    // Token container - relative positioning for absolute child
+    // Token container
     '.token{',
-    '  position:relative !important;',
     '  width:110px !important;',
     '  height:110px !important;',
+    '  position:relative !important;',
     '}',
-    // Token label - absolute center using transform
+    // Token label - line-height centering (most reliable for html2canvas)
     '.token .label{',
+    '  display:block !important;',
     '  position:absolute !important;',
-    '  top:50% !important;',
-    '  left:50% !important;',
-    '  transform:translate(-50%,-50%) !important;',
-    '  width:100px !important;',
+    '  top:0 !important;',
+    '  left:0 !important;',
+    '  width:110px !important;',
+    '  height:110px !important;',
+    '  line-height:110px !important;',
     '  text-align:center !important;',
     '  font-weight:900 !important;',
     '  text-shadow:none !important;',
     '  white-space:nowrap !important;',
-    '  display:block !important;',
     '  padding:0 !important;',
     '  margin:0 !important;',
+    '  box-sizing:border-box !important;',
     '}',
-    // Tier label container - relative positioning
+    // Tier label container
     '.tier-label{',
     '  position:relative !important;',
     '  width:100% !important;',
     '  height:100% !important;',
     '}',
-    // Tier label chip - absolute center using transform
+    // Tier label chip - line-height centering
     '.label-chip{',
-    '  position:absolute !important;',
-    '  top:50% !important;',
-    '  left:50% !important;',
-    '  transform:translate(-50%,-50%) !important;',
-    '  width:calc(100% - 20px) !important;',
+    '  display:block !important;',
+    '  width:100% !important;',
+    '  height:86px !important;',
+    '  line-height:86px !important;',
     '  text-align:center !important;',
     '  color:#ffffff !important;',
-    '  display:block !important;',
+    '  padding:0 !important;',
+    '  margin:0 !important;',
     '}',
     '.board-title-wrap{ text-align:center !important; margin-bottom:20px !important; }',
     '.board-title{ text-align:center !important; font-size:28px !important; }',
