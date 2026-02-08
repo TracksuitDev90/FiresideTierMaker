@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Fireside Infograph</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <h2 class="page-title">FIRESIDE INFOGRAPH.</h2>
+
+  <div id="infograph-container">
+    <!-- 1) INPUT FIELDS -->
+    <div id="input-fields">
+      <div class="styled-table">
+        <div class="field">
+          <label for="user-name">Name or Discord name:</label>
+          <input type="text" id="user-name" autocomplete="name" />
+        </div>
+        <div class="field">
+          <label for="age">Your Age:</label>
+          <input type="text" id="age" inputmode="numeric" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="biological-sex">Gender:</label>
+          <input type="text" id="biological-sex" autocomplete="sex" />
+        </div>
+        <div class="field">
+          <label for="sexual-orientation">Sexual Orientation:</label>
+          <input type="text" id="sexual-orientation" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="mbti">Personality Type:</label>
+          <input type="text" id="mbti" autocomplete="off" />
+        </div>
+      </div>
+    </div>
+
+    <!-- 2) CONTROLS -->
+    <div id="container" class="controls-bar">
+      <input id="color-picker" type="color" title="Pick fill color" />
+
+      <button id="clear-button" type="button" aria-label="Clear filled boxes">
+        <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M6 19c0 .55.45 1 1 1h10c.55 0 1-.45 1-1V7H6v12zm3-10h2v8H9v-8zm4 0h2v8h-2v-8zM15.5 4l-1-1h-5l-1 1H5v2h14V4h-3.5z"/>
+        </svg>
+        <span>Clear</span>
+      </button>
+
+      <button id="dark-mode-toggle"
+              type="button"
+              aria-label="Toggle dark mode"
+              aria-pressed="false">
+        <svg class="icon icon-moon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M20 15.31c-1.54.7-3.2.69-4.74-.03-3.14-1.45-4.99-4.75-4.19-8.14.19-.79-.75-1.25-1.3-.68A11.933 11.933 0 005 12c0 6.62 5.38 12 12 12 1.07 0 2.1-.15 3.07-.43.77-.23.77-1.27 0-1.5z"/>
+        </svg>
+        <svg class="icon icon-sun" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 4a1 1 0 011 1v2a1 1 0 11-2 0V5a1 1 0 011-1zm0 12a1 1 0 011 1v2a1 1 0 11-2 0v-2zm8-4a1 1 0 01-1 1h-2a1 1 0 110-2h2zm-12 0a1 1 0 01-1 1H5a1 1 0 110-2h2zm9.657-5.657a1 1 0 011.414 1.414L17.414 7.414a1 1 0 11-1.414-1.414l1.414-1.414zm-9.314 9.314a1 1 0 011.414 1.414L6.343 17.657a1 1 0 11-1.414-1.414l1.414-1.414zM12 8a4 4 0 100 8 4 4 0 000-8z"/>
+        </svg>
+        <span class="label-moon">Dark Mode</span>
+        <span class="label-sun">Light Mode</span>
+      </button>
+
+      <div class="tooltip-wrapper">
+        <button id="save-button"
+                type="button"
+                aria-label="Save infographic as image"
+                disabled>
+          <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M20 5h-3.17l-1.84-2H9L7.17 5H4c-1.11 0-2 .89-2 2v12c0 1.11 .89 2 2 2h16c1.11 0 2-.89 2-2V7c0-1.11-.89-2-2-2zM12 17a5 5 0 110-10 5 5 0 010 10z"/>
+          </svg>
+          <span>Save as Image</span>
+        </button>
+        <span class="tooltip-text">Please complete before saving</span>
+      </div>
+    </div>
+
+    <!-- 3) BOX GRID -->
+    <div id="box-container">
+      <div class="box-row">
+        <h3 class="category" data-description="How would you rate your intelligence compared to the average person?">Intelligence</h3>
+        <div class="boxes">
+          <div class="box" title="1/10"></div>
+          <div class="box" title="2/10"></div>
+          <div class="box" title="3/10"></div>
+          <div class="box" title="4/10"></div>
+          <div class="box" title="5/10"></div>
+          <div class="box" title="6/10"></div>
+          <div class="box" title="7/10"></div>
+          <div class="box" title="8/10"></div>
+          <div class="box" title="9/10"></div>
+          <div class="bonus-box" title="10/10"></div>
+        </div>
+      </div>
+      <div class="box-row">
+        <h3 class="category" data-description="How would you rate your wealth compared to the average person?">Wealth</h3>
+        <div class="boxes">
+          <div class="box" title="1/10"></div>
+          <div class="box" title="2/10"></div>
+          <div class="box" title="3/10"></div>
+          <div class="box" title="4/10"></div>
+          <div class="box" title="5/10"></div>
+          <div class="box" title="6/10"></div>
+          <div class="box" title="7/10"></div>
+          <div class="box" title="8/10"></div>
+          <div class="box" title="9/10"></div>
+          <div class="bonus-box" title="10/10"></div>
+        </div>
+      </div>
+      <div class="box-row">
+        <h3 class="category" data-description="How would you rate your sex life compared to the average person?">Sex Life</h3>
+        <div class="boxes">
+          <div class="box" title="1/10"></div>
+          <div class="box" title="2/10"></div>
+          <div class="box" title="3/10"></div>
+          <div class="box" title="4/10"></div>
+          <div class="box" title="5/10"></div>
+          <div class="box" title="6/10"></div>
+          <div class="box" title="7/10"></div>
+          <div class="box" title="8/10"></div>
+          <div class="box" title="9/10"></div>
+          <div class="bonus-box" title="10/10"></div>
+        </div>
+      </div>
+      <div class="box-row">
+        <h3 class="category" data-description="How would you rate your physical appearance compared to the average person?">Physical Appearance</h3>
+        <div class="boxes">
+          <div class="box" title="1/10"></div>
+          <div class="box" title="2/10"></div>
+          <div class="box" title="3/10"></div>
+          <div class="box" title="4/10"></div>
+          <div class="box" title="5/10"></div>
+          <div class="box" title="6/10"></div>
+          <div class="box" title="7/10"></div>
+          <div class="box" title="8/10"></div>
+          <div class="box" title="9/10"></div>
+          <div class="bonus-box" title="10/10"></div>
+        </div>
+      </div>
+      <div class="box-row">
+        <h3 class="category" data-description="How would you rate your personality compared to the average person?">Personality</h3>
+        <div class="boxes">
+          <div class="box" title="1/10"></div>
+          <div class="box" title="2/10"></div>
+          <div class="box" title="3/10"></div>
+          <div class="box" title="4/10"></div>
+          <div class="box" title="5/10"></div>
+          <div class="box" title="6/10"></div>
+          <div class="box" title="7/10"></div>
+          <div class="box" title="8/10"></div>
+          <div class="box" title="9/10"></div>
+          <div class="bonus-box" title="10/10"></div>
+        </div>
+      </div>
+      <div class="box-row">
+        <h3 class="category" data-description="How would you rate your confidence compared to the average person?">Confidence</h3>
+        <div class="boxes">
+          <div class="box" title="1/10"></div>
+          <div class="box" title="2/10"></div>
+          <div class="box" title="3/10"></div>
+          <div class="box" title="4/10"></div>
+          <div class="box" title="5/10"></div>
+          <div class="box" title="6/10"></div>
+          <div class="box" title="7/10"></div>
+          <div class="box" title="8/10"></div>
+          <div class="box" title="9/10"></div>
+          <div class="bonus-box" title="10/10"></div>
+        </div>
+      </div>
+      <div class="box-row">
+        <h3 class="category" data-description="How would you rate your social life compared to the average person?">Social Life</h3>
+        <div class="boxes">
+          <div class="box" title="1/10"></div>
+          <div class="box" title="2/10"></div>
+          <div class="box" title="3/10"></div>
+          <div class="box" title="4/10"></div>
+          <div class="box" title="5/10"></div>
+          <div class="box" title="6/10"></div>
+          <div class="box" title="7/10"></div>
+          <div class="box" title="8/10"></div>
+          <div class="box" title="9/10"></div>
+          <div class="bonus-box" title="10/10"></div>
+        </div>
+      </div>
+      <div class="box-row">
+        <h3 class="category" data-description="How would you rate your health and fitness compared to the average person?">Health / Fitness</h3>
+        <div class="boxes">
+          <div class="box" title="1/10"></div>
+          <div class="box" title="2/10"></div>
+          <div class="box" title="3/10"></div>
+          <div class="box" title="4/10"></div>
+          <div class="box" title="5/10"></div>
+          <div class="box" title="6/10"></div>
+          <div class="box" title="7/10"></div>
+          <div class="box" title="8/10"></div>
+          <div class="box" title="9/10"></div>
+          <div class="bonus-box" title="10/10"></div>
+        </div>
+      </div>
+      <div class="box-row">
+        <h3 class="category" data-description="How would you rate your happiness compared to the average person?">Happiness</h3>
+        <div class="boxes">
+          <div class="box" title="1/10"></div>
+          <div class="box" title="2/10"></div>
+          <div class="box" title="3/10"></div>
+          <div class="box" title="4/10"></div>
+          <div class="box" title="5/10"></div>
+          <div class="box" title="6/10"></div>
+          <div class="box" title="7/10"></div>
+          <div class="box" title="8/10"></div>
+          <div class="box" title="9/10"></div>
+          <div class="bonus-box" title="10/10"></div>
+        </div>
+      </div>
+      <div class="box-row">
+        <h3 class="category" data-description="How would you rate your cringiness compared to the average person?">Cringiness</h3>
+        <div class="boxes">
+          <div class="box" title="1/10"></div>
+          <div class="box" title="2/10"></div>
+          <div class="box" title="3/10"></div>
+          <div class="box" title="4/10"></div>
+          <div class="box" title="5/10"></div>
+          <div class="box" title="6/10"></div>
+          <div class="box" title="7/10"></div>
+          <div class="box" title="8/10"></div>
+          <div class="box" title="9/10"></div>
+          <div class="bonus-box" title="10/10"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- html2canvas + your script -->
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

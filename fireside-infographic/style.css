@@ -1,0 +1,357 @@
+/* 1. TYPEFACES */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Montserrat:wght@600;700&display=swap');
+
+/* 2. ROOT CUSTOM PROPERTIES */
+:root {
+  --slanted-bg-light:   #ffffff;
+  --slanted-bg-dark:    #333333;
+  --slanted-text-color: #000000;
+}
+
+/* 3. RESET & BASE */
+*, *::before, *::after { box-sizing: border-box; }
+html { height: 100%; }
+body {
+  margin:0; padding:0;
+  min-height:100vh;
+  background:#f7f7f7;
+  color:#000;
+  font-family:'Inter',sans-serif;
+  transition:background-color .3s,color .3s;
+}
+body.dark-mode {
+  background:#121212;
+  color:#ddd;
+}
+
+/* 4. PAGE TITLE */
+.page-title {
+  font-family:'Montserrat',sans-serif;
+  font-weight:700;
+  font-size:3rem;
+  color:#009879;
+  text-align:center;
+  margin:40px 0 30px;
+  transition:color .3s;
+}
+body.dark-mode .page-title {
+  color:#4fd6a5;
+}
+
+/* 5. INFOGRAPH CONTAINER */
+#infograph-container {
+  max-width:900px;
+  margin:0 auto;
+  padding:20px;
+  background:#f7f7f7;
+  transition:background-color .3s;
+}
+body.dark-mode #infograph-container {
+  background:#121212;
+}
+
+/* 6. CONTROLS BAR */
+#container {
+  display:flex; flex-wrap:wrap;
+  justify-content:center; align-items:center;
+  gap:10px; margin:20px 0 30px;
+}
+
+/* 6a. COLOR PICKER */
+#container input#color-picker {
+  -webkit-appearance:none; appearance:none;
+  width:50px; height:50px;
+  border:3px solid var(--slanted-bg-light);
+  border-radius:50%;
+  background:transparent;
+  cursor:pointer;
+  box-shadow:0 2px 6px rgba(0,0,0,.2);
+  transition:box-shadow .2s,border-color .3s;
+  overflow:hidden; padding:0;
+}
+#container input#color-picker:hover {
+  box-shadow:0 4px 12px rgba(0,0,0,.3);
+}
+body.dark-mode #container input#color-picker {
+  border-color:var(--slanted-bg-dark);
+}
+#container input#color-picker::-webkit-color-swatch-wrapper,
+#container input#color-picker::-moz-color-swatch-wrapper {
+  padding:0; border-radius:50%; overflow:hidden;
+}
+#container input#color-picker::-webkit-color-swatch,
+#container input#color-picker::-moz-color-swatch {
+  border:none; border-radius:0;
+}
+
+/* 6b. BUTTONS */
+#container button {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:10px 20px; font-size:1rem; font-weight:600;
+  border:none; border-radius:20px;
+  background: var(--slanted-bg-light) !important;
+  color: var(--slanted-text-color) !important;
+  box-shadow:0 2px 6px rgba(0,0,0,.15);
+  white-space:nowrap;
+  cursor:pointer;
+  transition: filter .2s, box-shadow .2s;
+}
+#container button:hover {
+  filter: brightness(1.1);
+  box-shadow:0 4px 12px rgba(0,0,0,.2);
+}
+#container button:active {
+  filter: brightness(0.9);
+  box-shadow:0 1px 4px rgba(0,0,0,.1);
+}
+body.dark-mode #container button {
+  background: var(--slanted-bg-dark) !important;
+  color: var(--slanted-text-color) !important;
+}
+
+/* 6c. DISABLED SAVE */
+#save-button:disabled {
+  opacity:.5; cursor:not-allowed; pointer-events:none;
+}
+
+/* 6d. ICON SIZING */
+#container button .icon {
+  width:1.2em; height:1.2em; flex-shrink:0;
+}
+
+/* 6e. DARK/LIGHT TOGGLE SWAP */
+.icon-sun, .label-sun { display:none; }
+body.dark-mode .icon-sun,
+body.dark-mode .label-sun {
+  display:inline-block;
+}
+body.dark-mode .icon-moon,
+body.dark-mode .label-moon {
+  display:none;
+}
+
+/* 6f. TOOLTIP */
+.tooltip-wrapper {
+  position:relative; display:inline-block;
+}
+.tooltip-wrapper .tooltip-text {
+  visibility:hidden; opacity:0;
+  position:absolute; bottom:125%; left:50%;
+  transform:translateX(-50%);
+  background:rgba(0,0,0,.8); color:#fff;
+  padding:4px 8px; border-radius:4px;
+  font-size:.8rem; white-space:nowrap;
+  transition:opacity .2s;
+  pointer-events:none;
+}
+.tooltip-wrapper:hover .tooltip-text {
+  visibility:visible; opacity:1;
+}
+
+/* 7. SLANTED FORM */
+.styled-table {
+  width:100%;
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:16px 30px;
+  margin:0 auto 30px;
+  padding:16px;
+  transform:perspective(75em) rotateX(18deg);
+  border-radius:10px;
+  border:2px solid #d5dce2;
+  background:var(--slanted-bg-light);
+  box-shadow:
+    rgba(22,31,39,.42) 0 60px 123px -25px,
+    rgba(19,26,32,.08) 0 35px 75px -35px;
+  transition:background .3s,border-color .3s;
+}
+@media (max-width:600px) {
+  .styled-table { grid-template-columns:1fr; }
+}
+body.dark-mode .styled-table {
+  border-color:#555;
+  background:var(--slanted-bg-dark);
+}
+
+/* 7a. FORM FIELDS */
+.styled-table .field {
+  display:flex; flex-direction:column;
+}
+.styled-table label {
+  font-weight:bold;
+  margin-bottom:6px;
+  color:var(--slanted-text-color);
+}
+.styled-table input[type="text"] {
+  padding:8px;
+  font-family:'Inter',sans-serif;
+  font-weight:500;
+  font-size:1rem;
+  border:2px solid #009879;
+  border-radius:4px;
+  background:#fff;
+  color:#000;
+  transition:background .3s,border-color .3s,color .3s;
+}
+body.dark-mode .styled-table input[type="text"] {
+  background:#444; border-color:#4fd6a5; color:#ddd;
+}
+
+/* 8. ASPECT-RATIO FALLBACK */
+@supports not (aspect-ratio:1/1) {
+  .box, .bonus-box {
+    width:100%; padding-top:100%; position:relative;
+  }
+  .box>* , .bonus-box>* {
+    position:absolute; inset:0;
+  }
+}
+
+/* 9. BOX GRID & BOXES */
+#box-container {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+  column-gap:40px; row-gap:20px;
+  margin:0 auto; padding:0 10px;
+}
+.box-row {
+  display:flex; flex-direction:column; align-items:center;
+}
+
+/* 9a. CATEGORY HEADING */
+.category {
+  position:relative;
+  font-family:'Montserrat',sans-serif;
+  font-weight:700;
+  font-size:1.4rem;
+  color:#009879;
+  margin-bottom:8px;
+  transition:color .3s;
+  cursor:help;
+}
+body.dark-mode .category {
+  color:#4fd6a5;
+}
+
+/* 9b. CATEGORY TOOLTIP */
+.category-tooltip {
+  visibility:hidden;
+  opacity:0;
+  position:absolute;
+  top:calc(100% + 8px);
+  left:50%;
+  transform:translateX(-50%);
+  background:var(--slanted-bg-light);
+  color:var(--slanted-text-color);
+  padding:8px 14px;
+  border-radius:8px;
+  border:2px solid var(--slanted-bg-dark);
+  font-size:0.85rem;
+  font-weight:500;
+  font-family:'Inter',sans-serif;
+  white-space:normal;
+  width:max-content;
+  max-width:280px;
+  text-align:center;
+  z-index:10;
+  box-shadow:0 4px 12px rgba(0,0,0,.2);
+  transition:opacity .2s,visibility .2s;
+  pointer-events:none;
+}
+.category-tooltip::before {
+  content:'';
+  position:absolute;
+  bottom:100%;
+  left:50%;
+  transform:translateX(-50%);
+  border:6px solid transparent;
+  border-bottom-color:var(--slanted-bg-dark);
+}
+.category-tooltip::after {
+  content:'';
+  position:absolute;
+  bottom:calc(100% - 2px);
+  left:50%;
+  transform:translateX(-50%);
+  border:5px solid transparent;
+  border-bottom-color:var(--slanted-bg-light);
+}
+.category:hover .category-tooltip,
+.category.tooltip-active .category-tooltip {
+  visibility:visible;
+  opacity:1;
+}
+
+.boxes {
+  display:grid;
+  grid-template-columns:repeat(10,1fr);
+  gap:6px;
+  width:100%;
+}
+
+/* Pop-fill animation */
+@keyframes pop-fill {
+  0%   { transform:scale(1) }
+  50%  { transform:scale(1.15) }
+ 100%  { transform:scale(1) }
+}
+
+/* BASE BOX */
+.box {
+  aspect-ratio:1/1; width:100%;
+  max-width:50px; min-width:30px;
+  background:#fff;
+  border:2px solid var(--slanted-bg-light);
+  border-radius:8px;
+  transition:background-color .2s,border-color .2s,box-shadow .2s;
+  touch-action:none;
+}
+.box:hover {
+  box-shadow:
+    0 14px 28px rgba(0,0,0,.25),
+    0 10px 10px rgba(0,0,0,.22);
+}
+body.dark-mode .box {
+  background:#444;
+  border-color:var(--slanted-bg-dark);
+}
+
+/* FILLED STATE */
+.box.filled {
+  animation:pop-fill .25s ease-out forwards;
+}
+
+/* BONUS BOX */
+.bonus-box {
+  aspect-ratio:1/1; width:100%;
+  max-width:50px; min-width:30px;
+  background:#dedede;
+  border:3px solid blue;
+  border-radius:8px;
+  touch-action:none;
+  transition:background-color .2s,border-color .2s,box-shadow .2s;
+}
+.bonus-box:hover {
+  box-shadow:
+    0 14px 28px rgba(0,0,0,.25),
+    0 10px 10px rgba(0,0,0,.22);
+}
+body.dark-mode .bonus-box {
+  background:#555;
+}
+@keyframes pulse {
+  0%,100% { transform:scale(1) }
+  50%      { transform:scale(1.05) }
+}
+.bonus-box.maxed {
+  animation:pulse 1s ease-in-out infinite;
+  border-color:gold;
+  box-shadow:0 0 8px rgba(255,215,0,.7);
+}
+
+/* FOCUS OUTLINE */
+.box:focus,
+.bonus-box:focus {
+  outline:3px solid var(--slanted-text-color);
+  outline-offset:2px;
+}
