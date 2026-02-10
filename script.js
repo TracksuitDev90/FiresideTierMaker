@@ -50,6 +50,7 @@ function vib(ms){ if('vibrate' in navigator) navigator.vibrate(ms||8); }
 function cssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
 function isSmall(){ return window.matchMedia && window.matchMedia('(max-width: 768px)').matches; }
 function debounce(fn, ms){ var t; return function(){ clearTimeout(t); t=setTimeout(fn, ms); }; }
+function animateBtn(btn){ if(!btn) return; btn.classList.remove('animate'); void btn.offsetWidth; btn.classList.add('animate'); setTimeout(function(){ btn.classList.remove('animate'); }, 300); }
 
 /* ---------- Color helpers ---------- */
 function hexToRgb(hex){ var m=hex.match(/rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/); if(m) return {r:parseInt(m[1],10),g:parseInt(m[2],10),b:parseInt(m[3],10)}; var h=hex.replace('#',''); if(h.length===3){ h=h.split('').map(function(x){return x+x;}).join(''); } var n=parseInt(h,16); return {r:(n>>16)&255,g:(n>>8)&255,b:n&255}; }
@@ -73,7 +74,7 @@ function mixHex(aHex,bHex,t){ var a=hexToRgb(aHex), b=hexToRgb(bHex);
   var icon=$('.theme-icon',toggle), text=$('.theme-text',toggle);
   var prefersLight=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: light)').matches);
   setTheme(localStorage.getItem('tm_theme') || (prefersLight ? 'light' : 'dark'));
-  on(toggle,'click', function(){ setTheme(root.getAttribute('data-theme')==='dark'?'light':'dark'); });
+  on(toggle,'click', function(){ animateBtn(toggle); setTheme(root.getAttribute('data-theme')==='dark'?'light':'dark'); });
   function setTheme(mode){
     root.setAttribute('data-theme', mode); localStorage.setItem('tm_theme', mode);
     var target = mode==='dark' ? 'Light' : 'Dark';
@@ -830,12 +831,15 @@ function closeRadial(){
   radial.setAttribute('aria-hidden', 'true');
   radialForToken = null;
   _radialGeo = [];
-  // Unlock body scroll and restore position
+  // Unlock body scroll and restore position - capture before unlocking
+  var scrollY = _savedScrollY;
+  _savedScrollY = null;
   document.body.classList.remove('radial-open');
   document.body.style.top = '';
-  if (_savedScrollY !== null){
-    window.scrollTo(0, _savedScrollY);
-    _savedScrollY = null;
+  if (scrollY !== null){
+    // Restore scroll synchronously and again after paint to prevent drift
+    window.scrollTo(0, scrollY);
+    requestAnimationFrame(function(){ window.scrollTo(0, scrollY); });
   }
 }
 on(window, 'resize', refreshRadialOptions);
@@ -847,7 +851,7 @@ on($('#trashClear'),'click', function(){
   try { localStorage.removeItem(STORAGE_KEY); } catch(e){}
   location.reload();
 });
-on($('#undoBtn'),'click', function(){ undoLast(); });
+on($('#undoBtn'),'click', function(){ animateBtn(this); undoLast(); });
 
 /* ===== Save Image (keeps on-screen circle size) ===== */
 on($('#saveBtn'),'click', function(){
@@ -1144,6 +1148,7 @@ document.addEventListener('DOMContentLoaded', function start(){
 
   // add tier
   on($('#addTierBtn'),'click', function(){
+    animateBtn(this);
     board.appendChild(createRow({label:'NEW', color: nextTierColor()}));
     refreshRadialOptions();
     scheduleSave();
