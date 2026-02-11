@@ -761,7 +761,7 @@ function openRadial(token){
       dot.className = 'dot';
       dot.textContent = labels[j];
       dot.style.background = colors[j];
-      dot.style.color = contrastColor(colors[j]);
+      dot.style.color = '#ffffff';
       btn.appendChild(dot);
 
       function makeHot(){ updateHighlight(j); }
