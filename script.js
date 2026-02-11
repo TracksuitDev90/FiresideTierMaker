@@ -51,6 +51,7 @@ function cssVar(name){ return getComputedStyle(document.documentElement).getProp
 function isSmall(){ return window.matchMedia && window.matchMedia('(max-width: 768px)').matches; }
 function debounce(fn, ms){ var t; return function(){ clearTimeout(t); t=setTimeout(fn, ms); }; }
 function animateBtn(btn){ if(!btn) return; btn.classList.remove('animate'); void btn.offsetWidth; btn.classList.add('animate'); setTimeout(function(){ btn.classList.remove('animate'); }, 300); }
+function replayGif(btn){ var img=btn&&btn.querySelector('.btn-gif'); if(!img) return; var src=img.getAttribute('src').split('?')[0]; img.src=''; img.src=src+'?t='+Date.now(); }
 
 /* ---------- Color helpers ---------- */
 function hexToRgb(hex){ var m=hex.match(/rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/); if(m) return {r:parseInt(m[1],10),g:parseInt(m[2],10),b:parseInt(m[3],10)}; var h=hex.replace('#',''); if(h.length===3){ h=h.split('').map(function(x){return x+x;}).join(''); } var n=parseInt(h,16); return {r:(n>>16)&255,g:(n>>8)&255,b:n&255}; }
@@ -849,7 +850,7 @@ on(window, 'resize', refreshRadialOptions);
 
 /* ---------- Clear / Undo ---------- */
 on($('#trashClear'),'click', function(){
-  animateBtn(this);
+  replayGif(this);
   if (!confirm('Reset everything? This will restore the tier list to its original state.')) return;
   // Clear saved data and reload for a fresh start
   try { localStorage.removeItem(STORAGE_KEY); } catch(e){}
@@ -859,7 +860,7 @@ on($('#undoBtn'),'click', function(){ animateBtn(this); undoLast(); });
 
 /* ===== Save Tierlist (keeps on-screen circle size) ===== */
 on($('#saveBtn'),'click', function(){
-  animateBtn(this);
+  replayGif(this);
   $$('.token.selected').forEach(function(t){ t.classList.remove('selected'); });
   $$('.dropzone.drag-over').forEach(function(z){ z.classList.remove('drag-over'); });
 
