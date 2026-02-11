@@ -224,25 +224,48 @@ var communityCast = [
   "Meegan","Mew's","Neil","NJ","Paper","Ray","Raymond","Safoof","Sky","Tubawk","Versse","Xavier","Zwjk"
 ];
 
-/* ---------- VIBRANT TEXT PALETTE (neon text on dark tokens) ---------- */
-var VIBRANT_PALETTE = [
-  '#ff2d55','#00e5ff','#76ff03','#ffea00','#ff6d00',
-  '#d500f9','#1de9b6','#ff3d00','#00b0ff','#f50057',
-  '#64ffda','#ffab00','#e040fb','#00e676','#ff9100',
-  '#536dfe','#18ffff','#ff1744','#69f0ae','#ffd740',
-  '#7c4dff','#40c4ff','#b2ff59','#ff6e40','#ea80fc',
-  '#84ffff','#aeea00','#ff4081','#448aff'
+/* ---------- PRE-RENDERED CIRCLE PALETTE ---------- */
+var BASE_PALETTE = [
+  '#FFD54F','#FF8A65','#FFB74D','#FFC107',
+  '#7986CB','#EF5350','#E91E63','#9575CD',
+  '#F48FB1','#4DD0E1','#26C6DA','#FF7043',
+  '#FF9800','#FFAB91','#4FC3F7','#7E57C2',
+  '#FFCA28','#EF9A9A','#80DEEA','#B39DDB',
+  '#81D4FA','#FFCC80','#A5D6A7','#F8BBD0',
+  '#FFA726','#66BB6A','#4DB6AC','#FF80AB','#9FA8DA'
 ];
 
-var TOKEN_BG = '#161625';
-function tokenBg(textColor){ return mixHex(TOKEN_BG, textColor, 0.10); }
+/* Bold text colors that pair well against the background palette */
+var TEXT_COLORS = [
+  '#ffffff','#111111','#1a1a2e','#f5f5dc',
+  '#2d1b4e','#0d2137','#c62828','#1b5e20',
+  '#4a148c','#e65100','#01579b','#263238',
+  '#fff8e1','#880e4f','#004d40','#311b92'
+];
+
+function contrastRatio(hex1, hex2){
+  var L1 = relativeLuminance(hexToRgb(hex1));
+  var L2 = relativeLuminance(hexToRgb(hex2));
+  var hi = Math.max(L1, L2), lo = Math.min(L1, L2);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+/* Pick a random text color with good contrast against bgHex */
+function pickTextColor(bgHex){
+  var pool = [];
+  for (var i = 0; i < TEXT_COLORS.length; i++){
+    if (contrastRatio(bgHex, TEXT_COLORS[i]) >= 3.0) pool.push(TEXT_COLORS[i]);
+  }
+  if (!pool.length) return contrastColor(bgHex);
+  return pool[Math.floor(Math.random() * pool.length)];
+}
 
 /* Fisher-Yates shuffle so tokens get different colors each page load */
 function shuffleArray(arr){
   for(var i=arr.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var tmp=arr[i]; arr[i]=arr[j]; arr[j]=tmp; }
   return arr;
 }
-var presetPalette = shuffleArray(VIBRANT_PALETTE.slice());
+var presetPalette = shuffleArray(BASE_PALETTE.slice());
 var pIndex = 0;
 function nextPreset(){ var c = presetPalette[pIndex % presetPalette.length]; pIndex++; return c; }
 
@@ -327,11 +350,11 @@ function buildTokenBase(isCustom){
   on(el,'keydown',function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); el.click(); } });
   return el;
 }
-function buildNameToken(name, textColor, isCustom){
+function buildNameToken(name, bgColor, isCustom, textColor){
   var el = buildTokenBase(isCustom);
-  el.style.background = tokenBg(textColor);
+  el.style.background = bgColor;
   var label = document.createElement('div'); label.className='label'; label.textContent=name;
-  label.style.color = textColor;
+  label.style.color = textColor || pickTextColor(bgColor);
   el.appendChild(label);
   fitLiveLabel(label);
   return el;
@@ -1021,7 +1044,7 @@ function saveTierList(){
       var img = tok.querySelector('img');
       var isCustom = tok.dataset.custom === 'true';
       if (lbl) {
-        rowData.tokens.push({ type: 'name', name: lbl.textContent, color: lbl.style.color, custom: isCustom });
+        rowData.tokens.push({ type: 'name', name: lbl.textContent, color: tok.style.background, textColor: lbl.style.color, custom: isCustom });
       } else if (img) {
         rowData.tokens.push({ type: 'image', src: img.src, alt: img.alt, custom: true });
       }
@@ -1034,7 +1057,7 @@ function saveTierList(){
     var img = tok.querySelector('img');
     var isCustom = tok.dataset.custom === 'true';
     if (lbl) {
-      data.tray.push({ type: 'name', name: lbl.textContent, color: lbl.style.color, custom: isCustom });
+      data.tray.push({ type: 'name', name: lbl.textContent, color: tok.style.background, textColor: lbl.style.color, custom: isCustom });
     } else if (img) {
       data.tray.push({ type: 'image', src: img.src, alt: img.alt, custom: true });
     }
@@ -1060,8 +1083,7 @@ function loadTierList(){
       var drop = node.querySelector('.tier-drop');
       rowData.tokens.forEach(function(tokData){
         if (tokData.type === 'name') {
-          var c = tokData.textColor || tokData.color || '#ff2d55';
-          drop.appendChild(buildNameToken(tokData.name, c, !!tokData.custom));
+          drop.appendChild(buildNameToken(tokData.name, tokData.color || '#7da7ff', !!tokData.custom, tokData.textColor));
         } else if (tokData.type === 'image') {
           drop.appendChild(buildImageToken(tokData.src, tokData.alt));
         }
@@ -1071,8 +1093,7 @@ function loadTierList(){
     // Restore tray
     data.tray.forEach(function(tokData){
       if (tokData.type === 'name') {
-        var c = tokData.textColor || tokData.color || '#ff2d55';
-        tray.appendChild(buildNameToken(tokData.name, c, !!tokData.custom));
+        tray.appendChild(buildNameToken(tokData.name, tokData.color || '#7da7ff', !!tokData.custom, tokData.textColor));
       } else if (tokData.type === 'image') {
         tray.appendChild(buildImageToken(tokData.src, tokData.alt));
       }
@@ -1114,7 +1135,7 @@ document.addEventListener('DOMContentLoaded', function start(){
   if (!restored) {
     // rows
     defaultTiers.forEach(function(t){ board.appendChild(createRow(t)); });
-    // tray defaults (pre-rendered with vibrant neon text, not custom)
+    // tray defaults (pre-rendered with flat bg + random contrasting text, not custom)
     communityCast.forEach(function(n){ tray.appendChild(buildNameToken(n, nextPreset(), false)); });
   }
 
@@ -1133,7 +1154,7 @@ document.addEventListener('DOMContentLoaded', function start(){
   function addNameFromInput(){
     var name = $('#nameInput').value.trim();
     if (!name) return;
-    tray.appendChild(buildNameToken(name, $('#nameColor').value, true)); // custom=true
+    tray.appendChild(buildNameToken(name, $('#nameColor').value, true)); // custom, text picked automatically
     $('#nameInput').value=''; $('#nameColor').value = nextPreset();
     refitAllLabels();
     scheduleSave();
