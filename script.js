@@ -849,6 +849,7 @@ on(window, 'resize', refreshRadialOptions);
 
 /* ---------- Clear / Undo ---------- */
 on($('#trashClear'),'click', function(){
+  animateBtn(this);
   if (!confirm('Reset everything? This will restore the tier list to its original state.')) return;
   // Clear saved data and reload for a fresh start
   try { localStorage.removeItem(STORAGE_KEY); } catch(e){}
@@ -856,8 +857,9 @@ on($('#trashClear'),'click', function(){
 });
 on($('#undoBtn'),'click', function(){ animateBtn(this); undoLast(); });
 
-/* ===== Save Image (keeps on-screen circle size) ===== */
+/* ===== Save Tierlist (keeps on-screen circle size) ===== */
 on($('#saveBtn'),'click', function(){
+  animateBtn(this);
   $$('.token.selected').forEach(function(t){ t.classList.remove('selected'); });
   $$('.dropzone.drag-over').forEach(function(z){ z.classList.remove('drag-over'); });
 
