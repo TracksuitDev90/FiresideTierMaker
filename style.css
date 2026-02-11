@@ -102,7 +102,7 @@ a{color:inherit;text-decoration:none}
   position:relative;
   background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(0,0,0,.05));
   border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow);
-  padding:10px; display:grid; place-items:center; min-height:110px; overflow:visible;
+  padding:10px; display:grid; place-items:center; min-height:99px; overflow:visible;
 }
 .label-chip{
   position:relative;width:100%;height:86px;border-radius:12px;background:#ff6b6b;color:#111;
@@ -125,26 +125,28 @@ a{color:inherit;text-decoration:none}
 /* Drops */
 .tier-drop{
   background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);
-  padding:14px;display:grid;grid-auto-flow:row;grid-template-columns:repeat(auto-fill,minmax(116px,1fr));
-  align-content:start;gap:14px;min-height:110px;
+  padding:14px;display:grid;grid-auto-flow:row;grid-template-columns:repeat(auto-fill,minmax(105px,1fr));
+  align-content:start;gap:14px;min-height:99px;
 }
 .tier-drop:focus-visible{box-shadow:0 0 0 3px rgba(139,125,255,.35),var(--shadow)}
 .dropzone.drag-over{box-shadow:0 0 0 3px rgba(139,125,255,.35),var(--shadow)}
 
 /* ---------- Tokens ---------- */
 .token{
-  position:relative;width:110px;height:110px;border-radius:999px;background:#7da7ff;
+  position:relative;width:99px;height:99px;border-radius:999px;background:#161625;
   display:flex;align-items:center;justify-content:center;
   user-select:none;cursor:pointer;transform:translateZ(0);transition:transform .08s ease;
+  border:1px solid rgba(255,255,255,.07);
 }
 .token:hover{transform:translateY(-1px)}
 .token:active{transform:translateY(0)}
 .token:focus-visible{outline:3px solid var(--accent);outline-offset:4px}
 .token .label{
-  padding:8px;text-align:center;font-weight:900;font-size:21px;line-height:1.1;
+  padding:7px;text-align:center;font-weight:900;font-size:19px;line-height:1.1;
   white-space:nowrap;
   display:flex;align-items:center;justify-content:center;
   width:100%;height:100%;overflow:hidden;
+  text-shadow:0 0 8px currentColor;
 }
 .token img{width:100%;height:100%;object-fit:cover;border-radius:999px;pointer-events:none}
 .token.selected{outline:3px solid var(--accent);outline-offset:4px}
@@ -162,11 +164,11 @@ a{color:inherit;text-decoration:none}
 
 /* FLIP animation */
 .token.flip-anim{transition:transform 180ms ease}
-.drag-ghost{position:fixed;left:0;top:0;z-index:50;pointer-events:none;width:110px;height:110px;border-radius:999px;opacity:.92;transform:translate3d(0,0,0) scale(1.08);box-shadow:0 12px 32px rgba(0,0,0,.4)}
+.drag-ghost{position:fixed;left:0;top:0;z-index:50;pointer-events:none;width:99px;height:99px;border-radius:999px;opacity:.92;transform:translate3d(0,0,0) scale(1.08);box-shadow:0 12px 32px rgba(0,0,0,.4)}
 .drag-hidden{opacity:0;pointer-events:none}
 /* During drag reorder, animate sibling tokens sliding into new positions */
 .reorder-active .token:not(.drag-hidden){transition:transform 150ms ease,margin 150ms ease}
-.reorder-active .drag-hidden{width:110px;height:110px;border:3px dashed rgba(139,125,255,.35);border-radius:999px;background:rgba(139,125,255,.06);opacity:1}
+.reorder-active .drag-hidden{width:99px;height:99px;border:3px dashed rgba(139,125,255,.35);border-radius:999px;background:rgba(139,125,255,.06);opacity:1}
 body.dragging-item{cursor:grabbing;user-select:none;-webkit-user-select:none}
 @keyframes pop-in{from{transform:scale(.94)}to{transform:scale(1)}}
 .animate-drop{animation:pop-in .18s ease}
@@ -174,7 +176,7 @@ body.dragging-item{cursor:grabbing;user-select:none;-webkit-user-select:none}
 /* ---------- Image Storage ---------- */
 #tray{
   background:var(--surface-raised);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);
-  padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(116px,1fr));gap:14px;
+  padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(105px,1fr));gap:14px;
 }
 
 /* ---------- A11y ---------- */
