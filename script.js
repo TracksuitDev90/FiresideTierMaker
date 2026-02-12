@@ -231,7 +231,7 @@ function createRow(cfg){
     if(e.target.closest('.color-pick-btn') || e.target.closest('.row-del') || document.activeElement===chip) return;
     labelArea.classList.add('show-tools');
     clearTimeout(labelArea._toolTimer);
-    labelArea._toolTimer = setTimeout(function(){ labelArea.classList.remove('show-tools'); }, 3000);
+    labelArea._toolTimer = setTimeout(function(){ labelArea.classList.remove('show-tools'); }, 6000);
   });
 
   on(del,'click', function(){
@@ -1196,7 +1196,10 @@ var TIER_PROMPTS = [
   'Best Duo Combinations',
   'Most to Least Likely to Be in Fireside in a Year',
   'Best to Worst Voice in VC',
-  'People You\'re Most to Least Excited to See Chatting in Gen Chat'
+  'People You\'re Most to Least Excited to See Chatting in Gen Chat',
+  'Most to Least Likely to End Up in Prison',
+  'Best to Worst Parent in Theory',
+  'Most to Least Likely to Take a Joke Too Far'
 ];
 shuffleArray(TIER_PROMPTS);
 var _promptIndex = 0;

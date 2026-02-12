@@ -105,7 +105,7 @@ a{color:inherit;text-decoration:none}
 .suggestion-pill{
   display:inline-flex;align-items:center;
   padding:5px 14px;border-radius:999px;
-  background:var(--card);border:1px solid var(--border);
+  background:var(--card);border:1px solid var(--neon);
   color:var(--muted);font-size:13px;font-weight:600;
   cursor:pointer;margin:4px 0 10px;
   transition:background .2s ease,transform .12s ease,box-shadow .2s ease;
@@ -140,7 +140,7 @@ a{color:inherit;text-decoration:none}
 
 /* Color picker dot on tier label — hidden until interaction */
 .color-pick-btn{
-  position:absolute;left:8px;bottom:8px;width:24px;height:24px;border-radius:999px;
+  position:absolute;left:5px;bottom:5px;width:26px;height:26px;border-radius:999px;
   display:grid;place-items:center;cursor:pointer;z-index:8;
   border:none;box-shadow:none;background:none;padding:0;
   opacity:0;transform:scale(0.5);
@@ -150,10 +150,12 @@ a{color:inherit;text-decoration:none}
 .tier-label:focus-within .color-pick-btn,
 .tier-label.show-tools .color-pick-btn{
   opacity:1;transform:scale(1);
+  animation:dot-pulse 1.8s ease-in-out infinite;
 }
-.color-pick-btn:active{transform:scale(.85)}
+@keyframes dot-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
+.color-pick-btn:active{transform:scale(.85);animation:none}
 .color-dot-indicator{
-  width:20px;height:20px;border-radius:999px;display:block;
+  width:22px;height:22px;border-radius:999px;display:block;
   box-shadow:0 2px 8px rgba(0,0,0,.3);
   transition:background .2s ease;
 }
