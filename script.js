@@ -120,7 +120,7 @@ function flipZones(zones, mutate){
 }
 
 /* ---------- Eyedropper SVG icon (color picker) ---------- */
-var EYEDROPPER_SVG = '<svg viewBox="0 0 24 24"><path d="M20.71 5.63l-2.34-2.34a1 1 0 00-1.41 0l-3.12 3.12-1.93-1.91-1.41 1.41 1.42 1.42L3 16.25V21h4.75l8.92-8.92 1.42 1.42 1.41-1.41-1.92-1.92 3.12-3.12a1 1 0 000-1.42zM6.92 19L5 17.08l8.06-8.06 1.92 1.92L6.92 19z"/></svg>';
+var EYEDROPPER_SVG = '<svg viewBox="0 0 24 24"><path d="M19.35 2.65a2.24 2.24 0 00-3.16 0l-2.69 2.69-1.06-1.06-1.42 1.42 1.06 1.06-6.36 6.36a2 2 0 00-.53.96l-.82 3.68a1 1 0 001.17 1.17l3.68-.82a2 2 0 00.96-.53l6.36-6.36 1.06 1.06 1.42-1.42-1.06-1.06 2.69-2.69a2.24 2.24 0 000-3.16zM9.07 16.93l-2.46.55.55-2.46 6.36-6.36 1.91 1.91-6.36 6.36z"/><circle cx="4" cy="21" r="1.5"/></svg>';
 
 /* ---------- Build a row ---------- */
 function buildRowDom(){
@@ -194,7 +194,7 @@ function applyTierColor(node, color){
   if(chip){ chip.dataset.color = color; chip.style.background = color; chip.style.color = '#ffffff'; }
   if(del) del.style.background = darken(color, 0.35);
   if(drop){ drop.style.background = tintFrom(color); drop.dataset.manual = 'false'; }
-  if(colorBtn){ var svg = colorBtn.querySelector('svg'); if(svg) svg.style.fill = darken(color, 0.50); }
+  if(colorBtn){ var svg = colorBtn.querySelector('svg'); if(svg) svg.style.fill = darken(color, 0.40); }
   if(colorInput) colorInput.value = color;
 }
 
@@ -216,6 +216,7 @@ function createRow(cfg){
   /* Color picker */
   on(colorBtn,'click', function(e){ e.stopPropagation(); colorInput.click(); });
   on(colorInput,'input', function(){ applyTierColor(node, colorInput.value); scheduleSave(); });
+  on(colorInput,'change', function(){ applyTierColor(node, colorInput.value); scheduleSave(); });
 
   on(del,'click', function(){
     var tokens = $$('.token', drop);
@@ -1165,19 +1166,19 @@ var TIER_PROMPTS = [
   'Best Zombie Apocalypse Survival Team',
   'Most to Least Cleanly',
   'Would You Rather Be Stuck in an Elevator With',
-  'Best Road Trip Playlist Vibes',
+  'Best Road Trip Companion',
   'Could They Keep a Secret',
   'Most Likely to Go Viral on TikTok',
   'Who Would Win in a Roast Battle',
-  'Best Comfort Food Rankings',
+  'Who Would You Trust to Cook for You',
   'Trustworthy Enough to Watch Your Phone',
   'Survival Skills if Lost in the Woods',
   'Most Dramatic Main Character Energy',
-  'Best Halloween Costume Ideas',
+  'Best Dressed on a Night Out',
   'Who Would Be the Best Spy',
   'Most Likely to Start a Cult (Accidentally)',
   'Could They Talk Their Way Out of a Ticket',
-  'Best Movie Villains of All Time',
+  'Who Would You Want on Your Trivia Team',
   'Would They Share Their Fries',
   'Most Likely to Cry During a Pixar Movie',
   'Best Duo Combinations'
@@ -1199,7 +1200,7 @@ function startPromptRotation(){
     if(_promptUserSet || titleEl.textContent.trim()) { stopPromptRotation(); return; }
     _promptIndex = (_promptIndex + 1) % TIER_PROMPTS.length;
     showPrompt(titleEl);
-  }, 10000);
+  }, 6000);
 }
 
 function showPrompt(titleEl){
@@ -1263,6 +1264,16 @@ document.addEventListener('DOMContentLoaded', function start(){
         }, 0);
       }
     });
+    // On blur: if title is empty, reset state so user can tap to adopt again
+    on(titleEl, 'blur', function(){
+      if(!titleEl.textContent.trim()){
+        titleEl.textContent = '';
+        _promptUserSet = false;
+        _promptJustAdopted = false;
+        startPromptRotation();
+        scheduleSave();
+      }
+    });
     // If user clears the title, restart rotation
     on(titleEl, 'input', function(){
       if(!titleEl.textContent.trim()){
@@ -1317,7 +1328,7 @@ document.addEventListener('DOMContentLoaded', function start(){
     e.target.value = ''; // Reset so same file can be uploaded again
   });
 
-  // Help copy (updated to mention editable title)
+  // Help copy (updated to mention editable title and rotating prompts)
   var help=$('#helpText') || $('.help');
   if(help){
     help.innerHTML =
@@ -1325,7 +1336,8 @@ document.addEventListener('DOMContentLoaded', function start(){
       (isSmall()
        ? 'Phone: tap a circle in Image Storage to choose a row. Once placed, drag to reorder or move back.'
        : 'Desktop/iPad: drag circles into rows. Reorder or drag back to Image Storage.') +
-      ' Tap the X on a tier label to delete that row.<br>Click the title above the board to customize it.';
+      ' Tap the X on a tier label to delete that row.' +
+      '<br>Click the title above the board to use a suggested category or tap again to write your own.';
   }
 
   enableClickToPlace(tray);
