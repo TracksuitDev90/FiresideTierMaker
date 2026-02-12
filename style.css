@@ -99,7 +99,11 @@ a{color:inherit;text-decoration:none}
 .board-title-wrap{display:flex;align-items:center;gap:8px;margin:0 0 10px}
 .title-pen svg{width:18px;height:18px;fill:currentColor;opacity:.55}
 .board-title{font-size:clamp(20px,2.2vw,28px);font-weight:900;margin:0}
-.board-title[contenteditable]:empty::before{content:'Tier Board (optional title)';color:var(--muted)}
+.board-title[contenteditable]:empty::before{content:attr(data-placeholder);color:var(--muted)}
+.board-title[contenteditable]:empty:not([data-placeholder])::before{content:'Tier Board (optional title)';color:var(--muted)}
+
+/* Rotating prompt fade */
+@keyframes prompt-fade{0%{opacity:0;transform:translateY(6px)}12%{opacity:1;transform:translateY(0)}88%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(-6px)}}
 
 #tierBoard{display:grid;gap:12px}
 .tier-row{display:grid;grid-template-columns:180px 1fr;gap:12px;align-items:stretch}
@@ -119,6 +123,35 @@ a{color:inherit;text-decoration:none}
   line-height:1.1;word-break:break-word;white-space:normal;
   text-align:center;padding:6px 8px;overflow:hidden;
 }
+
+/* Color picker button on tier label */
+.color-pick-btn{
+  position:absolute;left:8px;bottom:8px;width:32px;height:32px;border-radius:8px;
+  display:grid;place-items:center;cursor:pointer;z-index:8;
+  border:1px solid rgba(255,255,255,.22);
+  box-shadow:0 4px 10px rgba(0,0,0,.3);
+  transition:transform .12s ease,box-shadow .12s ease;
+  background:transparent;padding:0;
+}
+.color-pick-btn:hover{transform:scale(1.1);box-shadow:0 4px 14px rgba(0,0,0,.4)}
+.color-pick-btn:active{transform:scale(.95)}
+.color-pick-btn svg{width:18px;height:18px}
+.color-pick-input{position:absolute;width:0;height:0;opacity:0;pointer-events:none;overflow:hidden;border:0;padding:0}
+
+/* Row reorder arrows */
+.row-move{
+  position:absolute;right:8px;width:28px;height:28px;border-radius:7px;
+  display:grid;place-items:center;cursor:pointer;z-index:8;
+  border:1px solid rgba(255,255,255,.18);
+  box-shadow:0 3px 8px rgba(0,0,0,.25);
+  color:#fff;transition:transform .1s ease,opacity .15s ease;
+  background:transparent;padding:0;
+}
+.row-move:hover{transform:scale(1.12)}
+.row-move:active{transform:scale(.93)}
+.row-move svg{width:14px;height:14px;fill:currentColor}
+.row-move-up{top:8px}
+.row-move-down{bottom:48px}
 
 /* Row delete X (auto-darker) */
 .row-del{
@@ -214,6 +247,9 @@ body.dragging-item{cursor:grabbing;user-select:none;-webkit-user-select:none}
 @media (max-width:768px){.hide-on-desktop{display:initial}}
 @media print{body{background:#fff;color:#000}.panel,#tray,.controls,.creator-grid{box-shadow:none;border-color:#ddd}.token.selected,.token:focus-visible{outline-color:#000}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* ---------- Row swap animation ---------- */
+.tier-row.row-swap{transition:transform .28s cubic-bezier(.4,0,.2,1)}
 
 /* ---------- Toast notification ---------- */
 @keyframes toast-in{from{opacity:0;transform:translateX(-50%) translateY(20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}

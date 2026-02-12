@@ -119,6 +119,9 @@ function flipZones(zones, mutate){
   });
 }
 
+/* ---------- Pantone SVG icon (color swatch) ---------- */
+var PANTONE_SVG = '<svg viewBox="0 0 512 512"><path d="M64 48c-8.8 0-16 7.2-16 16v384c0 8.8 7.2 16 16 16h96c8.8 0 16-7.2 16-16V64c0-8.8-7.2-16-16-16H64zm32 320a24 24 0 1 1 0 48 24 24 0 0 1 0-48zm0-80a24 24 0 1 1 0 48 24 24 0 0 1 0-48zm0-80a24 24 0 1 1 0 48 24 24 0 0 1 0-48zm0-80a24 24 0 1 1 0 48 24 24 0 0 1 0-48z"/><path d="M208 64v384c0 8.8 7.2 16 16 16h96c8.8 0 16-7.2 16-16V64c0-8.8-7.2-16-16-16h-96c-8.8 0-16 7.2-16 16zm48 288a24 24 0 1 1 0 48 24 24 0 0 1 0-48zm0-80a24 24 0 1 1 0 48 24 24 0 0 1 0-48zm0-80a24 24 0 1 1 0 48 24 24 0 0 1 0-48zm0-80a24 24 0 1 1 0 48 24 24 0 0 1 0-48z"/><path d="M400 48h-32c-8.8 0-16 7.2-16 16v384c0 8.8 7.2 16 16 16h32c26.5 0 48-21.5 48-48V96c0-26.5-21.5-48-48-48zm-16 320a24 24 0 1 1 0 48 24 24 0 0 1 0-48zm0-80a24 24 0 1 1 0 48 24 24 0 0 1 0-48zm0-80a24 24 0 1 1 0 48 24 24 0 0 1 0-48zm0-80a24 24 0 1 1 0 48 24 24 0 0 1 0-48z"/></svg>';
+
 /* ---------- Build a row ---------- */
 function buildRowDom(){
   var row=document.createElement('div'); row.className='tier-row';
@@ -127,16 +130,35 @@ function buildRowDom(){
   var chip=document.createElement('div');
   chip.className='label-chip'; chip.setAttribute('contenteditable','true'); chip.setAttribute('spellcheck','false');
 
+  /* Color picker button */
+  var colorBtn=document.createElement('button'); colorBtn.className='color-pick-btn'; colorBtn.type='button';
+  colorBtn.setAttribute('aria-label','Change tier color');
+  colorBtn.innerHTML=PANTONE_SVG;
+  var colorInput=document.createElement('input'); colorInput.type='color'; colorInput.className='color-pick-input';
+  colorInput.setAttribute('tabindex','-1'); colorInput.setAttribute('aria-hidden','true');
+
+  /* Reorder arrows */
+  var moveUp=document.createElement('button'); moveUp.className='row-move row-move-up'; moveUp.type='button';
+  moveUp.setAttribute('aria-label','Move tier up');
+  moveUp.innerHTML='<svg viewBox="0 0 24 24"><path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/></svg>';
+
+  var moveDown=document.createElement('button'); moveDown.className='row-move row-move-down'; moveDown.type='button';
+  moveDown.setAttribute('aria-label','Move tier down');
+  moveDown.innerHTML='<svg viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>';
+
   var del=document.createElement('button'); del.className='row-del'; del.type='button';
   del.innerHTML='<svg viewBox="0 0 24 24"><path d="M18.3 5.7L12 12l-6.3-6.3-1.4 1.4L10.6 13.4l-6.3 6.3 1.4 1.4L12 14.4l6.3 6.3 1.4-1.4-6.3-6.3 6.3-6.3z"/></svg>';
 
-  labelWrap.appendChild(chip); labelWrap.appendChild(del);
+  labelWrap.appendChild(chip);
+  labelWrap.appendChild(colorBtn); labelWrap.appendChild(colorInput);
+  labelWrap.appendChild(moveUp); labelWrap.appendChild(moveDown);
+  labelWrap.appendChild(del);
 
   var drop=document.createElement('div');
   drop.className='tier-drop dropzone'; drop.setAttribute('tabindex','0'); drop.setAttribute('role','list');
 
   row.appendChild(labelWrap); row.appendChild(drop);
-  return { row: row, chip: chip, del: del, drop: drop, labelWrap: labelWrap };
+  return { row: row, chip: chip, del: del, drop: drop, labelWrap: labelWrap, colorBtn: colorBtn, colorInput: colorInput, moveUp: moveUp, moveDown: moveDown };
 }
 
 function tintFrom(color){
@@ -171,25 +193,74 @@ function fitChipLabel(chip){
   }
 }
 
+/* ---------- Apply tier color to all related elements ---------- */
+function applyTierColor(node, color){
+  var chip = node.querySelector('.label-chip');
+  var del = node.querySelector('.row-del');
+  var drop = node.querySelector('.tier-drop');
+  var colorBtn = node.querySelector('.color-pick-btn');
+  var colorInput = node.querySelector('.color-pick-input');
+  var moveUp = node.querySelector('.row-move-up');
+  var moveDown = node.querySelector('.row-move-down');
+
+  if(chip){ chip.dataset.color = color; chip.style.background = color; chip.style.color = '#ffffff'; }
+  if(del) del.style.background = darken(color, 0.35);
+  if(drop){ drop.style.background = tintFrom(color); drop.dataset.manual = 'false'; }
+  if(colorBtn){ colorBtn.style.background = darken(color, 0.50); colorBtn.querySelector('svg').style.fill = lighten(color, 0.3); }
+  if(colorInput) colorInput.value = color;
+  if(moveUp) moveUp.style.background = darken(color, 0.35);
+  if(moveDown) moveDown.style.background = darken(color, 0.35);
+}
+
+/* ---------- Smooth row swap animation ---------- */
+function swapRows(row, direction){
+  var sibling = direction === 'up' ? row.previousElementSibling : row.nextElementSibling;
+  if(!sibling || !sibling.classList.contains('tier-row')) return;
+
+  var rowRect = row.getBoundingClientRect();
+  var sibRect = sibling.getBoundingClientRect();
+  var dy = direction === 'up' ? -(sibRect.height + 12) : (sibRect.height + 12);
+
+  row.classList.add('row-swap');
+  sibling.classList.add('row-swap');
+  row.style.transform = 'translateY(' + (direction === 'up' ? -sibRect.height - 12 : sibRect.height + 12) + 'px)';
+  sibling.style.transform = 'translateY(' + (direction === 'up' ? rowRect.height + 12 : -(rowRect.height + 12)) + 'px)';
+
+  setTimeout(function(){
+    row.style.transform = '';
+    sibling.style.transform = '';
+    row.classList.remove('row-swap');
+    sibling.classList.remove('row-swap');
+    if(direction === 'up') board.insertBefore(row, sibling);
+    else board.insertBefore(sibling, row);
+    refreshRadialOptions();
+    scheduleSave();
+  }, 280);
+}
+
 /* ---------- Create / wire a new row ---------- */
 function createRow(cfg){
   var dom = buildRowDom();
   var node = dom.row, chip = dom.chip, del = dom.del, drop = dom.drop, labelArea = dom.labelWrap;
+  var colorBtn = dom.colorBtn, colorInput = dom.colorInput, moveUp = dom.moveUp, moveDown = dom.moveDown;
 
   ensureId(drop,'zone');
   chip.textContent = cfg.label;
-  chip.dataset.color = cfg.color;
-  chip.style.background = cfg.color;
-  chip.style.color = '#ffffff'; // Always white text on tier labels
-  del.style.background = darken(cfg.color, 0.35);
-
-  var tint = tintFrom(cfg.color);
-  drop.style.background = tint; drop.dataset.manual = 'false';
+  applyTierColor(node, cfg.color);
 
   on(chip,'input', function(){ fitChipLabel(chip); });
   on(chip,'keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); chip.blur(); } });
   on(chip,'blur', function(){ fitChipLabel(chip); });
   fitChipLabel(chip);
+
+  /* Color picker */
+  on(colorBtn,'click', function(e){ e.stopPropagation(); colorInput.click(); });
+  on(colorInput,'input', function(){ applyTierColor(node, colorInput.value); scheduleSave(); });
+
+  /* Reorder arrows */
+  on(moveUp,'click', function(e){ e.stopPropagation(); swapRows(node, 'up'); });
+  on(moveDown,'click', function(e){ e.stopPropagation(); swapRows(node, 'down'); });
+
   on(del,'click', function(){
     var tokens = $$('.token', drop);
     flipZones([drop,tray], function(){ tokens.forEach(function(t){ tray.appendChild(t); }); });
@@ -873,11 +944,14 @@ on($('#saveBtn'),'click', function(){
   clone.style.width = '1200px';
   clone.style.maxWidth = '1200px';
 
-  // Export styles: hide delete buttons, center labels using line-height (most reliable for html2canvas)
+  // Export styles: hide delete buttons, color pickers, reorder arrows, center labels using line-height (most reliable for html2canvas)
   var style = document.createElement('style');
   style.textContent = [
     '.row-del{ display:none !important; }',
     '.token-del{ display:none !important; }',
+    '.color-pick-btn{ display:none !important; }',
+    '.color-pick-input{ display:none !important; }',
+    '.row-move{ display:none !important; }',
     // Token container
     '.token{',
     '  width:99px !important;',
@@ -923,9 +997,14 @@ on($('#saveBtn'),'click', function(){
   ].join('\n');
   clone.appendChild(style);
 
-  // drop empty title for export — strip if user hasn't typed anything
+  // Handle title for export: if user has set a title or a prompt is active, show it; otherwise strip
   var title = clone.querySelector('.board-title');
   var titleText = title ? title.textContent.replace(/\s+/g,'') : '';
+  if (!titleText && _promptUserSet) {
+    // User adopted a prompt but it might not be in textContent of clone
+    title.textContent = getCurrentPrompt();
+    titleText = title.textContent.replace(/\s+/g,'');
+  }
   if (!titleText) {
     var wrap = title ? title.parentElement : null;
     if (wrap && wrap.parentNode) wrap.parentNode.removeChild(wrap);
@@ -1125,6 +1204,59 @@ function startAutoSave(){
   }
 }
 
+/* ---------- Rotating prompt suggestions ---------- */
+var TIER_PROMPTS = [
+  'Most Likely to Survive the Hunger Games',
+  'Best Zombie Apocalypse Survival Team',
+  'Most to Least Cleanly',
+  'Would You Rather Be Stuck in an Elevator With',
+  'Best Road Trip Playlist Vibes',
+  'Could They Keep a Secret',
+  'Most Likely to Go Viral on TikTok',
+  'Who Would Win in a Roast Battle',
+  'Best Comfort Food Rankings',
+  'Trustworthy Enough to Watch Your Phone',
+  'Survival Skills if Lost in the Woods',
+  'Most Dramatic Main Character Energy',
+  'Best Halloween Costume Ideas',
+  'Who Would Be the Best Spy',
+  'Most Likely to Start a Cult (Accidentally)',
+  'Could They Talk Their Way Out of a Ticket',
+  'Best Movie Villains of All Time',
+  'Would They Share Their Fries',
+  'Most Likely to Cry During a Pixar Movie',
+  'Best Duo Combinations'
+];
+var _promptIndex = Math.floor(Math.random() * TIER_PROMPTS.length);
+var _promptInterval = null;
+var _promptUserSet = false;
+
+function startPromptRotation(){
+  var titleEl = $('.board-title');
+  if(!titleEl) return;
+  // Only rotate if title is empty (user hasn't typed anything)
+  if(titleEl.textContent.trim()) { _promptUserSet = true; return; }
+  _promptUserSet = false;
+  showPrompt(titleEl);
+  _promptInterval = setInterval(function(){
+    if(_promptUserSet || titleEl.textContent.trim()) { stopPromptRotation(); return; }
+    _promptIndex = (_promptIndex + 1) % TIER_PROMPTS.length;
+    showPrompt(titleEl);
+  }, 3500);
+}
+
+function showPrompt(titleEl){
+  titleEl.setAttribute('data-placeholder', TIER_PROMPTS[_promptIndex]);
+}
+
+function stopPromptRotation(){
+  if(_promptInterval){ clearInterval(_promptInterval); _promptInterval = null; }
+}
+
+function getCurrentPrompt(){
+  return TIER_PROMPTS[_promptIndex];
+}
+
 /* ---------- Init ---------- */
 document.addEventListener('DOMContentLoaded', function start(){
   board = $('#tierBoard'); tray = $('#tray');
@@ -1144,6 +1276,38 @@ document.addEventListener('DOMContentLoaded', function start(){
 
   // Start auto-save after initial load
   startAutoSave();
+
+  // Rotating prompts: set up click-to-adopt and start rotation
+  var titleEl = $('.board-title');
+  if(titleEl){
+    // On click/tap when empty, adopt the current prompt as the title
+    on(titleEl, 'focus', function(){
+      if(!titleEl.textContent.trim() && !_promptUserSet){
+        var prompt = getCurrentPrompt();
+        stopPromptRotation();
+        titleEl.textContent = prompt;
+        _promptUserSet = true;
+        // Select all text so user can immediately type over if desired
+        var range = document.createRange();
+        range.selectNodeContents(titleEl);
+        var sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        scheduleSave();
+      }
+    });
+    // If user clears the title, restart rotation
+    on(titleEl, 'input', function(){
+      if(!titleEl.textContent.trim()){
+        _promptUserSet = false;
+        startPromptRotation();
+      } else {
+        _promptUserSet = true;
+        stopPromptRotation();
+      }
+    });
+    startPromptRotation();
+  }
 
   // add tier
   on($('#addTierBtn'),'click', function(){
