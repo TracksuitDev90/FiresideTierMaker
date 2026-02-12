@@ -120,7 +120,7 @@ function flipZones(zones, mutate){
 }
 
 /* ---------- Eyedropper SVG icon (color picker) ---------- */
-var EYEDROPPER_SVG = '<svg viewBox="0 0 24 24"><path d="M19.35 2.65a2.24 2.24 0 00-3.16 0l-2.69 2.69-1.06-1.06-1.42 1.42 1.06 1.06-6.36 6.36a2 2 0 00-.53.96l-.82 3.68a1 1 0 001.17 1.17l3.68-.82a2 2 0 00.96-.53l6.36-6.36 1.06 1.06 1.42-1.42-1.06-1.06 2.69-2.69a2.24 2.24 0 000-3.16zM9.07 16.93l-2.46.55.55-2.46 6.36-6.36 1.91 1.91-6.36 6.36z"/><circle cx="4" cy="21" r="1.5"/></svg>';
+var EYEDROPPER_SVG = '<svg viewBox="0 0 24 24"><path d="M19.35 2.65a2.24 2.24 0 00-3.16 0l-2.69 2.69-1.06-1.06-1.42 1.42 1.06 1.06-6.36 6.36a2 2 0 00-.53.96l-.82 3.68a1 1 0 001.17 1.17l3.68-.82a2 2 0 00.96-.53l6.36-6.36 1.06 1.06 1.42-1.42-1.06-1.06 2.69-2.69a2.24 2.24 0 000-3.16zM9.07 16.93l-2.46.55.55-2.46 6.36-6.36 1.91 1.91-6.36 6.36z"/></svg>';
 
 /* ---------- Build a row ---------- */
 function buildRowDom(){
@@ -130,18 +130,19 @@ function buildRowDom(){
   var chip=document.createElement('div');
   chip.className='label-chip'; chip.setAttribute('contenteditable','true'); chip.setAttribute('spellcheck','false');
 
-  /* Color picker button (eyedropper) */
-  var colorBtn=document.createElement('button'); colorBtn.className='color-pick-btn'; colorBtn.type='button';
+  /* Color picker: use <label> so clicking the eyedropper natively opens the input */
+  var colorBtn=document.createElement('label'); colorBtn.className='color-pick-btn';
   colorBtn.setAttribute('aria-label','Change tier color');
   colorBtn.innerHTML=EYEDROPPER_SVG;
   var colorInput=document.createElement('input'); colorInput.type='color'; colorInput.className='color-pick-input';
   colorInput.setAttribute('tabindex','-1'); colorInput.setAttribute('aria-hidden','true');
+  colorBtn.appendChild(colorInput);
 
   var del=document.createElement('button'); del.className='row-del'; del.type='button';
   del.innerHTML='<svg viewBox="0 0 24 24"><path d="M18.3 5.7L12 12l-6.3-6.3-1.4 1.4L10.6 13.4l-6.3 6.3 1.4 1.4L12 14.4l6.3 6.3 1.4-1.4-6.3-6.3 6.3-6.3z"/></svg>';
 
   labelWrap.appendChild(chip);
-  labelWrap.appendChild(colorBtn); labelWrap.appendChild(colorInput);
+  labelWrap.appendChild(colorBtn);
   labelWrap.appendChild(del);
 
   var drop=document.createElement('div');
@@ -213,8 +214,8 @@ function createRow(cfg){
   on(chip,'blur', function(){ fitChipLabel(chip); });
   fitChipLabel(chip);
 
-  /* Color picker */
-  on(colorBtn,'click', function(e){ e.stopPropagation(); colorInput.click(); });
+  /* Color picker — label wraps input so native click opens the dialog */
+  on(colorBtn,'click', function(e){ e.stopPropagation(); });
   on(colorInput,'input', function(){ applyTierColor(node, colorInput.value); scheduleSave(); });
   on(colorInput,'change', function(){ applyTierColor(node, colorInput.value); scheduleSave(); });
 
@@ -1181,14 +1182,19 @@ var TIER_PROMPTS = [
   'Who Would You Want on Your Trivia Team',
   'Would They Share Their Fries',
   'Most Likely to Cry During a Pixar Movie',
-  'Best Duo Combinations'
+  'Best Duo Combinations',
+  'Most to Least Likely to Be in Fireside in a Year',
+  'Best to Worst Voice in VC',
+  'People You\'re Most to Least Excited to See Chatting in Gen Chat'
 ];
-var _promptIndex = Math.floor(Math.random() * TIER_PROMPTS.length);
+shuffleArray(TIER_PROMPTS);
+var _promptIndex = 0;
 var _promptInterval = null;
 var _promptUserSet = false;
 var _promptJustAdopted = false;
 
 function startPromptRotation(){
+  stopPromptRotation(); // clear any existing interval first
   var titleEl = $('.board-title');
   if(!titleEl) return;
   // Only rotate if title is empty (user hasn't typed anything)
