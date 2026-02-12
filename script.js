@@ -119,8 +119,8 @@ function flipZones(zones, mutate){
   });
 }
 
-/* ---------- Pantone SVG icon (color swatch) ---------- */
-var PANTONE_SVG = '<svg viewBox="0 0 512 512"><path d="M64 48c-8.8 0-16 7.2-16 16v384c0 8.8 7.2 16 16 16h96c8.8 0 16-7.2 16-16V64c0-8.8-7.2-16-16-16H64zm32 320a24 24 0 1 1 0 48 24 24 0 0 1 0-48zm0-80a24 24 0 1 1 0 48 24 24 0 0 1 0-48zm0-80a24 24 0 1 1 0 48 24 24 0 0 1 0-48zm0-80a24 24 0 1 1 0 48 24 24 0 0 1 0-48z"/><path d="M208 64v384c0 8.8 7.2 16 16 16h96c8.8 0 16-7.2 16-16V64c0-8.8-7.2-16-16-16h-96c-8.8 0-16 7.2-16 16zm48 288a24 24 0 1 1 0 48 24 24 0 0 1 0-48zm0-80a24 24 0 1 1 0 48 24 24 0 0 1 0-48zm0-80a24 24 0 1 1 0 48 24 24 0 0 1 0-48zm0-80a24 24 0 1 1 0 48 24 24 0 0 1 0-48z"/><path d="M400 48h-32c-8.8 0-16 7.2-16 16v384c0 8.8 7.2 16 16 16h32c26.5 0 48-21.5 48-48V96c0-26.5-21.5-48-48-48zm-16 320a24 24 0 1 1 0 48 24 24 0 0 1 0-48zm0-80a24 24 0 1 1 0 48 24 24 0 0 1 0-48zm0-80a24 24 0 1 1 0 48 24 24 0 0 1 0-48zm0-80a24 24 0 1 1 0 48 24 24 0 0 1 0-48z"/></svg>';
+/* ---------- Eyedropper SVG icon (color picker) ---------- */
+var EYEDROPPER_SVG = '<svg viewBox="0 0 24 24"><path d="M20.71 5.63l-2.34-2.34a1 1 0 00-1.41 0l-3.12 3.12-1.93-1.91-1.41 1.41 1.42 1.42L3 16.25V21h4.75l8.92-8.92 1.42 1.42 1.41-1.41-1.92-1.92 3.12-3.12a1 1 0 000-1.42zM6.92 19L5 17.08l8.06-8.06 1.92 1.92L6.92 19z"/></svg>';
 
 /* ---------- Build a row ---------- */
 function buildRowDom(){
@@ -130,35 +130,25 @@ function buildRowDom(){
   var chip=document.createElement('div');
   chip.className='label-chip'; chip.setAttribute('contenteditable','true'); chip.setAttribute('spellcheck','false');
 
-  /* Color picker button */
+  /* Color picker button (eyedropper) */
   var colorBtn=document.createElement('button'); colorBtn.className='color-pick-btn'; colorBtn.type='button';
   colorBtn.setAttribute('aria-label','Change tier color');
-  colorBtn.innerHTML=PANTONE_SVG;
+  colorBtn.innerHTML=EYEDROPPER_SVG;
   var colorInput=document.createElement('input'); colorInput.type='color'; colorInput.className='color-pick-input';
   colorInput.setAttribute('tabindex','-1'); colorInput.setAttribute('aria-hidden','true');
-
-  /* Reorder arrows */
-  var moveUp=document.createElement('button'); moveUp.className='row-move row-move-up'; moveUp.type='button';
-  moveUp.setAttribute('aria-label','Move tier up');
-  moveUp.innerHTML='<svg viewBox="0 0 24 24"><path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/></svg>';
-
-  var moveDown=document.createElement('button'); moveDown.className='row-move row-move-down'; moveDown.type='button';
-  moveDown.setAttribute('aria-label','Move tier down');
-  moveDown.innerHTML='<svg viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>';
 
   var del=document.createElement('button'); del.className='row-del'; del.type='button';
   del.innerHTML='<svg viewBox="0 0 24 24"><path d="M18.3 5.7L12 12l-6.3-6.3-1.4 1.4L10.6 13.4l-6.3 6.3 1.4 1.4L12 14.4l6.3 6.3 1.4-1.4-6.3-6.3 6.3-6.3z"/></svg>';
 
   labelWrap.appendChild(chip);
   labelWrap.appendChild(colorBtn); labelWrap.appendChild(colorInput);
-  labelWrap.appendChild(moveUp); labelWrap.appendChild(moveDown);
   labelWrap.appendChild(del);
 
   var drop=document.createElement('div');
   drop.className='tier-drop dropzone'; drop.setAttribute('tabindex','0'); drop.setAttribute('role','list');
 
   row.appendChild(labelWrap); row.appendChild(drop);
-  return { row: row, chip: chip, del: del, drop: drop, labelWrap: labelWrap, colorBtn: colorBtn, colorInput: colorInput, moveUp: moveUp, moveDown: moveDown };
+  return { row: row, chip: chip, del: del, drop: drop, labelWrap: labelWrap, colorBtn: colorBtn, colorInput: colorInput };
 }
 
 function tintFrom(color){
@@ -200,49 +190,19 @@ function applyTierColor(node, color){
   var drop = node.querySelector('.tier-drop');
   var colorBtn = node.querySelector('.color-pick-btn');
   var colorInput = node.querySelector('.color-pick-input');
-  var moveUp = node.querySelector('.row-move-up');
-  var moveDown = node.querySelector('.row-move-down');
 
   if(chip){ chip.dataset.color = color; chip.style.background = color; chip.style.color = '#ffffff'; }
   if(del) del.style.background = darken(color, 0.35);
   if(drop){ drop.style.background = tintFrom(color); drop.dataset.manual = 'false'; }
-  if(colorBtn){ colorBtn.style.background = darken(color, 0.50); colorBtn.querySelector('svg').style.fill = lighten(color, 0.3); }
+  if(colorBtn){ var svg = colorBtn.querySelector('svg'); if(svg) svg.style.fill = darken(color, 0.50); }
   if(colorInput) colorInput.value = color;
-  if(moveUp) moveUp.style.background = darken(color, 0.35);
-  if(moveDown) moveDown.style.background = darken(color, 0.35);
-}
-
-/* ---------- Smooth row swap animation ---------- */
-function swapRows(row, direction){
-  var sibling = direction === 'up' ? row.previousElementSibling : row.nextElementSibling;
-  if(!sibling || !sibling.classList.contains('tier-row')) return;
-
-  var rowRect = row.getBoundingClientRect();
-  var sibRect = sibling.getBoundingClientRect();
-  var dy = direction === 'up' ? -(sibRect.height + 12) : (sibRect.height + 12);
-
-  row.classList.add('row-swap');
-  sibling.classList.add('row-swap');
-  row.style.transform = 'translateY(' + (direction === 'up' ? -sibRect.height - 12 : sibRect.height + 12) + 'px)';
-  sibling.style.transform = 'translateY(' + (direction === 'up' ? rowRect.height + 12 : -(rowRect.height + 12)) + 'px)';
-
-  setTimeout(function(){
-    row.style.transform = '';
-    sibling.style.transform = '';
-    row.classList.remove('row-swap');
-    sibling.classList.remove('row-swap');
-    if(direction === 'up') board.insertBefore(row, sibling);
-    else board.insertBefore(sibling, row);
-    refreshRadialOptions();
-    scheduleSave();
-  }, 280);
 }
 
 /* ---------- Create / wire a new row ---------- */
 function createRow(cfg){
   var dom = buildRowDom();
   var node = dom.row, chip = dom.chip, del = dom.del, drop = dom.drop, labelArea = dom.labelWrap;
-  var colorBtn = dom.colorBtn, colorInput = dom.colorInput, moveUp = dom.moveUp, moveDown = dom.moveDown;
+  var colorBtn = dom.colorBtn, colorInput = dom.colorInput;
 
   ensureId(drop,'zone');
   chip.textContent = cfg.label;
@@ -256,10 +216,6 @@ function createRow(cfg){
   /* Color picker */
   on(colorBtn,'click', function(e){ e.stopPropagation(); colorInput.click(); });
   on(colorInput,'input', function(){ applyTierColor(node, colorInput.value); scheduleSave(); });
-
-  /* Reorder arrows */
-  on(moveUp,'click', function(e){ e.stopPropagation(); swapRows(node, 'up'); });
-  on(moveDown,'click', function(e){ e.stopPropagation(); swapRows(node, 'down'); });
 
   on(del,'click', function(){
     var tokens = $$('.token', drop);
@@ -951,7 +907,6 @@ on($('#saveBtn'),'click', function(){
     '.token-del{ display:none !important; }',
     '.color-pick-btn{ display:none !important; }',
     '.color-pick-input{ display:none !important; }',
-    '.row-move{ display:none !important; }',
     // Token container
     '.token{',
     '  width:99px !important;',
@@ -1230,6 +1185,7 @@ var TIER_PROMPTS = [
 var _promptIndex = Math.floor(Math.random() * TIER_PROMPTS.length);
 var _promptInterval = null;
 var _promptUserSet = false;
+var _promptJustAdopted = false;
 
 function startPromptRotation(){
   var titleEl = $('.board-title');
@@ -1237,12 +1193,13 @@ function startPromptRotation(){
   // Only rotate if title is empty (user hasn't typed anything)
   if(titleEl.textContent.trim()) { _promptUserSet = true; return; }
   _promptUserSet = false;
+  _promptJustAdopted = false;
   showPrompt(titleEl);
   _promptInterval = setInterval(function(){
     if(_promptUserSet || titleEl.textContent.trim()) { stopPromptRotation(); return; }
     _promptIndex = (_promptIndex + 1) % TIER_PROMPTS.length;
     showPrompt(titleEl);
-  }, 3500);
+  }, 10000);
 }
 
 function showPrompt(titleEl){
@@ -1277,29 +1234,40 @@ document.addEventListener('DOMContentLoaded', function start(){
   // Start auto-save after initial load
   startAutoSave();
 
-  // Rotating prompts: set up click-to-adopt and start rotation
+  // Rotating prompts: set up two-tap adopt-then-edit and start rotation
   var titleEl = $('.board-title');
   if(titleEl){
-    // On click/tap when empty, adopt the current prompt as the title
-    on(titleEl, 'focus', function(){
+    // First tap: stop rotation and set prompt as title (don't enter edit mode)
+    // Second tap: allow editing (focus and select all)
+    on(titleEl, 'mousedown', function(e){
       if(!titleEl.textContent.trim() && !_promptUserSet){
+        // First tap: adopt the prompt, prevent focus
+        e.preventDefault();
         var prompt = getCurrentPrompt();
         stopPromptRotation();
         titleEl.textContent = prompt;
         _promptUserSet = true;
-        // Select all text so user can immediately type over if desired
-        var range = document.createRange();
-        range.selectNodeContents(titleEl);
-        var sel = window.getSelection();
-        sel.removeAllRanges();
-        sel.addRange(range);
+        _promptJustAdopted = true;
+        titleEl.removeAttribute('data-placeholder');
         scheduleSave();
+      } else if(_promptJustAdopted){
+        // Second tap: allow editing, select all text
+        _promptJustAdopted = false;
+        // Let the default focus happen, then select all after
+        setTimeout(function(){
+          var range = document.createRange();
+          range.selectNodeContents(titleEl);
+          var sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+        }, 0);
       }
     });
     // If user clears the title, restart rotation
     on(titleEl, 'input', function(){
       if(!titleEl.textContent.trim()){
         _promptUserSet = false;
+        _promptJustAdopted = false;
         startPromptRotation();
       } else {
         _promptUserSet = true;
