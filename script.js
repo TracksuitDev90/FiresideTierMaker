@@ -119,8 +119,14 @@ function flipZones(zones, mutate){
   });
 }
 
-/* ---------- Eyedropper SVG icon (color picker) ---------- */
-var EYEDROPPER_SVG = '<svg viewBox="0 0 24 24"><path d="M19.35 2.65a2.24 2.24 0 00-3.16 0l-2.69 2.69-1.06-1.06-1.42 1.42 1.06 1.06-6.36 6.36a2 2 0 00-.53.96l-.82 3.68a1 1 0 001.17 1.17l3.68-.82a2 2 0 00.96-.53l6.36-6.36 1.06 1.06 1.42-1.42-1.06-1.06 2.69-2.69a2.24 2.24 0 000-3.16zM9.07 16.93l-2.46.55.55-2.46 6.36-6.36 1.91 1.91-6.36 6.36z"/></svg>';
+/* ---------- Color picker dot color (40% darker, inverted for extremes) ---------- */
+function colorPickDotColor(hex){
+  var rgb = hexToRgb(hex);
+  var lum = relativeLuminance(rgb);
+  if(lum < 0.05) return lighten(hex, 0.6);
+  if(lum > 0.85) return darken(hex, 0.6);
+  return darken(hex, 0.40);
+}
 
 /* ---------- Build a row ---------- */
 function buildRowDom(){
@@ -130,10 +136,11 @@ function buildRowDom(){
   var chip=document.createElement('div');
   chip.className='label-chip'; chip.setAttribute('contenteditable','true'); chip.setAttribute('spellcheck','false');
 
-  /* Color picker: use <label> so clicking the eyedropper natively opens the input */
+  /* Color picker: flat colored dot inside <label> — click natively opens color input */
   var colorBtn=document.createElement('label'); colorBtn.className='color-pick-btn';
   colorBtn.setAttribute('aria-label','Change tier color');
-  colorBtn.innerHTML=EYEDROPPER_SVG;
+  var colorDot=document.createElement('span'); colorDot.className='color-dot-indicator';
+  colorBtn.appendChild(colorDot);
   var colorInput=document.createElement('input'); colorInput.type='color'; colorInput.className='color-pick-input';
   colorInput.setAttribute('tabindex','-1'); colorInput.setAttribute('aria-hidden','true');
   colorBtn.appendChild(colorInput);
@@ -195,7 +202,7 @@ function applyTierColor(node, color){
   if(chip){ chip.dataset.color = color; chip.style.background = color; chip.style.color = '#ffffff'; }
   if(del) del.style.background = darken(color, 0.35);
   if(drop){ drop.style.background = tintFrom(color); drop.dataset.manual = 'false'; }
-  if(colorBtn){ var svg = colorBtn.querySelector('svg'); if(svg) svg.style.fill = darken(color, 0.40); }
+  if(colorBtn){ var dot = colorBtn.querySelector('.color-dot-indicator'); if(dot) dot.style.background = colorPickDotColor(color); }
   if(colorInput) colorInput.value = color;
 }
 
@@ -218,6 +225,14 @@ function createRow(cfg){
   on(colorBtn,'click', function(e){ e.stopPropagation(); });
   on(colorInput,'input', function(){ applyTierColor(node, colorInput.value); scheduleSave(); });
   on(colorInput,'change', function(){ applyTierColor(node, colorInput.value); scheduleSave(); });
+
+  /* Reveal color dot on tap (mobile — no hover) */
+  on(labelArea,'pointerdown', function(e){
+    if(e.target.closest('.color-pick-btn') || e.target.closest('.row-del') || document.activeElement===chip) return;
+    labelArea.classList.add('show-tools');
+    clearTimeout(labelArea._toolTimer);
+    labelArea._toolTimer = setTimeout(function(){ labelArea.classList.remove('show-tools'); }, 3000);
+  });
 
   on(del,'click', function(){
     var tokens = $$('.token', drop);
@@ -950,18 +965,14 @@ on($('#saveBtn'),'click', function(){
     '}',
     '.board-title-wrap{ text-align:center !important; margin-bottom:20px !important; }',
     '.board-title{ text-align:center !important; font-size:28px !important; }',
-    '.title-pen{ display:none !important; }'
+    '.title-pen{ display:none !important; }',
+    '.suggestion-pill{ display:none !important; }'
   ].join('\n');
   clone.appendChild(style);
 
-  // Handle title for export: if user has set a title or a prompt is active, show it; otherwise strip
+  // Handle title for export: if empty, strip the title area entirely
   var title = clone.querySelector('.board-title');
   var titleText = title ? title.textContent.replace(/\s+/g,'') : '';
-  if (!titleText && _promptUserSet) {
-    // User adopted a prompt but it might not be in textContent of clone
-    title.textContent = getCurrentPrompt();
-    titleText = title.textContent.replace(/\s+/g,'');
-  }
   if (!titleText) {
     var wrap = title ? title.parentElement : null;
     if (wrap && wrap.parentNode) wrap.parentNode.removeChild(wrap);
@@ -1191,26 +1202,41 @@ shuffleArray(TIER_PROMPTS);
 var _promptIndex = 0;
 var _promptInterval = null;
 var _promptUserSet = false;
-var _promptJustAdopted = false;
 
 function startPromptRotation(){
-  stopPromptRotation(); // clear any existing interval first
+  stopPromptRotation();
   var titleEl = $('.board-title');
-  if(!titleEl) return;
-  // Only rotate if title is empty (user hasn't typed anything)
-  if(titleEl.textContent.trim()) { _promptUserSet = true; return; }
+  var pill = $('#suggestionPill');
+  if(!titleEl || !pill) return;
+  if(titleEl.textContent.trim()) { _promptUserSet = true; pill.classList.add('hidden'); return; }
   _promptUserSet = false;
-  _promptJustAdopted = false;
-  showPrompt(titleEl);
+  pill.classList.remove('hidden');
+  showPrompt(true);
   _promptInterval = setInterval(function(){
     if(_promptUserSet || titleEl.textContent.trim()) { stopPromptRotation(); return; }
     _promptIndex = (_promptIndex + 1) % TIER_PROMPTS.length;
-    showPrompt(titleEl);
+    showPrompt(false);
   }, 6000);
 }
 
-function showPrompt(titleEl){
-  titleEl.setAttribute('data-placeholder', TIER_PROMPTS[_promptIndex]);
+function showPrompt(instant){
+  var pillText = $('#pillText');
+  if(!pillText) return;
+  if(instant){
+    pillText.textContent = TIER_PROMPTS[_promptIndex];
+    pillText.style.opacity = '1';
+    pillText.style.transform = 'translateY(0)';
+    return;
+  }
+  pillText.style.opacity = '0';
+  pillText.style.transform = 'translateY(6px)';
+  setTimeout(function(){
+    pillText.textContent = TIER_PROMPTS[_promptIndex];
+    pillText.style.transform = 'translateY(-6px)';
+    void pillText.offsetWidth;
+    pillText.style.opacity = '1';
+    pillText.style.transform = 'translateY(0)';
+  }, 300);
 }
 
 function stopPromptRotation(){
@@ -1241,26 +1267,19 @@ document.addEventListener('DOMContentLoaded', function start(){
   // Start auto-save after initial load
   startAutoSave();
 
-  // Rotating prompts: set up two-tap adopt-then-edit and start rotation
+  // Title + suggestion pill
   var titleEl = $('.board-title');
+  var pill = $('#suggestionPill');
   if(titleEl){
-    // First tap: stop rotation and set prompt as title (don't enter edit mode)
-    // Second tap: allow editing (focus and select all)
-    on(titleEl, 'mousedown', function(e){
-      if(!titleEl.textContent.trim() && !_promptUserSet){
-        // First tap: adopt the prompt, prevent focus
-        e.preventDefault();
+    // Pill click: adopt suggestion into title, focus for editing
+    if(pill){
+      on(pill, 'click', function(){
         var prompt = getCurrentPrompt();
         stopPromptRotation();
         titleEl.textContent = prompt;
         _promptUserSet = true;
-        _promptJustAdopted = true;
-        titleEl.removeAttribute('data-placeholder');
-        scheduleSave();
-      } else if(_promptJustAdopted){
-        // Second tap: allow editing, select all text
-        _promptJustAdopted = false;
-        // Let the default focus happen, then select all after
+        pill.classList.add('hidden');
+        titleEl.focus();
         setTimeout(function(){
           var range = document.createRange();
           range.selectNodeContents(titleEl);
@@ -1268,27 +1287,27 @@ document.addEventListener('DOMContentLoaded', function start(){
           sel.removeAllRanges();
           sel.addRange(range);
         }, 0);
-      }
-    });
-    // On blur: if title is empty, reset state so user can tap to adopt again
+        scheduleSave();
+      });
+    }
+    // On blur: if title is empty, show pill and restart rotation
     on(titleEl, 'blur', function(){
       if(!titleEl.textContent.trim()){
         titleEl.textContent = '';
         _promptUserSet = false;
-        _promptJustAdopted = false;
         startPromptRotation();
         scheduleSave();
       }
     });
-    // If user clears the title, restart rotation
+    // On input: if cleared, restart; if has text, hide pill
     on(titleEl, 'input', function(){
       if(!titleEl.textContent.trim()){
         _promptUserSet = false;
-        _promptJustAdopted = false;
         startPromptRotation();
       } else {
         _promptUserSet = true;
         stopPromptRotation();
+        if(pill) pill.classList.add('hidden');
       }
     });
     startPromptRotation();
@@ -1334,7 +1353,7 @@ document.addEventListener('DOMContentLoaded', function start(){
     e.target.value = ''; // Reset so same file can be uploaded again
   });
 
-  // Help copy (updated to mention editable title and rotating prompts)
+  // Help copy
   var help=$('#helpText') || $('.help');
   if(help){
     help.innerHTML =
@@ -1343,7 +1362,9 @@ document.addEventListener('DOMContentLoaded', function start(){
        ? 'Phone: tap a circle in Image Storage to choose a row. Once placed, drag to reorder or move back.'
        : 'Desktop/iPad: drag circles into rows. Reorder or drag back to Image Storage.') +
       ' Tap the X on a tier label to delete that row.' +
-      '<br>Click the title above the board to use a suggested category or tap again to write your own.';
+      '<br>Click a tier letter (S, A, B...) to rename it. ' +
+      (isSmall() ? 'Tap' : 'Hover over') + ' a label to reveal the color dot and change its color.' +
+      '<br>Tap a suggestion pill to use it as your title, or type your own.';
   }
 
   enableClickToPlace(tray);
