@@ -38,23 +38,22 @@
 
       <div class="creator-line">
         <input id="imageInput" class="sr" type="file" accept="image/*" multiple />
-        <button id="uploadBtn" class="btn" type="button">
-          <span class="ico">
-            <svg viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/></svg>
-          </span>
-          <span>Upload Images</span>
-        </button>
-      </div>
-
-      <div class="creator-line">
         <label class="sr" for="imageUrlInput">Image URL</label>
-        <input id="imageUrlInput" class="input" type="url" placeholder="Paste an image URL..." autocomplete="off" />
-        <button id="addUrlBtn" class="btn" type="button">
-          <span class="ico">
-            <svg viewBox="0 0 24 24"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>
-          </span>
-          <span>Add URL</span>
-        </button>
+        <input id="imageUrlInput" class="input" type="url" placeholder="Paste image URL..." autocomplete="off" />
+        <div class="split-btn">
+          <button id="uploadBtn" class="split-half split-upload" type="button">
+            <span class="ico">
+              <svg viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/></svg>
+            </span>
+            <span>Upload</span>
+          </button>
+          <button id="addUrlBtn" class="split-half split-link" type="button">
+            <span class="ico">
+              <svg viewBox="0 0 24 24"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>
+            </span>
+            <span>Link</span>
+          </button>
+        </div>
       </div>
 
       <p class="help">

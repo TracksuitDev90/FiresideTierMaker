@@ -359,26 +359,30 @@ function buildTokenBase(isCustom){
     });
     el.appendChild(delBtn);
 
-    // Long-press (mobile) / double-click (desktop) to show centered delete X
-    var _lpTimer = null;
+    // Swipe-up (mobile) / double-click (desktop) to reveal delete
+    var _swStartY = 0, _swStartX = 0, _swStartT = 0;
     function showDel(){
       $$('.token.show-del').forEach(function(t){ t.classList.remove('show-del'); });
       el.classList.add('show-del');
       clearTimeout(el._delDismiss);
       el._delDismiss = setTimeout(function(){ el.classList.remove('show-del'); }, 4000);
     }
-    function cancelLp(){ clearTimeout(_lpTimer); _lpTimer=null; }
     on(el, 'pointerdown', function(e){
       if(e.button && e.button!==0) return;
-      _lpTimer = setTimeout(function(){
-        _lpTimer = null;
+      _swStartY = e.clientY; _swStartX = e.clientX; _swStartT = Date.now();
+      el._swipeHandled = false;
+    });
+    on(el, 'pointerup', function(e){
+      if(!isSmall()) return;
+      var dy = _swStartY - e.clientY; // positive = upward
+      var dx = Math.abs(e.clientX - _swStartX);
+      var dt = Date.now() - _swStartT;
+      if(dy > 30 && dt < 400 && dy > dx * 1.5){
+        el._swipeHandled = true;
         showDel();
         vib(12);
-      }, 500);
+      }
     });
-    on(el, 'pointermove', function(){ if(_lpTimer) cancelLp(); });
-    on(el, 'pointerup', cancelLp);
-    on(el, 'pointercancel', cancelLp);
     on(el, 'dblclick', function(e){ e.preventDefault(); e.stopPropagation(); showDel(); });
   }
 
@@ -389,6 +393,7 @@ function buildTokenBase(isCustom){
 
   on(el,'click', function(ev){
     ev.stopPropagation();
+    if(el._swipeHandled){ el._swipeHandled = false; return; }
     var already = el.classList.contains('selected');
     $$('.token.selected').forEach(function(t){ t.classList.remove('selected'); });
     var inTray = !!el.closest('#tray');
@@ -1388,17 +1393,16 @@ document.addEventListener('DOMContentLoaded', function start(){
   // Help copy
   var help=$('#helpText') || $('.help');
   if(help){
-    var br = '<br><br>';
     help.innerHTML =
-      '<strong>Help</strong><br>' +
-      (isSmall()
+      '<strong>Help</strong>' +
+      '<div class="tip">' + (isSmall()
        ? 'Tap a circle to choose a row. Drag placed circles to reorder.'
-       : 'Drag circles into rows. Drag back to Image Storage to unplace.') + br +
-      'Tap a tier letter to rename it. ' +
-      (isSmall() ? 'Tap' : 'Hover over') + ' a label to change its color.' + br +
-      'Tap a suggestion to use it as your title, or type your own.' + br +
-      'Paste an image URL or upload files to add custom images.' + br +
-      (isSmall() ? 'Long-press' : 'Double-click') + ' a custom token to delete it.';
+       : 'Drag circles into rows. Drag back to Image Storage to unplace.') + '</div>' +
+      '<div class="tip">Tap a tier letter to rename it. ' +
+      (isSmall() ? 'Tap' : 'Hover over') + ' a label to change its color.</div>' +
+      '<div class="tip">Tap a suggestion to use it as your title, or type your own.</div>' +
+      '<div class="tip">Paste an image URL or upload files to add custom images.</div>' +
+      '<div class="tip">' + (isSmall() ? 'Swipe up on' : 'Double-click') + ' a custom token to delete it.</div>';
   }
 
   enableClickToPlace(tray);
