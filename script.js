@@ -283,11 +283,11 @@ var BASE_PALETTE = [
   '#ce93d8','#80cbc4','#e6ee9c','#ffab40','#8c9eff'
 ];
 
-/* Token text: 45% darker than base, lightened for very dark backgrounds */
+/* Token text: 50% darker than base, lightened for very dark backgrounds */
 function pickTextColor(bgHex){
   var lum = relativeLuminance(hexToRgb(bgHex));
-  if(lum < 0.12) return lighten(bgHex, 0.55);
-  return darken(bgHex, 0.45);
+  if(lum < 0.12) return lighten(bgHex, 0.40);
+  return darken(bgHex, 0.50);
 }
 
 /* Fisher-Yates shuffle so tokens get different colors each page load */
@@ -1345,7 +1345,7 @@ document.addEventListener('DOMContentLoaded', function start(){
   if(help){
     var br = '<br><br>';
     help.innerHTML =
-      '<strong>Help</strong>' + br +
+      '<strong>Help</strong><br>' +
       (isSmall()
        ? 'Tap a circle to choose a row. Drag placed circles to reorder.'
        : 'Drag circles into rows. Drag back to Image Storage to unplace.') + br +
