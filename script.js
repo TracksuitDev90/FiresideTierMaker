@@ -277,32 +277,17 @@ var BASE_PALETTE = [
   '#FF9800','#FFAB91','#4FC3F7','#7E57C2',
   '#FFCA28','#EF9A9A','#80DEEA','#B39DDB',
   '#81D4FA','#FFCC80','#A5D6A7','#F8BBD0',
-  '#FFA726','#66BB6A','#4DB6AC','#FF80AB','#9FA8DA'
+  '#FFA726','#66BB6A','#4DB6AC','#FF80AB','#9FA8DA',
+  '#e57373','#ba68c8','#64b5f6','#4db6ac','#fff176',
+  '#a1887f','#90a4ae','#f06292','#aed581','#ffb300',
+  '#ce93d8','#80cbc4','#e6ee9c','#ffab40','#8c9eff'
 ];
 
-/* Bold text colors that pair well against the background palette */
-var TEXT_COLORS = [
-  '#ffffff','#111111','#1a1a2e','#f5f5dc',
-  '#2d1b4e','#0d2137','#c62828','#1b5e20',
-  '#4a148c','#e65100','#01579b','#263238',
-  '#fff8e1','#880e4f','#004d40','#311b92'
-];
-
-function contrastRatio(hex1, hex2){
-  var L1 = relativeLuminance(hexToRgb(hex1));
-  var L2 = relativeLuminance(hexToRgb(hex2));
-  var hi = Math.max(L1, L2), lo = Math.min(L1, L2);
-  return (hi + 0.05) / (lo + 0.05);
-}
-
-/* Pick a random text color with good contrast against bgHex */
+/* Token text: 45% darker than base, lightened for very dark backgrounds */
 function pickTextColor(bgHex){
-  var pool = [];
-  for (var i = 0; i < TEXT_COLORS.length; i++){
-    if (contrastRatio(bgHex, TEXT_COLORS[i]) >= 3.0) pool.push(TEXT_COLORS[i]);
-  }
-  if (!pool.length) return contrastColor(bgHex);
-  return pool[Math.floor(Math.random() * pool.length)];
+  var lum = relativeLuminance(hexToRgb(bgHex));
+  if(lum < 0.12) return lighten(bgHex, 0.55);
+  return darken(bgHex, 0.45);
 }
 
 /* Fisher-Yates shuffle so tokens get different colors each page load */
@@ -1359,15 +1344,15 @@ document.addEventListener('DOMContentLoaded', function start(){
   // Help copy
   var help=$('#helpText') || $('.help');
   if(help){
+    var br = '<br><br>';
     help.innerHTML =
-      '<strong>Help</strong><br>' +
+      '<strong>Help</strong>' + br +
       (isSmall()
-       ? 'Phone: tap a circle in Image Storage to choose a row. Once placed, drag to reorder or move back.'
-       : 'Desktop/iPad: drag circles into rows. Reorder or drag back to Image Storage.') +
-      ' Tap the X on a tier label to delete that row.' +
-      '<br>Click a tier letter (S, A, B...) to rename it. ' +
-      (isSmall() ? 'Tap' : 'Hover over') + ' a label to reveal the color dot and change its color.' +
-      '<br>Tap a suggestion pill to use it as your title, or type your own.';
+       ? 'Tap a circle to choose a row. Drag placed circles to reorder.'
+       : 'Drag circles into rows. Drag back to Image Storage to unplace.') + br +
+      'Tap a tier letter to rename it. ' +
+      (isSmall() ? 'Tap' : 'Hover over') + ' a label to change its color.' + br +
+      'Tap a suggestion to use it as your title, or type your own.';
   }
 
   enableClickToPlace(tray);
