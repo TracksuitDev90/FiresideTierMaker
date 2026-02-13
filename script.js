@@ -358,6 +358,28 @@ function buildTokenBase(isCustom){
       scheduleSave();
     });
     el.appendChild(delBtn);
+
+    // Long-press (mobile) / double-click (desktop) to show centered delete X
+    var _lpTimer = null;
+    function showDel(){
+      $$('.token.show-del').forEach(function(t){ t.classList.remove('show-del'); });
+      el.classList.add('show-del');
+      clearTimeout(el._delDismiss);
+      el._delDismiss = setTimeout(function(){ el.classList.remove('show-del'); }, 4000);
+    }
+    function cancelLp(){ clearTimeout(_lpTimer); _lpTimer=null; }
+    on(el, 'pointerdown', function(e){
+      if(e.button && e.button!==0) return;
+      _lpTimer = setTimeout(function(){
+        _lpTimer = null;
+        showDel();
+        vib(12);
+      }, 500);
+    });
+    on(el, 'pointermove', function(){ if(_lpTimer) cancelLp(); });
+    on(el, 'pointerup', cancelLp);
+    on(el, 'pointercancel', cancelLp);
+    on(el, 'dblclick', function(e){ e.preventDefault(); e.stopPropagation(); showDel(); });
   }
 
   // Attach all drag handlers; each checks isSmall() at event time
@@ -880,7 +902,7 @@ on(window, 'resize', refreshRadialOptions);
 /* ---------- Clear / Undo ---------- */
 on($('#trashClear'),'click', function(){
   replayGif(this);
-  if (!confirm('Reset everything? This will restore the tier list to its original state.')) return;
+  if (!confirm('Clear the board?\n\nThis will remove all custom tokens, written titles, and placements. Everything resets to the default clean state.')) return;
   // Clear saved data and reload for a fresh start
   try { localStorage.removeItem(STORAGE_KEY); } catch(e){}
   location.reload();
@@ -1013,6 +1035,11 @@ function showSaveToast(msg){
   document.body.appendChild(toast);
   setTimeout(function(){ toast.remove(); }, 2200);
 }
+
+/* ---------- Dismiss delete overlay on outside click ---------- */
+on(document,'click', function(e){
+  if(!e.target.closest('.token')) $$('.token.show-del').forEach(function(t){ t.classList.remove('show-del'); });
+});
 
 /* ---------- Keyboard quick-jump (1..N) ---------- */
 on(document,'keydown',function(e){
@@ -1313,7 +1340,7 @@ document.addEventListener('DOMContentLoaded', function start(){
   function addNameFromInput(){
     var name = $('#nameInput').value.trim();
     if (!name) return;
-    tray.appendChild(buildNameToken(name, $('#nameColor').value, true)); // custom, text picked automatically
+    tray.insertBefore(buildNameToken(name, $('#nameColor').value, true), tray.firstChild);
     $('#nameInput').value=''; $('#nameColor').value = nextPreset();
     refitAllLabels();
     scheduleSave();
@@ -1333,12 +1360,29 @@ document.addEventListener('DOMContentLoaded', function start(){
       if(!file.type || file.type.indexOf('image/')!==0) return;
       compressImage(file, 200, function(dataUrl){
         if (dataUrl) {
-          tray.appendChild(buildImageToken(dataUrl, file.name));
+          tray.insertBefore(buildImageToken(dataUrl, file.name), tray.firstChild);
           scheduleSave();
         }
       });
     });
     e.target.value = ''; // Reset so same file can be uploaded again
+  });
+
+  // Image URL input
+  function addImageFromUrl(){
+    var urlInput = $('#imageUrlInput');
+    var url = urlInput ? urlInput.value.trim() : '';
+    if (!url) return;
+    // Basic validation
+    if (url.indexOf('http') !== 0) { urlInput.value = ''; return; }
+    var token = buildImageToken(url, '');
+    tray.insertBefore(token, tray.firstChild);
+    urlInput.value = '';
+    scheduleSave();
+  }
+  on($('#addUrlBtn'), 'click', addImageFromUrl);
+  on($('#imageUrlInput'), 'keydown', function(e){
+    if (e.key === 'Enter') { e.preventDefault(); addImageFromUrl(); }
   });
 
   // Help copy
@@ -1352,7 +1396,9 @@ document.addEventListener('DOMContentLoaded', function start(){
        : 'Drag circles into rows. Drag back to Image Storage to unplace.') + br +
       'Tap a tier letter to rename it. ' +
       (isSmall() ? 'Tap' : 'Hover over') + ' a label to change its color.' + br +
-      'Tap a suggestion to use it as your title, or type your own.';
+      'Tap a suggestion to use it as your title, or type your own.' + br +
+      'Paste an image URL or upload files to add custom images.' + br +
+      (isSmall() ? 'Long-press' : 'Double-click') + ' a custom token to delete it.';
   }
 
   enableClickToPlace(tray);

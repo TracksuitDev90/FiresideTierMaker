@@ -84,6 +84,7 @@ a{color:inherit;text-decoration:none}
 #trashClear{background:#F05C58;color:#111111;border-color:rgba(255,255,255,.18)}
 #saveBtn{background:#7901ff;color:#FFF;border-color:rgba(255,255,255,.15)}
 #uploadBtn{background:#0ea5e9;color:#FFF;border-color:rgba(255,255,255,.15)}
+#addUrlBtn{background:#f59e0b;color:#111;border-color:rgba(0,0,0,.12)}
 
 .btn.small{height:42px;padding:0 12px;border-radius:12px;font-weight:700}
 
@@ -197,16 +198,19 @@ a{color:inherit;text-decoration:none}
 .token img{width:100%;height:100%;object-fit:cover;border-radius:999px;pointer-events:none}
 .token.selected{outline:3px solid var(--accent);outline-offset:4px}
 
-/* Delete button for custom tokens - only visible when selected in tray */
+/* Delete button for custom tokens - centered overlay on long-press / double-click */
 .token-del{
-  position:absolute;top:-6px;right:-6px;width:28px;height:28px;border-radius:999px;
-  background:#ef4444;color:#fff;border:2px solid var(--surface-raised);
-  display:none;place-items:center;z-index:10;
-  box-shadow:0 2px 8px rgba(0,0,0,.3);cursor:pointer;
+  position:absolute;top:50%;left:50%;width:36px;height:36px;border-radius:999px;
+  transform:translate(-50%,-50%) scale(0);
+  background:rgba(0,0,0,.72);color:#fff;border:2px solid rgba(255,255,255,.35);
+  display:grid;place-items:center;z-index:10;
+  box-shadow:0 2px 12px rgba(0,0,0,.4);cursor:pointer;
+  transition:transform .18s cubic-bezier(.34,1.56,.64,1),background .15s ease;
+  pointer-events:none;
 }
-.token-del svg{width:14px;height:14px;fill:currentColor}
-.token-del:hover{background:#dc2626;transform:scale(1.1)}
-#tray .token.selected[data-custom="true"] .token-del{display:grid}
+.token-del svg{width:16px;height:16px;fill:currentColor}
+.token-del:hover{background:rgba(239,68,68,.9)}
+.token.show-del .token-del{transform:translate(-50%,-50%) scale(1);pointer-events:auto}
 
 /* FLIP animation */
 .token.flip-anim{transition:transform 180ms ease}
