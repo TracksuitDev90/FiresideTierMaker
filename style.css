@@ -107,13 +107,33 @@ a{color:inherit;text-decoration:none}
   box-shadow:inset 3px 3px 6px rgba(0,0,0,.25), inset -2px -2px 5px rgba(255,255,255,.05), 0 2px 8px rgba(0,0,0,.2);
 }
 :root[data-theme="light"] .color-dot{box-shadow:inset 3px 3px 6px rgba(0,0,0,.08), inset -2px -2px 5px rgba(255,255,255,.7), 0 2px 8px rgba(0,0,0,.1)}
-/* 50/50 Split button wrap (uniform halves) */
-.split-btn-wrap{display:flex;flex:1 1 260px;gap:0;border-radius:16px;overflow:hidden}
-.split-btn{flex:1 1 0;border-radius:0 !important;height:56px;font-weight:700}
-.split-btn.split-left{border-radius:16px 0 0 16px !important;border-right:1px solid rgba(255,255,255,.12)}
-.split-btn.split-right{border-radius:0 16px 16px 0 !important}
-#uploadBtn.split-btn{background:#0ea5e9;color:#FFF;border-color:rgba(255,255,255,.15)}
-#addUrlBtn.split-btn{background:#8b5cf6;color:#FFF;border-color:rgba(255,255,255,.15)}
+/* Add Image button + dropdown */
+.img-btn-wrap{position:relative;flex:0 0 auto}
+.img-add-btn{background:#0ea5e9;color:#fff;border-color:rgba(255,255,255,.15);font-weight:700}
+.img-add-btn:hover{background:#0891d2}
+.img-caret{width:14px !important;height:14px !important;opacity:.7;margin-left:-4px}
+.img-caret svg{fill:currentColor}
+.img-dropdown{
+  position:absolute;top:calc(100% + 6px);left:0;right:auto;min-width:220px;
+  background:var(--surface-raised);border:1px solid var(--border);
+  border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.35);
+  padding:6px;z-index:30;
+  animation:dropdown-in .15s ease;
+}
+.img-dropdown.hidden{display:none}
+@keyframes dropdown-in{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.img-option{
+  display:flex;align-items:center;gap:10px;width:100%;
+  padding:10px 12px;border-radius:8px;font-weight:600;font-size:14px;
+  color:var(--text);cursor:pointer;border:none;background:none;
+  transition:background .12s ease;
+}
+.img-option:hover{background:rgba(139,125,255,.12)}
+.img-option svg{flex-shrink:0;opacity:.7}
+.url-input-row{display:flex;gap:6px;padding:6px 6px 4px;align-items:center}
+.url-input-row.hidden{display:none}
+.url-inline{flex:1;height:38px;font-size:13px;border-radius:8px}
+.url-go{height:38px;padding:0 14px;background:var(--accent);color:#fff;font-size:13px;border-color:transparent}
 
 /* Collapsible help */
 .help{color:var(--muted);font-weight:600;margin-top:6px;line-height:1.6}
@@ -280,6 +300,10 @@ body.dragging-item{cursor:grabbing;user-select:none;-webkit-user-select:none}
   background:transparent;border:none;border-radius:12px;box-shadow:none;
   padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(105px,1fr));gap:14px;
 }
+@media (max-width:480px){
+  #tray{grid-template-columns:repeat(3,1fr);gap:10px;padding:10px}
+  #tray .token{width:100%;height:auto;aspect-ratio:1}
+}
 
 /* ---------- A11y ---------- */
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap}
@@ -308,43 +332,56 @@ body.dragging-item{cursor:grabbing;user-select:none;-webkit-user-select:none}
 
 /* ---------- Unified tactile theme slider ---------- */
 .theme-slider{
-  display:inline-flex !important;align-items:center;gap:8px;padding:0 14px !important;
+  display:inline-flex;align-items:center;gap:0;
+  height:56px;border-radius:16px;overflow:hidden;
+  border:1px solid var(--border);box-shadow:var(--shadow);
   cursor:pointer;user-select:none;-webkit-user-select:none;
+  background:var(--surface);position:relative;
+  padding:0;
 }
-.slider-label-left,.slider-label-right{
-  display:grid;place-items:center;width:20px;height:20px;
-  opacity:.45;transition:opacity .3s ease;flex-shrink:0;
+.theme-slider::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:35%;
+  background:linear-gradient(to bottom,rgba(255,255,255,.15),transparent);
+  pointer-events:none;border-radius:16px 16px 0 0;z-index:1;
 }
-/* Active side highlights */
-.slider-label-left{opacity:.9}
-.slider-label-right{opacity:.35}
-:root[data-theme="light"] .slider-label-left{opacity:.35}
-:root[data-theme="light"] .slider-label-right{opacity:.9}
+.theme-slider:hover{transform:translateY(-1px)}
+.slider-end{
+  display:grid;place-items:center;width:36px;height:100%;flex-shrink:0;
+  opacity:.5;transition:opacity .3s ease;z-index:2;pointer-events:none;
+}
+/* Dark mode: moon (left) bright, sun (right) dim */
+.slider-end-left{opacity:.85}
+.slider-end-right{opacity:.35}
+:root[data-theme="light"] .slider-end-left{opacity:.35}
+:root[data-theme="light"] .slider-end-right{opacity:.85}
 
 .slider-track{
-  position:relative;width:52px;height:28px;border-radius:14px;flex-shrink:0;
-  background:rgba(255,255,255,.1);
-  border:1px solid rgba(255,255,255,.08);
-  box-shadow:inset 0 2px 6px rgba(0,0,0,.35), 0 1px 0 rgba(255,255,255,.05);
-  transition:background .3s ease, box-shadow .3s ease;
+  position:relative;flex:1;height:32px;border-radius:16px;
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.06);
+  box-shadow:inset 0 2px 6px rgba(0,0,0,.4);
+  transition:background .3s ease;
+  margin:0 4px;
 }
 :root[data-theme="light"] .slider-track{
-  background:rgba(0,0,0,.08);
-  border:1px solid rgba(0,0,0,.06);
-  box-shadow:inset 0 2px 6px rgba(0,0,0,.12), 0 1px 0 rgba(255,255,255,.7);
+  background:rgba(0,0,0,.07);
+  border:1px solid rgba(0,0,0,.05);
+  box-shadow:inset 0 2px 6px rgba(0,0,0,.1);
 }
 .slider-thumb{
-  position:absolute;top:2px;left:2px;width:24px;height:24px;border-radius:12px;
-  background:linear-gradient(135deg,#fbbf24,#f59e0b);
-  box-shadow:0 2px 8px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.4);
-  transition:left .05s linear, background .3s ease, box-shadow .3s ease;
-  cursor:grab;touch-action:none;
+  position:absolute;top:3px;width:26px;height:26px;border-radius:13px;
+  /* Dark mode: purple-blue thumb (resting on moon/left side) */
+  background:linear-gradient(135deg,#818cf8,#6366f1);
+  box-shadow:0 2px 10px rgba(99,102,241,.5), inset 0 1px 0 rgba(255,255,255,.3);
+  transition:left .05s linear, background .35s ease, box-shadow .35s ease;
+  cursor:grab;touch-action:none;z-index:3;
 }
 .slider-thumb:active{cursor:grabbing}
 .slider-thumb.dragging{transition:none;cursor:grabbing}
+/* Light mode: yellow/amber thumb (resting on sun/right side) */
 :root[data-theme="light"] .slider-thumb{
-  background:linear-gradient(135deg,#6366f1,#4f46e5);
-  box-shadow:0 2px 8px rgba(99,102,241,.4), inset 0 1px 0 rgba(255,255,255,.25);
+  background:linear-gradient(135deg,#fbbf24,#f59e0b);
+  box-shadow:0 2px 10px rgba(251,191,36,.5), inset 0 1px 0 rgba(255,255,255,.4);
 }
 
 /* ---------- Misc ---------- */

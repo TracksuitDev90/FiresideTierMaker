@@ -68,26 +68,30 @@ function mixHex(aHex,bHex,t){ var a=hexToRgb(aHex), b=hexToRgb(bHex);
   );
 }
 
-/* ---------- Theme (unified tactile slider) ---------- */
+/* ---------- Theme (unified tactile slider — full-width) ---------- */
 (function(){
   var root=document.documentElement;
   var slider=$('#themeSlider'); if(!slider) return;
+  var track=$('#sliderTrack'); if(!track) return;
   var thumb=$('#sliderThumb'); if(!thumb) return;
   var prefersLight=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: light)').matches);
-  var TRACK_W=52, THUMB_W=24, PAD=2;
-  var MIN_X=PAD, MAX_X=TRACK_W-THUMB_W-PAD;
+  var THUMB_W=26, PAD=3;
   var currentMode = localStorage.getItem('tm_theme') || (prefersLight ? 'light' : 'dark');
+
+  function getTrackW(){ return track.offsetWidth; }
+  function maxX(){ return getTrackW()-THUMB_W-PAD; }
 
   function setTheme(mode, animate){
     currentMode = mode;
     root.setAttribute('data-theme', mode); localStorage.setItem('tm_theme', mode);
     slider.setAttribute('aria-checked', mode==='light' ? 'true' : 'false');
-    var targetX = mode==='light' ? MAX_X : MIN_X;
+    // Moon on left (dark) → Sun on right (light)
+    var targetX = mode==='light' ? maxX() : PAD;
     if(animate){
       thumb.classList.remove('dragging');
-      thumb.style.transition='left .25s cubic-bezier(.4,.0,.2,1)';
+      thumb.style.transition='left .3s cubic-bezier(.4,.0,.2,1), background .35s ease, box-shadow .35s ease';
       thumb.style.left = targetX+'px';
-      setTimeout(function(){ thumb.style.transition='left .05s linear'; },280);
+      setTimeout(function(){ thumb.style.transition='left .05s linear, background .35s ease, box-shadow .35s ease'; },320);
     } else {
       thumb.style.left = targetX+'px';
     }
@@ -100,9 +104,12 @@ function mixHex(aHex,bHex,t){ var a=hexToRgb(aHex), b=hexToRgb(bHex);
   }
   setTheme(currentMode, false);
 
+  // Recalculate on resize
+  on(window,'resize',debounce(function(){ setTheme(currentMode, false); },100));
+
   // --- Tactile drag logic ---
   var dragging=false, startX=0, startThumbX=0, hasMoved=false;
-  function getThumbX(){ return parseFloat(thumb.style.left)||MIN_X; }
+  function getThumbX(){ return parseFloat(thumb.style.left)||PAD; }
 
   function onStart(clientX){
     dragging=true; hasMoved=false;
@@ -114,8 +121,8 @@ function mixHex(aHex,bHex,t){ var a=hexToRgb(aHex), b=hexToRgb(bHex);
   function onMove(clientX){
     if(!dragging) return;
     var dx = clientX - startX;
-    if(Math.abs(dx) > 2) hasMoved = true;
-    var newX = Math.max(MIN_X, Math.min(MAX_X, startThumbX + dx));
+    if(Math.abs(dx) > 3) hasMoved = true;
+    var newX = Math.max(PAD, Math.min(maxX(), startThumbX + dx));
     thumb.style.left = newX + 'px';
   }
   function onEnd(){
@@ -125,7 +132,7 @@ function mixHex(aHex,bHex,t){ var a=hexToRgb(aHex), b=hexToRgb(bHex);
     document.body.style.userSelect='';
     document.body.style.webkitUserSelect='';
     var thumbX = getThumbX();
-    var midpoint = (MIN_X + MAX_X) / 2;
+    var midpoint = (PAD + maxX()) / 2;
     if(!hasMoved){
       setTheme(currentMode==='dark'?'light':'dark', true);
     } else {
@@ -1416,8 +1423,34 @@ document.addEventListener('DOMContentLoaded', function start(){
     if (e.key === 'Enter') { e.preventDefault(); addNameFromInput(); }
   });
 
-  // Wire upload button (moved from inline onclick)
-  on($('#uploadBtn'),'click', function(){ $('#imageInput').click(); });
+  // --- Add Image dropdown ---
+  var imgDropdown = $('#imgDropdown');
+  var urlInputRow = $('#urlInputRow');
+  on($('#addImageBtn'), 'click', function(e){
+    e.stopPropagation();
+    if(imgDropdown) imgDropdown.classList.toggle('hidden');
+    if(urlInputRow) urlInputRow.classList.add('hidden');
+  });
+  // Close dropdown on outside click
+  on(document, 'click', function(e){
+    if(imgDropdown && !imgDropdown.classList.contains('hidden')){
+      var wrap = e.target.closest && e.target.closest('.img-btn-wrap');
+      if(!wrap) imgDropdown.classList.add('hidden');
+    }
+  });
+  // Upload option
+  on($('#uploadBtn'), 'click', function(){
+    $('#imageInput').click();
+    if(imgDropdown) imgDropdown.classList.add('hidden');
+  });
+  // Link option — reveal URL input inline
+  on($('#linkOptBtn'), 'click', function(){
+    if(urlInputRow){
+      urlInputRow.classList.remove('hidden');
+      var inp = $('#imageUrlInput');
+      if(inp) inp.focus();
+    }
+  });
 
   // Image upload with compression
   on($('#imageInput'),'change', function(e){
@@ -1438,11 +1471,11 @@ document.addEventListener('DOMContentLoaded', function start(){
     var urlInput = $('#imageUrlInput');
     var url = urlInput ? urlInput.value.trim() : '';
     if (!url) return;
-    // Basic validation
     if (url.indexOf('http') !== 0) { urlInput.value = ''; return; }
     var token = buildImageToken(url, '');
     tray.insertBefore(token, tray.firstChild);
     urlInput.value = '';
+    if(imgDropdown) imgDropdown.classList.add('hidden');
     scheduleSave();
   }
   on($('#addUrlBtn'), 'click', addImageFromUrl);
