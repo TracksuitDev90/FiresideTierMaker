@@ -37,21 +37,31 @@
 
       <div class="creator-line">
         <input id="imageInput" class="sr" type="file" accept="image/*" multiple />
-        <label class="sr" for="imageUrlInput">Image URL</label>
-        <input id="imageUrlInput" class="input" type="url" placeholder="Paste image URL..." autocomplete="off" />
-        <div class="split-btn-wrap">
-          <button id="uploadBtn" class="btn split-btn split-left" type="button">
+        <div class="img-btn-wrap">
+          <button id="addImageBtn" class="btn img-add-btn" type="button">
             <span class="ico">
-              <svg viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/></svg>
+              <svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
             </span>
-            <span>Upload</span>
-          </button>
-          <button id="addUrlBtn" class="btn split-btn split-right" type="button">
-            <span class="ico">
-              <svg viewBox="0 0 24 24"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>
+            <span>Add Image</span>
+            <span class="ico img-caret">
+              <svg viewBox="0 0 24 24" width="14" height="14"><path d="M7 10l5 5 5-5z"/></svg>
             </span>
-            <span>Link</span>
           </button>
+          <div id="imgDropdown" class="img-dropdown hidden">
+            <button id="uploadBtn" class="img-option" type="button">
+              <svg viewBox="0 0 24 24" width="18" height="18"><path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z" fill="currentColor"/></svg>
+              <span>Upload from device</span>
+            </button>
+            <button id="linkOptBtn" class="img-option" type="button">
+              <svg viewBox="0 0 24 24" width="18" height="18"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z" fill="currentColor"/></svg>
+              <span>Paste image URL</span>
+            </button>
+            <div id="urlInputRow" class="url-input-row hidden">
+              <label class="sr" for="imageUrlInput">Image URL</label>
+              <input id="imageUrlInput" class="input url-inline" type="url" placeholder="https://..." autocomplete="off" />
+              <button id="addUrlBtn" class="btn small url-go" type="button">Go</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -99,15 +109,15 @@
           <span>Clear Board</span>
         </button>
 
-        <div id="themeSlider" class="btn theme-slider" role="switch" aria-checked="false" aria-label="Toggle dark/light mode" tabindex="0">
-          <span class="slider-label-left" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="18" height="18"><path d="M6.76 4.84l-1.8-1.79L3.17 4.84l1.79 1.79 1.8-1.79zM1 13h3v-2H1v2zm10 10h2v-3h-2v3zM4.22 19.78l1.79-1.79 1.8 1.79-1.8 1.8-1.79-1.8zM20 13h3v-2h-3v2zM12 1h2v3h-2V1zm6.01 3.05l1.79 1.79 1.8-1.79-1.8-1.8-1.79 1.8zM12 6a6 6 0 100 12A6 6 0 0012 6z" fill="currentColor"/></svg>
+        <div id="themeSlider" class="theme-slider" role="switch" aria-checked="false" aria-label="Toggle dark/light mode" tabindex="0">
+          <span class="slider-end slider-end-left" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="16" height="16"><path d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z" fill="currentColor"/></svg>
           </span>
-          <div class="slider-track">
+          <div class="slider-track" id="sliderTrack">
             <div class="slider-thumb" id="sliderThumb"></div>
           </div>
-          <span class="slider-label-right" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="18" height="18"><path d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z" fill="currentColor"/></svg>
+          <span class="slider-end slider-end-right" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="16" height="16"><path d="M6.76 4.84l-1.8-1.79L3.17 4.84l1.79 1.79 1.8-1.79zM1 13h3v-2H1v2zm10 10h2v-3h-2v3zM4.22 19.78l1.79-1.79 1.8 1.79-1.8 1.8-1.79-1.8zM20 13h3v-2h-3v2zM12 1h2v3h-2V1zm6.01 3.05l1.79 1.79 1.8-1.79-1.8-1.8-1.79 1.8zM12 6a6 6 0 100 12A6 6 0 0012 6z" fill="currentColor"/></svg>
           </span>
         </div>
 
