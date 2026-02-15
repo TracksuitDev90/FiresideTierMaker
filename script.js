@@ -71,19 +71,81 @@ function mixHex(aHex,bHex,t){ var a=hexToRgb(aHex), b=hexToRgb(bHex);
 /* ---------- Theme (button shows TARGET mode) ---------- */
 (function(){
   var root=document.documentElement;
-  var toggle=$('#themeToggle'); if(!toggle) return;
-  var icon=$('.theme-icon',toggle), text=$('.theme-text',toggle);
+  var toggle=$('#themeToggle');
+  var slider=$('#themeSlider');
   var prefersLight=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: light)').matches);
+
   setTheme(localStorage.getItem('tm_theme') || (prefersLight ? 'light' : 'dark'));
-  on(toggle,'click', function(){ animateBtn(toggle); setTheme(root.getAttribute('data-theme')==='dark'?'light':'dark'); });
+
+  // Desktop button
+  if(toggle){
+    var icon=$('.theme-icon',toggle), text=$('.theme-text',toggle);
+    on(toggle,'click', function(){ animateBtn(toggle); setTheme(root.getAttribute('data-theme')==='dark'?'light':'dark'); });
+  }
+
+  // Mobile slider — drag to toggle
+  if(slider){
+    var track=$('.slider-track',slider), thumb=$('.slider-thumb',slider);
+    var TRACK_W=92, THUMB_W=34, PAD=3, MAX_LEFT=TRACK_W-THUMB_W-PAD;
+    var dragging=false, startX=0, startLeft=0;
+
+    function getThumbLeft(){ return root.getAttribute('data-theme')==='light' ? MAX_LEFT : PAD; }
+
+    on(slider,'pointerdown',function(e){
+      e.preventDefault();
+      dragging=true;
+      slider.setPointerCapture(e.pointerId);
+      track.classList.add('dragging');
+      startX=e.clientX;
+      startLeft=getThumbLeft();
+    });
+    on(slider,'pointermove',function(e){
+      if(!dragging) return;
+      var dx=e.clientX-startX;
+      var newLeft=Math.max(PAD, Math.min(MAX_LEFT, startLeft+dx));
+      thumb.style.left=newLeft+'px';
+      // Interpolate track color: navy (#1e1b3a) → yellow (#fbbf24)
+      var t=(newLeft-PAD)/(MAX_LEFT-PAD);
+      var r=Math.round(30+(251-30)*t), g=Math.round(27+(191-27)*t), b=Math.round(58+(36-58)*t);
+      track.style.background='rgb('+r+','+g+','+b+')';
+      // Thumb: white → dark
+      var tr=Math.round(255-255*t*0.93), tg=Math.round(255-255*t*0.93), tb=Math.round(255-255*t*0.93);
+      thumb.style.background='rgb('+tr+','+tg+','+tb+')';
+    });
+    on(slider,'pointerup',function(e){
+      if(!dragging) return;
+      dragging=false;
+      track.classList.remove('dragging');
+      track.style.background=''; thumb.style.left=''; thumb.style.background='';
+      var dx=e.clientX-startX;
+      var newLeft=Math.max(PAD, Math.min(MAX_LEFT, startLeft+dx));
+      var mid=(PAD+MAX_LEFT)/2;
+      // If barely moved, treat as tap toggle
+      if(Math.abs(dx)<5){ setTheme(root.getAttribute('data-theme')==='dark'?'light':'dark'); return; }
+      setTheme(newLeft>mid?'light':'dark');
+    });
+    on(slider,'pointercancel',function(){
+      dragging=false;
+      track.classList.remove('dragging');
+      track.style.background=''; thumb.style.left=''; thumb.style.background='';
+    });
+    on(slider,'keydown',function(e){
+      if(e.key==='Enter'||e.key===' '){ e.preventDefault(); setTheme(root.getAttribute('data-theme')==='dark'?'light':'dark'); }
+    });
+  }
+
   function setTheme(mode){
     root.setAttribute('data-theme', mode); localStorage.setItem('tm_theme', mode);
     var target = mode==='dark' ? 'Light' : 'Dark';
-    if(text) text.textContent = target;
-    toggle.setAttribute('aria-pressed', mode==='light' ? 'true' : 'false');
-    if(icon) icon.innerHTML = (target==='Light'
-      ? '<svg viewBox="0 0 24 24"><path d="M6.76 4.84l-1.8-1.79L3.17 4.84l1.79 1.79 1.8-1.79zM1 13h3v-2H1v2zm10 10h2v-3h-2v3zM4.22 19.78l1.79-1.79 1.8 1.79-1.8 1.8-1.79-1.8zM20 13h3v-2h-3v2zM12 1h2v3h-2V1zm6.01 3.05l1.79 1.79 1.8-1.79-1.8-1.8-1.79 1.8zM12 6a6 6 0 100 12A6 6 0 0012 6z"/></svg>'
-      : '<svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z"/></svg>');
+    if(toggle){
+      var icon2=$('.theme-icon',toggle), text2=$('.theme-text',toggle);
+      if(text2) text2.textContent = target;
+      toggle.setAttribute('aria-pressed', mode==='light' ? 'true' : 'false');
+      if(icon2) icon2.innerHTML = (target==='Light'
+        ? '<svg viewBox="0 0 24 24"><path d="M6.76 4.84l-1.8-1.79L3.17 4.84l1.79 1.79 1.8-1.79zM1 13h3v-2H1v2zm10 10h2v-3h-2v3zM4.22 19.78l1.79-1.79 1.8 1.79-1.8 1.8-1.79-1.8zM20 13h3v-2h-3v2zM12 1h2v3h-2V1zm6.01 3.05l1.79 1.79 1.8-1.79-1.8-1.8-1.79 1.8zM12 6a6 6 0 100 12A6 6 0 0012 6z"/></svg>'
+        : '<svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z"/></svg>');
+    }
+    if(slider) slider.setAttribute('aria-checked', mode==='light' ? 'true' : 'false');
     $$('.tier-row').forEach(function(row){
       var chip=$('.label-chip',row), drop=$('.tier-drop',row);
       if (drop && drop.dataset.manual!=='true'){
@@ -1390,11 +1452,13 @@ document.addEventListener('DOMContentLoaded', function start(){
     if (e.key === 'Enter') { e.preventDefault(); addImageFromUrl(); }
   });
 
-  // Help copy
+  // Help copy (collapsible)
   var help=$('#helpText') || $('.help');
   if(help){
-    help.innerHTML =
-      '<strong>Help</strong>' +
+    var helpParent = help.closest('.help') || help;
+    helpParent.innerHTML =
+      '<span class="help-toggle" id="helpToggle"><strong>Help</strong> <svg viewBox="0 0 24 24"><path d="M10 6l6 6-6 6z"/></svg></span>' +
+      '<div class="help-tips">' +
       '<div class="tip">' + (isSmall()
        ? 'Tap a circle to choose a row. Drag placed circles to reorder.'
        : 'Drag circles into rows. Drag back to Image Storage to unplace.') + '</div>' +
@@ -1402,7 +1466,9 @@ document.addEventListener('DOMContentLoaded', function start(){
       (isSmall() ? 'Tap' : 'Hover over') + ' a label to change its color.</div>' +
       '<div class="tip">Tap a suggestion to use it as your title, or type your own.</div>' +
       '<div class="tip">Paste an image URL or upload files to add custom images.</div>' +
-      '<div class="tip">' + (isSmall() ? 'Swipe up on' : 'Double-click') + ' a custom token to delete it.</div>';
+      '<div class="tip">' + (isSmall() ? 'Swipe up on' : 'Double-click') + ' a custom token to delete it.</div>' +
+      '</div>';
+    on($('#helpToggle'), 'click', function(){ helpParent.classList.toggle('open'); });
   }
 
   enableClickToPlace(tray);

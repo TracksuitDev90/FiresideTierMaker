@@ -89,8 +89,25 @@ a{color:inherit;text-decoration:none}
 /* ---------- Creator ---------- */
 .creator-grid{display:grid;gap:12px}
 .creator-line{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.input{flex:1 1 260px;height:48px;padding:0 14px;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:12px}
-.color-dot{width:40px;height:40px;border-radius:999px;border:3px solid var(--surface-raised);box-shadow:0 4px 18px rgba(0,0,0,.25) inset,0 2px 8px rgba(0,0,0,.2)}
+/* Neumorphic inputs */
+.input{
+  flex:1 1 260px;height:48px;padding:0 14px;color:var(--text);border:none;border-radius:12px;
+  background:var(--card);
+  box-shadow:inset 3px 3px 6px rgba(0,0,0,.25), inset -2px -2px 5px rgba(255,255,255,.05);
+  transition:box-shadow .2s ease;
+}
+.input:focus{box-shadow:inset 3px 3px 6px rgba(0,0,0,.3), inset -2px -2px 5px rgba(255,255,255,.06), 0 0 0 2px rgba(139,125,255,.35)}
+.input::placeholder{color:var(--muted);opacity:.7}
+:root[data-theme="light"] .input{
+  background:#e8ecf2;
+  box-shadow:inset 3px 3px 6px rgba(0,0,0,.08), inset -2px -2px 5px rgba(255,255,255,.7);
+}
+:root[data-theme="light"] .input:focus{box-shadow:inset 3px 3px 6px rgba(0,0,0,.1), inset -2px -2px 5px rgba(255,255,255,.8), 0 0 0 2px rgba(107,95,255,.3)}
+.color-dot{
+  width:40px;height:40px;border-radius:999px;border:none;
+  box-shadow:inset 3px 3px 6px rgba(0,0,0,.25), inset -2px -2px 5px rgba(255,255,255,.05), 0 2px 8px rgba(0,0,0,.2);
+}
+:root[data-theme="light"] .color-dot{box-shadow:inset 3px 3px 6px rgba(0,0,0,.08), inset -2px -2px 5px rgba(255,255,255,.7), 0 2px 8px rgba(0,0,0,.1)}
 /* Split upload/link button */
 .split-btn{
   display:inline-flex;height:56px;border-radius:16px;overflow:hidden;
@@ -114,8 +131,20 @@ a{color:inherit;text-decoration:none}
   clip-path:polygon(12px 0, 100% 0, 100% 100%, 0 100%);
 }
 
-.help{color:var(--muted);font-weight:600;margin-top:10px;line-height:1.6}
-.help strong{color:var(--neon);font-size:18px}
+/* Collapsible help */
+.help{color:var(--muted);font-weight:600;margin-top:6px;line-height:1.6}
+.help-toggle{
+  color:var(--neon);font-size:18px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;
+  user-select:none;-webkit-user-select:none;
+}
+.help-toggle svg{width:14px;height:14px;fill:currentColor;transition:transform .25s ease}
+.help.open .help-toggle svg{transform:rotate(90deg)}
+.help-tips{
+  max-height:0;overflow:hidden;
+  transition:max-height .3s ease, opacity .25s ease;
+  opacity:0;
+}
+.help.open .help-tips{max-height:400px;opacity:1}
 .help .tip{margin-top:12px}
 
 /* ---------- Board ---------- */
@@ -276,9 +305,41 @@ body.dragging-item{cursor:grabbing;user-select:none;-webkit-user-select:none}
 }
 .radial-close svg{width:24px;height:24px;fill:currentColor}
 
+/* ---------- Theme slider (mobile) ---------- */
+.theme-slider{
+  height:56px;border-radius:16px;overflow:hidden;cursor:pointer;
+  border:1px solid var(--border);box-shadow:var(--shadow);
+  display:inline-flex;align-items:center;justify-content:center;
+  -webkit-user-select:none;user-select:none;
+}
+.slider-track{
+  position:relative;width:92px;height:40px;border-radius:999px;
+  background:#1e1b3a;
+  transition:background .35s ease;
+}
+.slider-thumb{
+  position:absolute;top:3px;left:3px;width:34px;height:34px;border-radius:999px;
+  background:#fff;
+  display:grid;place-items:center;
+  box-shadow:0 2px 8px rgba(0,0,0,.3);
+  transition:left .3s cubic-bezier(.34,1.56,.64,1), background .3s ease;
+  will-change:left;
+}
+.slider-icon{width:18px;height:18px;fill:#1e1b3a;position:absolute;transition:opacity .25s ease}
+.slider-icon-moon{opacity:1}
+.slider-icon-sun{opacity:0}
+/* Light mode state */
+:root[data-theme="light"] .slider-track{background:#fbbf24}
+:root[data-theme="light"] .slider-thumb{left:55px;background:#111}
+:root[data-theme="light"] .slider-icon-moon{opacity:0}
+:root[data-theme="light"] .slider-icon-sun{opacity:1;fill:#fbbf24}
+/* Dragging state — applied via JS */
+.slider-track.dragging .slider-thumb{transition:none}
+
 /* ---------- Misc ---------- */
 .hide-on-desktop{display:none}
-@media (max-width:768px){.hide-on-desktop{display:initial}}
+.hide-on-mobile{display:inline-flex}
+@media (max-width:768px){.hide-on-desktop{display:initial}.hide-on-mobile{display:none}}
 @media print{body{background:#fff;color:#000}.panel,#tray,.controls,.creator-grid{box-shadow:none;border-color:#ddd}.token.selected,.token:focus-visible{outline-color:#000}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 
