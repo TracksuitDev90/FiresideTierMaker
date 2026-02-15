@@ -68,32 +68,30 @@ function mixHex(aHex,bHex,t){ var a=hexToRgb(aHex), b=hexToRgb(bHex);
   );
 }
 
-/* ---------- Theme (unified tactile slider — full-width) ---------- */
+/* ---------- Theme (button shows TARGET mode) ---------- */
 (function(){
   var root=document.documentElement;
-  var slider=$('#themeSlider'); if(!slider) return;
-  var track=$('#sliderTrack'); if(!track) return;
-  var thumb=$('#sliderThumb'); if(!thumb) return;
+  var toggle=$('#themeToggle');
   var prefersLight=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: light)').matches);
-  var THUMB_W=26, PAD=3;
-  var currentMode = localStorage.getItem('tm_theme') || (prefersLight ? 'light' : 'dark');
 
-  function getTrackW(){ return track.offsetWidth; }
-  function maxX(){ return getTrackW()-THUMB_W-PAD; }
+  // Clean sun icon (circle with uniform rays)
+  var SUN_SVG = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v3M12 20v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M1 12h3M20 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/><style>circle{fill:currentColor}path{stroke:currentColor;stroke-width:2;stroke-linecap:round}</style></svg>';
+  var MOON_SVG = '<svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z"/></svg>';
 
-  function setTheme(mode, animate){
-    currentMode = mode;
+  setTheme(localStorage.getItem('tm_theme') || (prefersLight ? 'light' : 'dark'));
+
+  if(toggle){
+    on(toggle,'click', function(){ animateBtn(toggle); setTheme(root.getAttribute('data-theme')==='dark'?'light':'dark'); });
+  }
+
+  function setTheme(mode){
     root.setAttribute('data-theme', mode); localStorage.setItem('tm_theme', mode);
-    slider.setAttribute('aria-checked', mode==='light' ? 'true' : 'false');
-    // Moon on left (dark) → Sun on right (light)
-    var targetX = mode==='light' ? maxX() : PAD;
-    if(animate){
-      thumb.classList.remove('dragging');
-      thumb.style.transition='left .3s cubic-bezier(.4,.0,.2,1), background .35s ease, box-shadow .35s ease';
-      thumb.style.left = targetX+'px';
-      setTimeout(function(){ thumb.style.transition='left .05s linear, background .35s ease, box-shadow .35s ease'; },320);
-    } else {
-      thumb.style.left = targetX+'px';
+    var target = mode==='dark' ? 'Light' : 'Dark';
+    if(toggle){
+      var icon=$('.theme-icon',toggle), text=$('.theme-text',toggle);
+      if(text) text.textContent = target;
+      toggle.setAttribute('aria-pressed', mode==='light' ? 'true' : 'false');
+      if(icon) icon.innerHTML = (target==='Light' ? SUN_SVG : MOON_SVG);
     }
     $$('.tier-row').forEach(function(row){
       var chip=$('.label-chip',row), drop=$('.tier-drop',row);
@@ -102,61 +100,6 @@ function mixHex(aHex,bHex,t){ var a=hexToRgb(aHex), b=hexToRgb(bHex);
       }
     });
   }
-  setTheme(currentMode, false);
-
-  // Recalculate on resize
-  on(window,'resize',debounce(function(){ setTheme(currentMode, false); },100));
-
-  // --- Tactile drag logic ---
-  var dragging=false, startX=0, startThumbX=0, hasMoved=false;
-  function getThumbX(){ return parseFloat(thumb.style.left)||PAD; }
-
-  function onStart(clientX){
-    dragging=true; hasMoved=false;
-    startX=clientX; startThumbX=getThumbX();
-    thumb.classList.add('dragging');
-    document.body.style.userSelect='none';
-    document.body.style.webkitUserSelect='none';
-  }
-  function onMove(clientX){
-    if(!dragging) return;
-    var dx = clientX - startX;
-    if(Math.abs(dx) > 3) hasMoved = true;
-    var newX = Math.max(PAD, Math.min(maxX(), startThumbX + dx));
-    thumb.style.left = newX + 'px';
-  }
-  function onEnd(){
-    if(!dragging) return;
-    dragging=false;
-    thumb.classList.remove('dragging');
-    document.body.style.userSelect='';
-    document.body.style.webkitUserSelect='';
-    var thumbX = getThumbX();
-    var midpoint = (PAD + maxX()) / 2;
-    if(!hasMoved){
-      setTheme(currentMode==='dark'?'light':'dark', true);
-    } else {
-      setTheme(thumbX > midpoint ? 'light' : 'dark', true);
-    }
-    vib(6);
-  }
-
-  on(thumb,'pointerdown',function(e){
-    e.preventDefault(); e.stopPropagation();
-    thumb.setPointerCapture(e.pointerId);
-    onStart(e.clientX);
-  });
-  on(thumb,'pointermove',function(e){ if(!dragging) return; onMove(e.clientX); });
-  on(thumb,'pointerup',function(){ onEnd(); });
-  on(thumb,'pointercancel',function(){ onEnd(); });
-
-  on(slider,'click',function(e){
-    if(e.target===thumb || (e.target.closest && e.target.closest('.slider-thumb'))) return;
-    setTheme(currentMode==='dark'?'light':'dark', true); vib(6);
-  });
-  on(slider,'keydown',function(e){
-    if(e.key===' '||e.key==='Enter'){ e.preventDefault(); setTheme(currentMode==='dark'?'light':'dark', true); vib(6); }
-  });
 })();
 
 /* ---------- DOM refs ---------- */

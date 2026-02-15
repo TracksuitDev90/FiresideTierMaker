@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#0f1115" />
+  <meta name="theme-color" content="#0e0d1a" />
   <meta name="description" content="Create and share custom tier lists. Drag and drop to rank your favorites, then save as PNG." />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <!-- Open Graph -->
@@ -109,17 +109,10 @@
           <span>Clear Board</span>
         </button>
 
-        <div id="themeSlider" class="theme-slider" role="switch" aria-checked="false" aria-label="Toggle dark/light mode" tabindex="0">
-          <span class="slider-end slider-end-left" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="16" height="16"><path d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z" fill="currentColor"/></svg>
-          </span>
-          <div class="slider-track" id="sliderTrack">
-            <div class="slider-thumb" id="sliderThumb"></div>
-          </div>
-          <span class="slider-end slider-end-right" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="16" height="16"><path d="M6.76 4.84l-1.8-1.79L3.17 4.84l1.79 1.79 1.8-1.79zM1 13h3v-2H1v2zm10 10h2v-3h-2v3zM4.22 19.78l1.79-1.79 1.8 1.79-1.8 1.8-1.79-1.8zM20 13h3v-2h-3v2zM12 1h2v3h-2V1zm6.01 3.05l1.79 1.79 1.8-1.79-1.8-1.8-1.79 1.8zM12 6a6 6 0 100 12A6 6 0 0012 6z" fill="currentColor"/></svg>
-          </span>
-        </div>
+        <button id="themeToggle" class="btn" type="button" aria-pressed="false">
+          <span class="ico theme-icon"></span>
+          <span class="theme-text">Light</span>
+        </button>
 
         <button id="saveBtn" class="btn" type="button">
           <span class="ico">

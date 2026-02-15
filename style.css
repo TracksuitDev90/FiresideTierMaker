@@ -1,6 +1,7 @@
 /* ---------- Reset ---------- */
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%}
+html{text-rendering:optimizeLegibility;-webkit-text-size-adjust:100%}
 body{
   margin:0;
   font:16px/1.45 ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji";
@@ -17,7 +18,7 @@ a{color:inherit;text-decoration:none}
 
 /* ---------- Theme ---------- */
 :root{
-  --surface:#0f1115; --surface-raised:#171a22; --card:#11141c;
+  --surface:#0e0d1a; --surface-raised:#16152a; --card:#121120;
   --text:#e8eaf0; --muted:#a7b0c0; --border:rgba(255,255,255,.08);
   --shadow:0 10px 28px rgba(0,0,0,.35);
   --accent:#8b7dff; --brand:var(--neon); --neon:#d8ff3f;
@@ -37,8 +38,9 @@ a{color:inherit;text-decoration:none}
 
 .panel{
   background:var(--surface-raised); border:1px solid var(--border);
-  border-radius:14px; box-shadow:var(--shadow);
+  border-radius:16px; box-shadow:var(--shadow);
   padding:clamp(14px,1.8vw,18px); margin-bottom:16px; overflow:visible;
+  -webkit-backface-visibility:hidden;backface-visibility:hidden;
 }
 .section-title{font-size:clamp(18px,2vw,24px);font-weight:900;margin:0 0 14px}
 
@@ -50,10 +52,11 @@ a{color:inherit;text-decoration:none}
 .btn{
   display:inline-flex;align-items:center;justify-content:center;gap:10px;
   height:56px;padding:0 18px;border-radius:16px;
-  background:var(--surface);color:var(--text);
+  background:var(--surface);color:var(--text);font-weight:700;
   border:1px solid var(--border);box-shadow:var(--shadow);
   transition:transform .08s ease,background .2s ease,border-color .2s ease,filter .2s ease;
   position:relative;overflow:hidden;
+  -webkit-backface-visibility:hidden;backface-visibility:hidden;
 }
 /* Subtle top highlight gradient */
 .btn::before{
@@ -69,19 +72,23 @@ a{color:inherit;text-decoration:none}
 /* Button icon animations on click */
 #undoBtn.animate .ico svg{transform:rotate(-360deg)}
 #addTierBtn.animate .ico svg{transform:scale(1.2)}
-/* (theme is now a unified slider) */
 
 /* Animated GIF button icons (trash & save) */
 .btn-gif{width:22px;height:22px;pointer-events:none;object-fit:contain}
 
-/* Unique tool-button colors */
-#addTierBtn{background:#02ec88;color:#111111;border-color:rgba(0,0,0,.12)}
-#undoBtn{background:#ffcc3f;color:#111111;border-color:rgba(0,0,0,.12)}
-#trashClear{background:#F05C58;color:#111111;border-color:rgba(255,255,255,.18)}
-#saveBtn{background:#a855f7;color:#FFF;border-color:rgba(255,255,255,.15)}
+/* Unique tool-button colors — all dark text for uniformity */
+#addTierBtn{background:#02ec88;color:#111;border-color:rgba(0,0,0,.12)}
+#undoBtn{background:#ffcc3f;color:#111;border-color:rgba(0,0,0,.12)}
+#trashClear{background:#F05C58;color:#111;border-color:rgba(0,0,0,.12)}
+#saveBtn{background:#a855f7;color:#111;border-color:rgba(0,0,0,.12)}
 
-/* Creator Add button (matching Add Tier green) */
-#addNameBtn.creator-btn{background:#02ec88;color:#111111;border-color:rgba(0,0,0,.12);font-weight:700}
+/* Theme toggle: shows TARGET mode appearance */
+#themeToggle{background:#f0f2f5;color:#111;border-color:rgba(0,0,0,.12);font-weight:700}
+:root[data-theme="light"] #themeToggle{background:#1e1b3a;color:#f0f2f5;border-color:rgba(255,255,255,.1)}
+#themeToggle.animate .ico svg{transform:rotate(180deg)}
+
+/* Creator buttons — same style as control buttons */
+#addNameBtn.creator-btn{background:#02ec88;color:#111;border-color:rgba(0,0,0,.12);font-weight:700}
 
 .btn.small{height:42px;padding:0 12px;border-radius:12px;font-weight:700}
 
@@ -109,9 +116,8 @@ a{color:inherit;text-decoration:none}
 :root[data-theme="light"] .color-dot{box-shadow:inset 3px 3px 6px rgba(0,0,0,.08), inset -2px -2px 5px rgba(255,255,255,.7), 0 2px 8px rgba(0,0,0,.1)}
 /* Add Image button + dropdown */
 .img-btn-wrap{position:relative;flex:0 0 auto}
-.img-add-btn{background:#0ea5e9;color:#fff;border-color:rgba(255,255,255,.15);font-weight:700}
-.img-add-btn:hover{background:#0891d2}
-.img-caret{width:14px !important;height:14px !important;opacity:.7;margin-left:-4px}
+.img-add-btn{background:#38bdf8;color:#111;border-color:rgba(0,0,0,.12);font-weight:700}
+.img-caret{width:14px !important;height:14px !important;opacity:.6;margin-left:-4px}
 .img-caret svg{fill:currentColor}
 .img-dropdown{
   position:absolute;top:calc(100% + 6px);left:0;right:auto;min-width:220px;
@@ -329,60 +335,6 @@ body.dragging-item{cursor:grabbing;user-select:none;-webkit-user-select:none}
   background:var(--surface-raised);color:var(--text);display:grid;place-items:center;box-shadow:0 4px 16px rgba(0,0,0,.3);
 }
 .radial-close svg{width:24px;height:24px;fill:currentColor}
-
-/* ---------- Unified tactile theme slider ---------- */
-.theme-slider{
-  display:inline-flex;align-items:center;gap:0;
-  height:56px;border-radius:16px;overflow:hidden;
-  border:1px solid var(--border);box-shadow:var(--shadow);
-  cursor:pointer;user-select:none;-webkit-user-select:none;
-  background:var(--surface);position:relative;
-  padding:0;
-}
-.theme-slider::before{
-  content:'';position:absolute;top:0;left:0;right:0;height:35%;
-  background:linear-gradient(to bottom,rgba(255,255,255,.15),transparent);
-  pointer-events:none;border-radius:16px 16px 0 0;z-index:1;
-}
-.theme-slider:hover{transform:translateY(-1px)}
-.slider-end{
-  display:grid;place-items:center;width:36px;height:100%;flex-shrink:0;
-  opacity:.5;transition:opacity .3s ease;z-index:2;pointer-events:none;
-}
-/* Dark mode: moon (left) bright, sun (right) dim */
-.slider-end-left{opacity:.85}
-.slider-end-right{opacity:.35}
-:root[data-theme="light"] .slider-end-left{opacity:.35}
-:root[data-theme="light"] .slider-end-right{opacity:.85}
-
-.slider-track{
-  position:relative;flex:1;height:32px;border-radius:16px;
-  background:rgba(255,255,255,.08);
-  border:1px solid rgba(255,255,255,.06);
-  box-shadow:inset 0 2px 6px rgba(0,0,0,.4);
-  transition:background .3s ease;
-  margin:0 4px;
-}
-:root[data-theme="light"] .slider-track{
-  background:rgba(0,0,0,.07);
-  border:1px solid rgba(0,0,0,.05);
-  box-shadow:inset 0 2px 6px rgba(0,0,0,.1);
-}
-.slider-thumb{
-  position:absolute;top:3px;width:26px;height:26px;border-radius:13px;
-  /* Dark mode: purple-blue thumb (resting on moon/left side) */
-  background:linear-gradient(135deg,#818cf8,#6366f1);
-  box-shadow:0 2px 10px rgba(99,102,241,.5), inset 0 1px 0 rgba(255,255,255,.3);
-  transition:left .05s linear, background .35s ease, box-shadow .35s ease;
-  cursor:grab;touch-action:none;z-index:3;
-}
-.slider-thumb:active{cursor:grabbing}
-.slider-thumb.dragging{transition:none;cursor:grabbing}
-/* Light mode: yellow/amber thumb (resting on sun/right side) */
-:root[data-theme="light"] .slider-thumb{
-  background:linear-gradient(135deg,#fbbf24,#f59e0b);
-  box-shadow:0 2px 10px rgba(251,191,36,.5), inset 0 1px 0 rgba(255,255,255,.4);
-}
 
 /* ---------- Misc ---------- */
 @media print{body{background:#fff;color:#000}.panel,#tray,.controls,.creator-grid{box-shadow:none;border-color:#ddd}.token.selected,.token:focus-visible{outline-color:#000}}
