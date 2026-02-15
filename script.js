@@ -68,84 +68,29 @@ function mixHex(aHex,bHex,t){ var a=hexToRgb(aHex), b=hexToRgb(bHex);
   );
 }
 
-/* ---------- Theme (button shows TARGET mode) ---------- */
+/* ---------- Theme (unified tactile slider) ---------- */
 (function(){
   var root=document.documentElement;
-  var toggle=$('#themeToggle');
-  var slider=$('#themeSlider');
+  var slider=$('#themeSlider'); if(!slider) return;
+  var thumb=$('#sliderThumb'); if(!thumb) return;
   var prefersLight=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: light)').matches);
+  var TRACK_W=52, THUMB_W=24, PAD=2;
+  var MIN_X=PAD, MAX_X=TRACK_W-THUMB_W-PAD;
+  var currentMode = localStorage.getItem('tm_theme') || (prefersLight ? 'light' : 'dark');
 
-  setTheme(localStorage.getItem('tm_theme') || (prefersLight ? 'light' : 'dark'));
-
-  // Desktop button
-  if(toggle){
-    var icon=$('.theme-icon',toggle), text=$('.theme-text',toggle);
-    on(toggle,'click', function(){ animateBtn(toggle); setTheme(root.getAttribute('data-theme')==='dark'?'light':'dark'); });
-  }
-
-  // Mobile slider — drag to toggle
-  if(slider){
-    var track=$('.slider-track',slider), thumb=$('.slider-thumb',slider);
-    var TRACK_W=92, THUMB_W=34, PAD=3, MAX_LEFT=TRACK_W-THUMB_W-PAD;
-    var dragging=false, startX=0, startLeft=0;
-
-    function getThumbLeft(){ return root.getAttribute('data-theme')==='light' ? MAX_LEFT : PAD; }
-
-    on(slider,'pointerdown',function(e){
-      e.preventDefault();
-      dragging=true;
-      slider.setPointerCapture(e.pointerId);
-      track.classList.add('dragging');
-      startX=e.clientX;
-      startLeft=getThumbLeft();
-    });
-    on(slider,'pointermove',function(e){
-      if(!dragging) return;
-      var dx=e.clientX-startX;
-      var newLeft=Math.max(PAD, Math.min(MAX_LEFT, startLeft+dx));
-      thumb.style.left=newLeft+'px';
-      // Interpolate track color: navy (#1e1b3a) → yellow (#fbbf24)
-      var t=(newLeft-PAD)/(MAX_LEFT-PAD);
-      var r=Math.round(30+(251-30)*t), g=Math.round(27+(191-27)*t), b=Math.round(58+(36-58)*t);
-      track.style.background='rgb('+r+','+g+','+b+')';
-      // Thumb: white → dark
-      var tr=Math.round(255-255*t*0.93), tg=Math.round(255-255*t*0.93), tb=Math.round(255-255*t*0.93);
-      thumb.style.background='rgb('+tr+','+tg+','+tb+')';
-    });
-    on(slider,'pointerup',function(e){
-      if(!dragging) return;
-      dragging=false;
-      track.classList.remove('dragging');
-      track.style.background=''; thumb.style.left=''; thumb.style.background='';
-      var dx=e.clientX-startX;
-      var newLeft=Math.max(PAD, Math.min(MAX_LEFT, startLeft+dx));
-      var mid=(PAD+MAX_LEFT)/2;
-      // If barely moved, treat as tap toggle
-      if(Math.abs(dx)<5){ setTheme(root.getAttribute('data-theme')==='dark'?'light':'dark'); return; }
-      setTheme(newLeft>mid?'light':'dark');
-    });
-    on(slider,'pointercancel',function(){
-      dragging=false;
-      track.classList.remove('dragging');
-      track.style.background=''; thumb.style.left=''; thumb.style.background='';
-    });
-    on(slider,'keydown',function(e){
-      if(e.key==='Enter'||e.key===' '){ e.preventDefault(); setTheme(root.getAttribute('data-theme')==='dark'?'light':'dark'); }
-    });
-  }
-
-  function setTheme(mode){
+  function setTheme(mode, animate){
+    currentMode = mode;
     root.setAttribute('data-theme', mode); localStorage.setItem('tm_theme', mode);
-    var target = mode==='dark' ? 'Light' : 'Dark';
-    if(toggle){
-      var icon2=$('.theme-icon',toggle), text2=$('.theme-text',toggle);
-      if(text2) text2.textContent = target;
-      toggle.setAttribute('aria-pressed', mode==='light' ? 'true' : 'false');
-      if(icon2) icon2.innerHTML = (target==='Light'
-        ? '<svg viewBox="0 0 24 24"><path d="M6.76 4.84l-1.8-1.79L3.17 4.84l1.79 1.79 1.8-1.79zM1 13h3v-2H1v2zm10 10h2v-3h-2v3zM4.22 19.78l1.79-1.79 1.8 1.79-1.8 1.8-1.79-1.8zM20 13h3v-2h-3v2zM12 1h2v3h-2V1zm6.01 3.05l1.79 1.79 1.8-1.79-1.8-1.8-1.79 1.8zM12 6a6 6 0 100 12A6 6 0 0012 6z"/></svg>'
-        : '<svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z"/></svg>');
+    slider.setAttribute('aria-checked', mode==='light' ? 'true' : 'false');
+    var targetX = mode==='light' ? MAX_X : MIN_X;
+    if(animate){
+      thumb.classList.remove('dragging');
+      thumb.style.transition='left .25s cubic-bezier(.4,.0,.2,1)';
+      thumb.style.left = targetX+'px';
+      setTimeout(function(){ thumb.style.transition='left .05s linear'; },280);
+    } else {
+      thumb.style.left = targetX+'px';
     }
-    if(slider) slider.setAttribute('aria-checked', mode==='light' ? 'true' : 'false');
     $$('.tier-row').forEach(function(row){
       var chip=$('.label-chip',row), drop=$('.tier-drop',row);
       if (drop && drop.dataset.manual!=='true'){
@@ -153,6 +98,58 @@ function mixHex(aHex,bHex,t){ var a=hexToRgb(aHex), b=hexToRgb(bHex);
       }
     });
   }
+  setTheme(currentMode, false);
+
+  // --- Tactile drag logic ---
+  var dragging=false, startX=0, startThumbX=0, hasMoved=false;
+  function getThumbX(){ return parseFloat(thumb.style.left)||MIN_X; }
+
+  function onStart(clientX){
+    dragging=true; hasMoved=false;
+    startX=clientX; startThumbX=getThumbX();
+    thumb.classList.add('dragging');
+    document.body.style.userSelect='none';
+    document.body.style.webkitUserSelect='none';
+  }
+  function onMove(clientX){
+    if(!dragging) return;
+    var dx = clientX - startX;
+    if(Math.abs(dx) > 2) hasMoved = true;
+    var newX = Math.max(MIN_X, Math.min(MAX_X, startThumbX + dx));
+    thumb.style.left = newX + 'px';
+  }
+  function onEnd(){
+    if(!dragging) return;
+    dragging=false;
+    thumb.classList.remove('dragging');
+    document.body.style.userSelect='';
+    document.body.style.webkitUserSelect='';
+    var thumbX = getThumbX();
+    var midpoint = (MIN_X + MAX_X) / 2;
+    if(!hasMoved){
+      setTheme(currentMode==='dark'?'light':'dark', true);
+    } else {
+      setTheme(thumbX > midpoint ? 'light' : 'dark', true);
+    }
+    vib(6);
+  }
+
+  on(thumb,'pointerdown',function(e){
+    e.preventDefault(); e.stopPropagation();
+    thumb.setPointerCapture(e.pointerId);
+    onStart(e.clientX);
+  });
+  on(thumb,'pointermove',function(e){ if(!dragging) return; onMove(e.clientX); });
+  on(thumb,'pointerup',function(){ onEnd(); });
+  on(thumb,'pointercancel',function(){ onEnd(); });
+
+  on(slider,'click',function(e){
+    if(e.target===thumb || (e.target.closest && e.target.closest('.slider-thumb'))) return;
+    setTheme(currentMode==='dark'?'light':'dark', true); vib(6);
+  });
+  on(slider,'keydown',function(e){
+    if(e.key===' '||e.key==='Enter'){ e.preventDefault(); setTheme(currentMode==='dark'?'light':'dark', true); vib(6); }
+  });
 })();
 
 /* ---------- DOM refs ---------- */
@@ -1277,7 +1274,9 @@ var TIER_PROMPTS = [
   'People You\'re Most to Least Excited to See Chatting in Gen Chat',
   'Most to Least Likely to End Up in Prison',
   'Best to Worst Parent in Theory',
-  'Most to Least Likely to Take a Joke Too Far'
+  'Most to Least Likely to Take a Joke Too Far',
+  'Most to Least Funny in Fireside',
+  'Most to Least Wealthy in Fireside Based on What You Know'
 ];
 shuffleArray(TIER_PROMPTS);
 var _promptIndex = 0;
