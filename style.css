@@ -69,11 +69,7 @@ a{color:inherit;text-decoration:none}
 /* Button icon animations on click */
 #undoBtn.animate .ico svg{transform:rotate(-360deg)}
 #addTierBtn.animate .ico svg{transform:scale(1.2)}
-#themeToggle.animate .ico svg{transform:rotate(180deg)}
-
-/* Theme toggle: button shows the TARGET mode appearance */
-#themeToggle{background:#f0f2f5;color:#1a1a2e;border-color:rgba(0,0,0,.12)}
-:root[data-theme="light"] #themeToggle{background:#1a1a2e;color:#f0f2f5;border-color:rgba(255,255,255,.15)}
+/* (theme is now a unified slider) */
 
 /* Animated GIF button icons (trash & save) */
 .btn-gif{width:22px;height:22px;pointer-events:none;object-fit:contain}
@@ -83,6 +79,9 @@ a{color:inherit;text-decoration:none}
 #undoBtn{background:#ffcc3f;color:#111111;border-color:rgba(0,0,0,.12)}
 #trashClear{background:#F05C58;color:#111111;border-color:rgba(255,255,255,.18)}
 #saveBtn{background:#a855f7;color:#FFF;border-color:rgba(255,255,255,.15)}
+
+/* Creator Add button (matching Add Tier green) */
+#addNameBtn.creator-btn{background:#02ec88;color:#111111;border-color:rgba(0,0,0,.12);font-weight:700}
 
 .btn.small{height:42px;padding:0 12px;border-radius:12px;font-weight:700}
 
@@ -108,28 +107,13 @@ a{color:inherit;text-decoration:none}
   box-shadow:inset 3px 3px 6px rgba(0,0,0,.25), inset -2px -2px 5px rgba(255,255,255,.05), 0 2px 8px rgba(0,0,0,.2);
 }
 :root[data-theme="light"] .color-dot{box-shadow:inset 3px 3px 6px rgba(0,0,0,.08), inset -2px -2px 5px rgba(255,255,255,.7), 0 2px 8px rgba(0,0,0,.1)}
-/* Split upload/link button */
-.split-btn{
-  display:inline-flex;height:56px;border-radius:16px;overflow:hidden;
-  box-shadow:var(--shadow);border:1px solid var(--border);position:relative;
-}
-.split-half{
-  display:inline-flex;align-items:center;justify-content:center;gap:6px;
-  height:100%;padding:0 16px;border:none;cursor:pointer;font-weight:700;
-  font:inherit;position:relative;transition:filter .15s ease;
-}
-.split-half .ico{width:22px;height:22px;display:grid;place-items:center}
-.split-half .ico svg{width:22px;height:22px;fill:currentColor}
-.split-half:hover{filter:brightness(1.08)}
-.split-half:active{filter:brightness(.92)}
-.split-upload{
-  background:#0ea5e9;color:#fff;padding-right:22px;
-  clip-path:polygon(0 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
-}
-.split-link{
-  background:#f59e0b;color:#111;padding-left:22px;margin-left:-12px;
-  clip-path:polygon(12px 0, 100% 0, 100% 100%, 0 100%);
-}
+/* 50/50 Split button wrap (uniform halves) */
+.split-btn-wrap{display:flex;flex:1 1 260px;gap:0;border-radius:16px;overflow:hidden}
+.split-btn{flex:1 1 0;border-radius:0 !important;height:56px;font-weight:700}
+.split-btn.split-left{border-radius:16px 0 0 16px !important;border-right:1px solid rgba(255,255,255,.12)}
+.split-btn.split-right{border-radius:0 16px 16px 0 !important}
+#uploadBtn.split-btn{background:#0ea5e9;color:#FFF;border-color:rgba(255,255,255,.15)}
+#addUrlBtn.split-btn{background:#8b5cf6;color:#FFF;border-color:rgba(255,255,255,.15)}
 
 /* Collapsible help */
 .help{color:var(--muted);font-weight:600;margin-top:6px;line-height:1.6}
@@ -275,8 +259,25 @@ body.dragging-item{cursor:grabbing;user-select:none;-webkit-user-select:none}
 .animate-drop{animation:pop-in .18s ease}
 
 /* ---------- Image Storage ---------- */
+.tray-well{
+  border-radius:16px;padding:4px;
+  background:var(--surface);
+  box-shadow:
+    inset 0 2px 6px rgba(0,0,0,.35),
+    inset 0 -1px 2px rgba(255,255,255,.04),
+    0 1px 0 rgba(255,255,255,.03);
+  border:1px solid rgba(0,0,0,.15);
+}
+:root[data-theme="light"] .tray-well{
+  background:#edf0f5;
+  box-shadow:
+    inset 0 2px 6px rgba(0,0,0,.1),
+    inset 0 -1px 2px rgba(255,255,255,.8),
+    0 1px 0 rgba(255,255,255,.9);
+  border:1px solid rgba(0,0,0,.06);
+}
 #tray{
-  background:var(--surface-raised);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);
+  background:transparent;border:none;border-radius:12px;box-shadow:none;
   padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(105px,1fr));gap:14px;
 }
 
@@ -305,41 +306,48 @@ body.dragging-item{cursor:grabbing;user-select:none;-webkit-user-select:none}
 }
 .radial-close svg{width:24px;height:24px;fill:currentColor}
 
-/* ---------- Theme slider (mobile) ---------- */
+/* ---------- Unified tactile theme slider ---------- */
 .theme-slider{
-  height:56px;border-radius:16px;overflow:hidden;cursor:pointer;
-  border:1px solid var(--border);box-shadow:var(--shadow);
-  display:inline-flex;align-items:center;justify-content:center;
-  -webkit-user-select:none;user-select:none;
+  display:inline-flex !important;align-items:center;gap:8px;padding:0 14px !important;
+  cursor:pointer;user-select:none;-webkit-user-select:none;
 }
+.slider-label-left,.slider-label-right{
+  display:grid;place-items:center;width:20px;height:20px;
+  opacity:.45;transition:opacity .3s ease;flex-shrink:0;
+}
+/* Active side highlights */
+.slider-label-left{opacity:.9}
+.slider-label-right{opacity:.35}
+:root[data-theme="light"] .slider-label-left{opacity:.35}
+:root[data-theme="light"] .slider-label-right{opacity:.9}
+
 .slider-track{
-  position:relative;width:92px;height:40px;border-radius:999px;
-  background:#1e1b3a;
-  transition:background .35s ease;
+  position:relative;width:52px;height:28px;border-radius:14px;flex-shrink:0;
+  background:rgba(255,255,255,.1);
+  border:1px solid rgba(255,255,255,.08);
+  box-shadow:inset 0 2px 6px rgba(0,0,0,.35), 0 1px 0 rgba(255,255,255,.05);
+  transition:background .3s ease, box-shadow .3s ease;
+}
+:root[data-theme="light"] .slider-track{
+  background:rgba(0,0,0,.08);
+  border:1px solid rgba(0,0,0,.06);
+  box-shadow:inset 0 2px 6px rgba(0,0,0,.12), 0 1px 0 rgba(255,255,255,.7);
 }
 .slider-thumb{
-  position:absolute;top:3px;left:3px;width:34px;height:34px;border-radius:999px;
-  background:#fff;
-  display:grid;place-items:center;
-  box-shadow:0 2px 8px rgba(0,0,0,.3);
-  transition:left .3s cubic-bezier(.34,1.56,.64,1), background .3s ease;
-  will-change:left;
+  position:absolute;top:2px;left:2px;width:24px;height:24px;border-radius:12px;
+  background:linear-gradient(135deg,#fbbf24,#f59e0b);
+  box-shadow:0 2px 8px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.4);
+  transition:left .05s linear, background .3s ease, box-shadow .3s ease;
+  cursor:grab;touch-action:none;
 }
-.slider-icon{width:18px;height:18px;fill:#1e1b3a;position:absolute;transition:opacity .25s ease}
-.slider-icon-moon{opacity:1}
-.slider-icon-sun{opacity:0}
-/* Light mode state */
-:root[data-theme="light"] .slider-track{background:#fbbf24}
-:root[data-theme="light"] .slider-thumb{left:55px;background:#111}
-:root[data-theme="light"] .slider-icon-moon{opacity:0}
-:root[data-theme="light"] .slider-icon-sun{opacity:1;fill:#fbbf24}
-/* Dragging state — applied via JS */
-.slider-track.dragging .slider-thumb{transition:none}
+.slider-thumb:active{cursor:grabbing}
+.slider-thumb.dragging{transition:none;cursor:grabbing}
+:root[data-theme="light"] .slider-thumb{
+  background:linear-gradient(135deg,#6366f1,#4f46e5);
+  box-shadow:0 2px 8px rgba(99,102,241,.4), inset 0 1px 0 rgba(255,255,255,.25);
+}
 
 /* ---------- Misc ---------- */
-.hide-on-desktop{display:none}
-.hide-on-mobile{display:inline-flex}
-@media (max-width:768px){.hide-on-desktop{display:initial}.hide-on-mobile{display:none}}
 @media print{body{background:#fff;color:#000}.panel,#tray,.controls,.creator-grid{box-shadow:none;border-color:#ddd}.token.selected,.token:focus-visible{outline-color:#000}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 
