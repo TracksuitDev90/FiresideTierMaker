@@ -22,7 +22,6 @@
 
     <!-- Create custom items -->
     <section class="panel creator-grid" aria-labelledby="createTitle">
-      <h2 id="createTitle" class="section-title">Create custom items</h2>
 
       <div class="creator-line">
         <label class="sr" for="nameInput">Name circle</label>
@@ -100,10 +99,18 @@
           <span>Clear Board</span>
         </button>
 
-        <button id="themeToggle" class="btn" type="button" aria-pressed="false">
+        <button id="themeToggle" class="btn hide-on-mobile" type="button" aria-pressed="false">
           <span class="ico theme-icon"></span>
           <span class="theme-text">Light</span>
         </button>
+        <div id="themeSlider" class="theme-slider hide-on-desktop" role="switch" aria-checked="false" aria-label="Toggle dark/light mode" tabindex="0">
+          <div class="slider-track">
+            <div class="slider-thumb">
+              <svg class="slider-icon slider-icon-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z"/></svg>
+              <svg class="slider-icon slider-icon-sun" viewBox="0 0 24 24"><path d="M6.76 4.84l-1.8-1.79L3.17 4.84l1.79 1.79 1.8-1.79zM1 13h3v-2H1v2zm10 10h2v-3h-2v3zM4.22 19.78l1.79-1.79 1.8 1.79-1.8 1.8-1.79-1.8zM20 13h3v-2h-3v2zM12 1h2v3h-2V1zm6.01 3.05l1.79 1.79 1.8-1.79-1.8-1.8-1.79 1.8zM12 6a6 6 0 100 12A6 6 0 0012 6z"/></svg>
+            </div>
+          </div>
+        </div>
 
         <button id="saveBtn" class="btn" type="button">
           <span class="ico">
