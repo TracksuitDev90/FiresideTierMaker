@@ -25,24 +25,23 @@
 
       <div class="creator-line">
         <label class="sr" for="nameInput">Name circle</label>
-        <input id="nameInput" class="input" type="text" placeholder="Type a name..." autocomplete="off" maxlength="24" />
-        <input id="nameColor" class="color-dot" type="color" title="Circle color" />
-        <button id="addNameBtn" class="btn creator-btn" type="button">
+        <div class="input-wrap">
+          <input id="nameInput" class="input input-inset" type="text" placeholder="Type a name..." autocomplete="off" maxlength="24" />
+          <input id="nameColor" class="color-dot-inset" type="color" title="Circle color" />
+        </div>
+        <button id="addNameBtn" class="btn btn-outline" type="button">
           <span class="ico">
-            <svg viewBox="0 0 24 24"><path d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/></svg>
+            <svg viewBox="0 0 24 24"><line x1="12" y1="4" x2="12" y2="20" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><line x1="4" y1="12" x2="20" y2="12" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
           </span>
           <span>Add</span>
         </button>
-      </div>
-
-      <div class="creator-line">
         <input id="imageInput" class="sr" type="file" accept="image/*" multiple />
         <div class="img-btn-wrap">
           <button id="addImageBtn" class="btn img-add-btn" type="button">
             <span class="ico">
               <svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
             </span>
-            <span>Add Image</span>
+            <span>Image</span>
             <span class="ico img-caret">
               <svg viewBox="0 0 24 24" width="14" height="14"><path d="M7 10l5 5 5-5z"/></svg>
             </span>
@@ -127,7 +126,7 @@
 
     <!-- Items tray -->
     <section class="panel">
-      <h2 class="section-title">Image Storage</h2>
+      <h2 class="section-title">Image Storage <span id="trayCount" class="tray-count">0</span></h2>
       <div class="tray-well">
         <div id="tray" role="list"></div>
       </div>
