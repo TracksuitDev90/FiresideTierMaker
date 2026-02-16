@@ -192,7 +192,7 @@ function fitChipLabel(chip){
     return;
   }
   // Longer custom text: shrink to fit, allow wrapping
-  var maxPx = 24, minPx = 11;
+  var maxPx = 26, minPx = 11;
   chip.style.fontSize = maxPx + 'px';
   for (var px = maxPx; px >= minPx; px--) {
     chip.style.fontSize = px + 'px';
@@ -326,7 +326,7 @@ function fitLiveLabel(lbl){
   var maxW = D - pad * 2;
   var text = lbl.textContent;
 
-  var px = 19;
+  var px = 20;
   for (; px >= 10; px--) {
     if (measureText(text, '900', px) <= maxW) break;
   }
@@ -443,6 +443,7 @@ function undoLast(){
   var item = document.getElementById(last.itemId);
   var origin = document.getElementById(last.fromId);
   if (!item || !origin) return;
+  var scrollSnap = window.pageYOffset;
   flipZones([item.parentElement, origin], function(){
     if (last.originBeforeId){
       var before = document.getElementById(last.originBeforeId);
@@ -450,6 +451,8 @@ function undoLast(){
     }
     origin.appendChild(item);
   });
+  // Prevent viewport shift on mobile after DOM move
+  if (isSmall()) window.scrollTo(0, scrollSnap);
   $('#undoBtn').disabled = historyStack.length===0;
 }
 
@@ -478,7 +481,10 @@ function enableClickToPlace(zone){
     var origin = selected.parentElement;
     var originNext = selected.nextElementSibling;
     var originBeforeId = originNext ? ensureId(originNext,'tok') : '';
+    var scrollSnap = window.pageYOffset;
     flipZones([origin, zone], function(){ zone.appendChild(selected); });
+    // Prevent viewport shift on mobile after DOM move
+    if (isSmall()) window.scrollTo(0, scrollSnap);
     selected.classList.remove('selected');
     recordPlacement(selected.id, fromId, zone.id, originBeforeId);
     var r = zone.closest ? zone.closest('.tier-row') : null;
@@ -886,7 +892,11 @@ function selectRadialTarget(row){
   var origin = radialForToken.parentElement; ensureId(zone, 'zone');
   var originNext = radialForToken.nextElementSibling;
   var originBeforeId = originNext ? ensureId(originNext, 'tok') : '';
+  // Capture scroll before DOM mutation to prevent viewport shift
+  var scrollSnap = window.pageYOffset;
   flipZones([origin, zone], function(){ zone.appendChild(radialForToken); });
+  // Restore scroll immediately after DOM move
+  window.scrollTo(0, scrollSnap);
   radialForToken.classList.remove('selected');
   recordPlacement(radialForToken.id, fromId, zone.id, originBeforeId);
   vib(7);
@@ -973,16 +983,22 @@ on($('#saveBtn'),'click', function(){
     '  width:100% !important;',
     '  height:100% !important;',
     '}',
-    // Tier label chip - line-height centering
+    // Tier label chip - flex centering (supports multi-line custom labels)
     '.label-chip{',
-    '  display:block !important;',
+    '  display:flex !important;',
+    '  align-items:center !important;',
+    '  justify-content:center !important;',
     '  width:100% !important;',
     '  height:86px !important;',
-    '  line-height:86px !important;',
+    '  line-height:1.1 !important;',
     '  text-align:center !important;',
     '  color:#ffffff !important;',
-    '  padding:0 !important;',
+    '  padding:6px 8px !important;',
     '  margin:0 !important;',
+    '  overflow-wrap:break-word !important;',
+    '  word-break:normal !important;',
+    '  white-space:normal !important;',
+    '  overflow:hidden !important;',
     '}',
     '.board-title-wrap{ text-align:center !important; margin-bottom:20px !important; }',
     '.board-title{ text-align:center !important; font-size:28px !important; }',
@@ -1001,6 +1017,9 @@ on($('#saveBtn'),'click', function(){
 
   cloneWrap.appendChild(clone);
   document.body.appendChild(cloneWrap);
+
+  // Re-fit tier label chips so custom text renders correctly in export
+  $$('.label-chip', clone).forEach(function(chip){ fitChipLabel(chip); });
 
   // Size each label to fit on single line (canvas measurement for accuracy)
   var cloneLabels = $$('.token .label', clone);
