@@ -92,15 +92,21 @@ a{color:inherit;text-decoration:none}
 /* PNG button icons — fixed size, theme-aware color via filter */
 .btn-icon{width:22px;height:22px;pointer-events:none;object-fit:contain;transition:filter .2s ease}
 /* Colored buttons have dark text → icons stay black (no filter needed) */
-/* Theme toggle inverts icon color to match button text */
+/* Theme toggle: moon shows in LIGHT mode on dark bg → colorize to yellow */
+/* Dark mode: moon not visible (sun shown), keep sensible default */
 #themeToggle .moon-icon{filter:invert(1)}
-:root[data-theme="light"] #themeToggle .moon-icon{filter:none}
+:root[data-theme="light"] #themeToggle .moon-icon{
+  filter:brightness(0) invert(1) sepia(1) saturate(4) hue-rotate(3deg) brightness(.92);
+}
 #themeToggle .sun-svg{width:22px;height:22px}
 
-/* Moon subtle animation */
-@keyframes moon-glow{0%,100%{filter:invert(1) drop-shadow(0 0 2px rgba(200,180,255,.0))}50%{filter:invert(1) drop-shadow(0 0 6px rgba(200,180,255,.6))}}
-#themeToggle .moon-icon{animation:moon-glow 3s ease-in-out infinite}
-:root[data-theme="light"] #themeToggle .moon-icon{animation:none}
+/* Moon glow animation — only in light mode when moon is visible */
+@keyframes moon-glow{
+  0%,100%{filter:brightness(0) invert(1) sepia(1) saturate(4) hue-rotate(3deg) brightness(.92) drop-shadow(0 0 2px rgba(255,210,80,.0))}
+  50%{filter:brightness(0) invert(1) sepia(1) saturate(4) hue-rotate(3deg) brightness(.92) drop-shadow(0 0 6px rgba(255,210,80,.55))}
+}
+#themeToggle .moon-icon{animation:none}
+:root[data-theme="light"] #themeToggle .moon-icon{animation:moon-glow 3s ease-in-out infinite}
 
 /* Button icon animations on click */
 #undoBtn.animate .ico .btn-icon{transform:rotate(-360deg);transition:transform .4s ease}
