@@ -1249,8 +1249,8 @@ var TIER_PROMPTS = [
   'Best to Worst Survival Skills if Lost in the Woods',
   'Most to Least Dramatic Character Energy',
   'Best Dressed on a Night Out',
-  'Who Would Be the Best Spy',
-  'Most Likely to Start a Cult',
+  'Who Would Be the Best to Worst Spy',
+  'Most to Least Likely to Start a Cult',
   'Could They Talk Their Way Out of a Ticket',
   'Who Would You Want on Your Trivia Team',
   'Would They Share Their Fries',
@@ -1262,6 +1262,7 @@ var TIER_PROMPTS = [
   'Best to Worst Parent in Theory',
   'Most to Least Likely to Take a Joke Too Far',
   'Most to Least Funny in Fireside',
+  'Most to Least Has Their Shit Together in Fireside',
   'Most to Least Wealthy in Fireside Based on What You Know'
 ];
 shuffleArray(TIER_PROMPTS);
