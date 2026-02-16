@@ -100,6 +100,14 @@ a{color:inherit;text-decoration:none}
 }
 #themeToggle .sun-svg{width:22px;height:22px}
 
+/* Sun shine animation — in dark mode when sun is visible, brighter than moon */
+@keyframes sun-shine{
+  0%,100%{filter:drop-shadow(0 0 2px rgba(245,166,35,.1))}
+  50%{filter:drop-shadow(0 0 8px rgba(245,166,35,.7))}
+}
+#themeToggle .sun-svg{animation:sun-shine 2.5s ease-in-out infinite}
+:root[data-theme="light"] #themeToggle .sun-svg{animation:none}
+
 /* Moon glow animation — only in light mode when moon is visible */
 @keyframes moon-glow{
   0%,100%{filter:brightness(0) invert(1) sepia(1) saturate(4) hue-rotate(3deg) brightness(.92) drop-shadow(0 0 2px rgba(255,210,80,.0))}
@@ -119,7 +127,7 @@ a{color:inherit;text-decoration:none}
 #addTierBtn{background:#02ec88;color:#111;border-color:rgba(0,0,0,.12)}
 #undoBtn{background:#ffcc3f;color:#111;border-color:rgba(0,0,0,.12)}
 #trashClear{background:#F05C58;color:#111;border-color:rgba(0,0,0,.12)}
-#saveBtn{background:#a855f7;color:#111;border-color:rgba(0,0,0,.12)}
+#saveBtn{background:#c084fc;color:#111;border-color:rgba(0,0,0,.12)}
 
 /* Theme toggle: shows TARGET mode appearance */
 #themeToggle{background:#f0f2f5;color:#111;border-color:rgba(0,0,0,.12);font-weight:700}
