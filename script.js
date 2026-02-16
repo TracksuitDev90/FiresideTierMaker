@@ -74,9 +74,9 @@ function mixHex(aHex,bHex,t){ var a=hexToRgb(aHex), b=hexToRgb(bHex);
   var toggle=$('#themeToggle');
   var prefersLight=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: light)').matches);
 
-  // Clean sun icon (circle with uniform rays)
-  var SUN_SVG = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v3M12 20v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M1 12h3M20 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/><style>circle{fill:currentColor}path{stroke:currentColor;stroke-width:2;stroke-linecap:round}</style></svg>';
-  var MOON_SVG = '<svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z"/></svg>';
+  // Sun icon SVG (clean circle + rays), Moon uses uploaded PNG
+  var SUN_HTML = '<img class="btn-icon sun-icon" src="icons/moon.png" alt="" width="22" height="22" style="display:none" /><svg class="sun-svg" viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="12" r="5" fill="currentColor"/><line x1="12" y1="1" x2="12" y2="4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="20" x2="12" y2="23" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="4.22" y1="4.22" x2="6.34" y2="6.34" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="17.66" y1="17.66" x2="19.78" y2="19.78" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="1" y1="12" x2="4" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="20" y1="12" x2="23" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="4.22" y1="19.78" x2="6.34" y2="17.66" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="17.66" y1="6.34" x2="19.78" y2="4.22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+  var MOON_HTML = '<img class="btn-icon moon-icon" src="icons/moon.png" alt="" width="22" height="22" />';
 
   setTheme(localStorage.getItem('tm_theme') || (prefersLight ? 'light' : 'dark'));
 
@@ -91,7 +91,7 @@ function mixHex(aHex,bHex,t){ var a=hexToRgb(aHex), b=hexToRgb(bHex);
       var icon=$('.theme-icon',toggle), text=$('.theme-text',toggle);
       if(text) text.textContent = target;
       toggle.setAttribute('aria-pressed', mode==='light' ? 'true' : 'false');
-      if(icon) icon.innerHTML = (target==='Light' ? SUN_SVG : MOON_SVG);
+      if(icon) icon.innerHTML = (target==='Light' ? SUN_HTML : MOON_HTML);
     }
     $$('.tier-row').forEach(function(row){
       var chip=$('.label-chip',row), drop=$('.tier-drop',row);

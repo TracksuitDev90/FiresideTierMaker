@@ -67,14 +67,47 @@ a{color:inherit;text-decoration:none}
 .btn:hover{transform:translateY(-1px)}
 .btn:active{transform:translateY(0);filter:brightness(.98)}
 .btn .ico{width:22px;height:22px;display:grid;place-items:center}
-.btn .ico svg{width:22px;height:22px;fill:currentColor;transition:transform .25s ease}
+.btn .ico svg{width:22px;height:22px;fill:currentColor;transition:transform .25s ease,fill 0s}
+/* Lock SVG icons on colored buttons to dark fill regardless of theme */
+#addTierBtn .ico svg,
+#undoBtn .ico svg,
+#trashClear .ico svg,
+#saveBtn .ico svg,
+#addNameBtn .ico svg,
+.img-add-btn .ico svg{fill:#111}
+/* Theme toggle icon: match button text color explicitly */
+#themeToggle .ico svg{fill:#111}
+:root[data-theme="light"] #themeToggle .ico svg{fill:#f0f2f5}
+/* Lock btn-icon PNGs on colored buttons to always-dark (no invert) */
+#addTierBtn .btn-icon,
+#undoBtn .btn-icon,
+#trashClear .btn-icon,
+#saveBtn .btn-icon,
+#addNameBtn .btn-icon,
+.img-add-btn .btn-icon{filter:none !important}
+/* Lock GIF icons to dark on colored buttons */
+#trashClear .btn-gif,
+#saveBtn .btn-gif{filter:none}
+
+/* PNG button icons — fixed size, theme-aware color via filter */
+.btn-icon{width:22px;height:22px;pointer-events:none;object-fit:contain;transition:filter .2s ease}
+/* Colored buttons have dark text → icons stay black (no filter needed) */
+/* Theme toggle inverts icon color to match button text */
+#themeToggle .moon-icon{filter:invert(1)}
+:root[data-theme="light"] #themeToggle .moon-icon{filter:none}
+#themeToggle .sun-svg{width:22px;height:22px}
+
+/* Moon subtle animation */
+@keyframes moon-glow{0%,100%{filter:invert(1) drop-shadow(0 0 2px rgba(200,180,255,.0))}50%{filter:invert(1) drop-shadow(0 0 6px rgba(200,180,255,.6))}}
+#themeToggle .moon-icon{animation:moon-glow 3s ease-in-out infinite}
+:root[data-theme="light"] #themeToggle .moon-icon{animation:none}
 
 /* Button icon animations on click */
-#undoBtn.animate .ico svg{transform:rotate(-360deg)}
+#undoBtn.animate .ico .btn-icon{transform:rotate(-360deg);transition:transform .4s ease}
 #addTierBtn.animate .ico svg{transform:scale(1.2)}
 
 /* Animated GIF button icons (trash & save) */
-.btn-gif{width:22px;height:22px;pointer-events:none;object-fit:contain}
+.btn-gif{width:22px;height:22px;pointer-events:none;object-fit:contain;transition:filter .2s ease}
 
 /* Unique tool-button colors — all dark text for uniformity */
 #addTierBtn{background:#02ec88;color:#111;border-color:rgba(0,0,0,.12)}
@@ -159,7 +192,8 @@ a{color:inherit;text-decoration:none}
 
 /* ---------- Board ---------- */
 .board-title-wrap{display:flex;align-items:center;gap:8px;margin:0 0 10px}
-.title-pen svg{width:18px;height:18px;fill:currentColor;opacity:.55}
+.pen-icon{width:18px;height:18px;object-fit:contain;opacity:.55;transition:filter .2s ease;filter:invert(1)}
+:root[data-theme="light"] .pen-icon{filter:none}
 .board-title{font-size:clamp(20px,2.2vw,28px);font-weight:900;margin:0}
 .board-title[contenteditable]:empty::before{content:'Add a title...';color:var(--muted)}
 
