@@ -1183,13 +1183,30 @@ var _saveTimeout = null;
 function scheduleSave(){
   clearTimeout(_saveTimeout);
   _saveTimeout = setTimeout(saveTierList, 800);
+  updateTrayCount();
+}
+
+/* ---------- Token counter ---------- */
+function updateTrayCount(){
+  var badge = $('#trayCount');
+  if (!badge || !tray) return;
+  var count = $$('.token', tray).length;
+  var prev = parseInt(badge.textContent, 10) || 0;
+  badge.textContent = count;
+  badge.setAttribute('data-count', count);
+  if (count !== prev) {
+    badge.classList.remove('pulse');
+    void badge.offsetWidth; // reflow to re-trigger
+    badge.classList.add('pulse');
+  }
 }
 
 // Hook into mutations for auto-save
 var _saveObserver = null;
 function startAutoSave(){
   if (_saveObserver) return;
-  _saveObserver = new MutationObserver(scheduleSave);
+  var onMutate = function(){ scheduleSave(); updateTrayCount(); };
+  _saveObserver = new MutationObserver(onMutate);
   _saveObserver.observe(board, { childList: true, subtree: true, characterData: true });
   _saveObserver.observe(tray, { childList: true, subtree: true });
   var titleEl = $('.board-title');
@@ -1297,6 +1314,7 @@ document.addEventListener('DOMContentLoaded', function start(){
 
   // Start auto-save after initial load
   startAutoSave();
+  updateTrayCount();
 
   // Title + suggestion pill
   var titleEl = $('.board-title');
