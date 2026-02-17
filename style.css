@@ -146,6 +146,9 @@ a{color:inherit;text-decoration:none}
 :root[data-theme="light"] #themeToggle{background:#1e1b3a;color:#f0f2f5;border-color:rgba(255,255,255,.1)}
 #themeToggle.animate .ico svg{transform:rotate(180deg)}
 
+/* Add Name button — filled teal (complementary to orange-red Image button) */
+#addNameBtn{background:#06B6D4;color:#111;border-color:rgba(0,0,0,.12)}
+
 /* Outline Add button (border only, no fill) */
 .btn-outline{
   background:transparent !important;color:var(--text);
@@ -212,7 +215,7 @@ a{color:inherit;text-decoration:none}
 
 /* Add Image button + dropdown */
 .img-btn-wrap{position:relative;flex:0 0 auto}
-.img-add-btn{background:#38bdf8;color:#111;border-color:rgba(0,0,0,.12);font-weight:700}
+.img-add-btn{background:#F14A26;color:#111;border-color:rgba(0,0,0,.12);font-weight:700}
 .img-caret{width:14px !important;height:14px !important;opacity:.6;margin-left:-4px}
 .img-caret svg{fill:currentColor}
 .img-dropdown{
@@ -240,10 +243,15 @@ a{color:inherit;text-decoration:none}
 /* Collapsible help */
 .help{color:var(--muted);font-weight:600;margin-top:6px;line-height:1.6}
 .help-toggle{
-  color:var(--neon);font-size:18px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;
+  color:var(--muted);font-size:13px;font-weight:800;letter-spacing:1.5px;
+  cursor:pointer;display:inline-flex;align-items:center;gap:5px;
   user-select:none;-webkit-user-select:none;
+  padding:4px 10px;border-radius:8px;border:1px solid var(--border);
+  transition:background .15s ease,color .15s ease;
 }
-.help-toggle svg{width:14px;height:14px;fill:currentColor;transition:transform .25s ease}
+.help-toggle:hover{background:rgba(255,255,255,.05);color:var(--text)}
+:root[data-theme="light"] .help-toggle:hover{background:rgba(0,0,0,.04)}
+.help-toggle svg{width:16px;height:16px;fill:currentColor;transition:transform .25s ease}
 .help.open .help-toggle svg{transform:rotate(90deg)}
 .help-tips{
   max-height:0;overflow:hidden;
@@ -296,6 +304,9 @@ a{color:inherit;text-decoration:none}
   line-height:1.1;overflow-wrap:break-word;word-break:normal;white-space:normal;
   text-align:center;padding:6px 8px;overflow:hidden;
 }
+
+/* Chip area: positions color picker relative to chip, not the stretching tier-label */
+.chip-area{position:relative;width:100%}
 
 /* Color picker dot on tier label — hidden until interaction */
 .color-pick-btn{
@@ -406,6 +417,17 @@ body.dragging-item{cursor:grabbing;user-select:none;-webkit-user-select:none}
 @media (max-width:480px){
   #tray{grid-template-columns:repeat(3,1fr);gap:10px;padding:10px}
   #tray .token{width:100%;height:auto;aspect-ratio:1}
+}
+
+/* ---------- Sticky tray on mobile ---------- */
+@media (max-width:768px){
+  #traySection{
+    position:sticky;bottom:0;z-index:15;
+    max-height:45vh;overflow-y:auto;-webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;
+    box-shadow:0 -6px 20px rgba(0,0,0,.35);
+    border-radius:16px 16px 0 0;margin-bottom:0;
+  }
 }
 
 /* ---------- A11y ---------- */

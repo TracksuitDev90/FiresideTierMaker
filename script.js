@@ -157,8 +157,11 @@ function buildRowDom(){
   var del=document.createElement('button'); del.className='row-del'; del.type='button';
   del.innerHTML='<svg viewBox="0 0 24 24"><path d="M18.3 5.7L12 12l-6.3-6.3-1.4 1.4L10.6 13.4l-6.3 6.3 1.4 1.4L12 14.4l6.3 6.3 1.4-1.4-6.3-6.3 6.3-6.3z"/></svg>';
 
-  labelWrap.appendChild(chip);
-  labelWrap.appendChild(colorBtn);
+  var chipArea = document.createElement('div');
+  chipArea.className = 'chip-area';
+  chipArea.appendChild(chip);
+  chipArea.appendChild(colorBtn);
+  labelWrap.appendChild(chipArea);
   labelWrap.appendChild(del);
 
   var drop=document.createElement('div');
@@ -1469,7 +1472,7 @@ document.addEventListener('DOMContentLoaded', function start(){
   if(help){
     var helpParent = help.closest('.help') || help;
     helpParent.innerHTML =
-      '<span class="help-toggle" id="helpToggle"><strong>Help</strong> <svg viewBox="0 0 24 24"><path d="M10 6l6 6-6 6z"/></svg></span>' +
+      '<span class="help-toggle" id="helpToggle">HELP <svg viewBox="0 0 24 24"><path d="M10 6l6 6-6 6z"/></svg></span>' +
       '<div class="help-tips">' +
       '<div class="tip">' + (isSmall()
        ? 'Tap a circle to choose a row. Drag placed circles to reorder.'

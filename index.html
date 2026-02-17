@@ -29,7 +29,7 @@
           <input id="nameInput" class="input input-inset" type="text" placeholder="Type a name..." autocomplete="off" maxlength="24" />
           <input id="nameColor" class="color-dot-inset" type="color" title="Circle color" />
         </div>
-        <button id="addNameBtn" class="btn btn-outline" type="button">
+        <button id="addNameBtn" class="btn" type="button">
           <span class="ico">
             <svg viewBox="0 0 24 24"><line x1="12" y1="4" x2="12" y2="20" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><line x1="4" y1="12" x2="20" y2="12" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
           </span>
@@ -39,7 +39,7 @@
         <div class="img-btn-wrap">
           <button id="addImageBtn" class="btn img-add-btn" type="button">
             <span class="ico">
-              <svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/></svg>
             </span>
             <span>Image</span>
             <span class="ico img-caret">
@@ -125,7 +125,7 @@
     </section>
 
     <!-- Items tray -->
-    <section class="panel">
+    <section class="panel" id="traySection">
       <h2 class="section-title">Image Storage <span id="trayCount" class="tray-count">0</span></h2>
       <div class="tray-well">
         <div id="tray" role="list"></div>
