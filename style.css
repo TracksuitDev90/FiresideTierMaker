@@ -95,9 +95,7 @@ a{color:inherit;text-decoration:none}
 #saveBtn .btn-icon{filter:none !important}
 /* Lock GIF icons to dark on colored buttons */
 #trashClear .btn-gif,
-#saveBtn .btn-gif,
-.img-add-btn .btn-gif{filter:none}
-.img-add-btn .btn-gif{width:32px;height:32px}
+#saveBtn .btn-gif{filter:none}
 
 /* PNG button icons — fixed size, theme-aware color via filter */
 .btn-icon{width:22px;height:22px;pointer-events:none;object-fit:contain;transition:filter .2s ease}
@@ -144,79 +142,75 @@ a{color:inherit;text-decoration:none}
 :root[data-theme="light"] #themeToggle{background:#1e1b3a;color:#f0f2f5;border-color:rgba(255,255,255,.1)}
 #themeToggle.animate .ico svg{transform:rotate(180deg)}
 
-/* Outline Add button (border only, no fill) */
-.btn-outline{
-  background:transparent !important;color:var(--text);
-  border:2px solid #7835e6 !important;
-  box-shadow:none;
-}
-.btn-outline::before{display:none}
-.btn-outline:hover{background:rgba(120,53,230,.08) !important}
-.btn-outline .ico svg{fill:none}
-
 .btn.small{height:42px;padding:0 12px;border-radius:12px;font-weight:700}
 
 /* ---------- Creator ---------- */
 .creator-grid{display:grid;gap:12px}
-.creator-line{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 
-/* Input with inline color picker */
-.input-wrap{
-  position:relative;flex:1 1 180px;max-width:300px;
-}
-.input-inset{
-  width:100%;height:48px;padding:0 50px 0 14px;color:var(--text);border:none;border-radius:12px;
+/* Unified action bar */
+.action-bar{
+  display:flex;align-items:center;
+  max-width:520px;margin:0 auto;width:100%;
   background:var(--card);
-  box-shadow:inset 3px 3px 6px rgba(0,0,0,.25), inset -2px -2px 5px rgba(255,255,255,.05);
-  transition:box-shadow .2s ease;flex:none;
+  border:1px solid var(--border);
+  border-radius:14px;
+  height:48px;overflow:visible;
 }
-.input-inset:focus{box-shadow:inset 3px 3px 6px rgba(0,0,0,.3), inset -2px -2px 5px rgba(255,255,255,.06), 0 0 0 2px rgba(139,125,255,.35)}
-.input-inset::placeholder{color:var(--muted);opacity:.7}
-:root[data-theme="light"] .input-inset{
-  background:#e8ecf2;
-  box-shadow:inset 3px 3px 6px rgba(0,0,0,.08), inset -2px -2px 5px rgba(255,255,255,.7);
+.action-icon{
+  display:grid;place-items:center;
+  width:48px;height:46px;flex:0 0 48px;
+  color:var(--muted);
+  border:none;background:none;cursor:pointer;
+  transition:color .15s ease,background .15s ease;
+  border-radius:12px;margin:0 1px;
 }
-:root[data-theme="light"] .input-inset:focus{box-shadow:inset 3px 3px 6px rgba(0,0,0,.1), inset -2px -2px 5px rgba(255,255,255,.8), 0 0 0 2px rgba(107,95,255,.3)}
-/* Neumorphic color picker inside input */
-.color-dot-inset{
-  position:absolute;right:6px;top:50%;transform:translateY(-50%);
-  width:34px;height:34px;border-radius:999px;border:none;cursor:pointer;
-  box-shadow:
-    inset 2px 2px 4px rgba(0,0,0,.2),
-    inset -1px -1px 3px rgba(255,255,255,.06),
-    0 1px 4px rgba(0,0,0,.2);
-  transition:box-shadow .2s ease, transform .1s ease;
+.action-icon:hover{color:var(--accent);background:rgba(139,125,255,.1)}
+.action-icon:active{background:rgba(139,125,255,.18)}
+.action-icon svg{width:20px;height:20px}
+.action-divider{
+  width:1px;height:24px;flex:0 0 1px;
+  background:var(--border);
 }
-.color-dot-inset:hover{box-shadow:inset 2px 2px 4px rgba(0,0,0,.25), inset -1px -1px 3px rgba(255,255,255,.08), 0 2px 8px rgba(0,0,0,.25)}
-.color-dot-inset:active{transform:translateY(-50%) scale(.92)}
-:root[data-theme="light"] .color-dot-inset{
-  box-shadow:inset 2px 2px 4px rgba(0,0,0,.06), inset -1px -1px 3px rgba(255,255,255,.6), 0 1px 4px rgba(0,0,0,.08);
+.action-input{
+  flex:1 1 0;height:100%;min-width:0;
+  padding:0 12px;
+  background:none;border:none;outline:none;
+  color:var(--text);font-size:15px;font-weight:500;
+}
+.action-input::placeholder{color:var(--muted);opacity:.6}
+.action-color{
+  width:30px;height:30px;flex:0 0 30px;
+  border-radius:999px;border:2px solid var(--border);
+  cursor:pointer;margin-right:9px;
+  transition:transform .1s ease,border-color .15s ease;
+}
+.action-color:hover{transform:scale(1.1);border-color:var(--accent)}
+.action-color:active{transform:scale(.9)}
+@media (max-width:480px){
+  .action-bar{height:44px;border-radius:12px}
+  .action-icon{width:42px;height:42px;flex:0 0 42px}
+  .action-icon svg{width:18px;height:18px}
+  .action-input{font-size:14px;padding:0 8px}
+  .action-color{width:26px;height:26px;flex:0 0 26px;margin-right:7px}
 }
 
 /* Generic .input used in URL inline etc */
 .input{
-  flex:1 1 260px;height:48px;padding:0 14px;color:var(--text);border:none;border-radius:12px;
-  background:var(--card);
-  box-shadow:inset 3px 3px 6px rgba(0,0,0,.25), inset -2px -2px 5px rgba(255,255,255,.05);
-  transition:box-shadow .2s ease;
+  flex:1 1 260px;height:48px;padding:0 14px;color:var(--text);
+  border-radius:12px;background:var(--card);
+  border:1px solid var(--border);
+  transition:border-color .15s ease;
 }
-.input:focus{box-shadow:inset 3px 3px 6px rgba(0,0,0,.3), inset -2px -2px 5px rgba(255,255,255,.06), 0 0 0 2px rgba(139,125,255,.35)}
+.input:focus{border-color:var(--accent);outline:none}
 .input::placeholder{color:var(--muted);opacity:.7}
-:root[data-theme="light"] .input{
-  background:#e8ecf2;
-  box-shadow:inset 3px 3px 6px rgba(0,0,0,.08), inset -2px -2px 5px rgba(255,255,255,.7);
-}
-:root[data-theme="light"] .input:focus{box-shadow:inset 3px 3px 6px rgba(0,0,0,.1), inset -2px -2px 5px rgba(255,255,255,.8), 0 0 0 2px rgba(107,95,255,.3)}
+:root[data-theme="light"] .input{background:#e8ecf2}
 
-/* Add Image button + dropdown */
+/* Add Image dropdown */
 .img-btn-wrap{position:relative;flex:0 0 auto}
-.img-add-btn{background:#35a3e6;color:#111;border-color:rgba(0,0,0,.12);font-weight:700}
-.img-caret{width:14px !important;height:14px !important;opacity:.6;margin-left:-4px}
-.img-caret svg{fill:currentColor}
 .img-dropdown{
   position:absolute;top:calc(100% + 6px);left:0;right:auto;min-width:220px;
   background:var(--surface-raised);border:1px solid var(--border);
-  border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.35);
+  border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,.2);
   padding:6px;z-index:30;
   animation:dropdown-in .15s ease;
 }

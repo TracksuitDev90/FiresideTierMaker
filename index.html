@@ -23,26 +23,11 @@
     <!-- Create custom items -->
     <section class="panel creator-grid" aria-labelledby="createTitle">
 
-      <div class="creator-line">
-        <label class="sr" for="nameInput">Name circle</label>
-        <div class="input-wrap">
-          <input id="nameInput" class="input input-inset" type="text" placeholder="Type a name..." autocomplete="off" maxlength="24" />
-          <input id="nameColor" class="color-dot-inset" type="color" title="Circle color" />
-        </div>
-        <button id="addNameBtn" class="btn btn-outline" type="button">
-          <span class="ico">
-            <svg viewBox="0 0 24 24"><line x1="12" y1="4" x2="12" y2="20" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><line x1="4" y1="12" x2="20" y2="12" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
-          </span>
-          <span>Add</span>
-        </button>
-        <input id="imageInput" class="sr" type="file" accept="image/*" multiple />
+      <input id="imageInput" class="sr" type="file" accept="image/*" multiple />
+      <div class="action-bar">
         <div class="img-btn-wrap">
-          <button id="addImageBtn" class="btn img-add-btn" type="button">
-            <img class="btn-gif" src="icons/image.gif" alt="" width="28" height="28" />
-            <span>Image</span>
-            <span class="ico img-caret">
-              <svg viewBox="0 0 24 24" width="14" height="14"><path d="M7 10l5 5 5-5z"/></svg>
-            </span>
+          <button id="addImageBtn" class="action-icon" type="button" title="Upload image" aria-label="Upload image">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
           </button>
           <div id="imgDropdown" class="img-dropdown hidden">
             <button id="uploadBtn" class="img-option" type="button">
@@ -60,6 +45,13 @@
             </div>
           </div>
         </div>
+        <button id="addNameBtn" class="action-icon" type="button" title="Add token" aria-label="Add token">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+        <div class="action-divider"></div>
+        <label class="sr" for="nameInput">Token name</label>
+        <input id="nameInput" class="action-input" type="text" placeholder="Type a name..." autocomplete="off" maxlength="24" />
+        <input id="nameColor" class="action-color" type="color" title="Token color" />
       </div>
 
       <p class="help">
