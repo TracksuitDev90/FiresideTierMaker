@@ -1467,24 +1467,128 @@ document.addEventListener('DOMContentLoaded', function start(){
     if (e.key === 'Enter') { e.preventDefault(); addImageFromUrl(); }
   });
 
-  // Help copy (collapsible)
-  var help=$('#helpText') || $('.help');
-  if(help){
-    var helpParent = help.closest('.help') || help;
-    helpParent.innerHTML =
-      '<span class="help-toggle" id="helpToggle">HELP <svg viewBox="0 0 24 24"><path d="M10 6l6 6-6 6z"/></svg></span>' +
-      '<div class="help-tips">' +
-      '<div class="tip">' + (isSmall()
-       ? 'Tap a circle to choose a row. Drag placed circles to reorder.'
-       : 'Drag circles into rows. Drag back to Image Storage to unplace.') + '</div>' +
-      '<div class="tip">Tap a tier letter to rename it. ' +
-      (isSmall() ? 'Tap' : 'Hover over') + ' a label to change its color.</div>' +
-      '<div class="tip">Tap a suggestion to use it as your title, or type your own.</div>' +
-      '<div class="tip">Paste an image URL or upload files to add custom images.</div>' +
-      '<div class="tip">' + (isSmall() ? 'Swipe up on' : 'Double-click') + ' a custom token to delete it.</div>' +
-      '</div>';
-    on($('#helpToggle'), 'click', function(){ helpParent.classList.toggle('open'); });
-  }
+  // Pull-down help drawer
+  (function(){
+    var drawer = $('#helpDrawer');
+    var handle = $('#helpHandle');
+    var tray   = $('#helpTray');
+    var tips   = $('#helpTips');
+    if(!drawer || !handle || !tray || !tips) return;
+
+    // Populate tips
+    var tipData = [
+      isSmall()
+        ? 'Tap a circle to choose a row. Drag placed circles to reorder.'
+        : 'Drag circles into rows. Drag back to Image Storage to unplace.',
+      'Tap a tier letter to rename it. ' + (isSmall() ? 'Tap' : 'Hover over') + ' a label to change its color.',
+      'Tap a suggestion to use it as your title, or type your own.',
+      'Paste an image URL or upload files to add custom images.',
+      (isSmall() ? 'Swipe up on' : 'Double-click') + ' a custom token to delete it.'
+    ];
+    tips.innerHTML = tipData.map(function(t){ return '<div class="tip">' + t + '</div>'; }).join('');
+
+    var isOpen = false;
+    var dragging = false;
+    var startY = 0;
+    var currentH = 0;
+    var maxH = 0;
+    var velocity = 0;
+    var lastY = 0;
+    var lastT = 0;
+
+    function measure(){ maxH = tips.scrollHeight; }
+
+    function snapOpen(){
+      measure();
+      isOpen = true;
+      drawer.classList.add('animating','open');
+      tray.style.height = maxH + 'px';
+      setTimeout(function(){ drawer.classList.remove('animating'); }, 460);
+    }
+    function snapClosed(){
+      isOpen = false;
+      drawer.classList.add('animating');
+      drawer.classList.remove('open');
+      tray.style.height = '0px';
+      setTimeout(function(){ drawer.classList.remove('animating'); }, 460);
+    }
+
+    // Click/tap toggle
+    on(handle, 'click', function(e){
+      if(dragging) return;
+      if(isOpen) snapClosed(); else snapOpen();
+    });
+
+    // Drag interaction
+    on(handle, 'pointerdown', function(e){
+      if(e.button && e.button !== 0) return;
+      e.preventDefault();
+      handle.setPointerCapture(e.pointerId);
+      measure();
+      dragging = false;
+      startY = e.clientY;
+      currentH = isOpen ? maxH : 0;
+      velocity = 0;
+      lastY = e.clientY;
+      lastT = Date.now();
+
+      // Remove CSS transition during drag
+      drawer.classList.remove('animating');
+
+      function onMove(ev){
+        var dy = ev.clientY - startY;
+        var now = Date.now();
+        var dt = now - lastT;
+        if(dt > 0) velocity = (ev.clientY - lastY) / dt;
+        lastY = ev.clientY;
+        lastT = now;
+
+        if(!dragging && Math.abs(dy) > 4) dragging = true;
+        if(!dragging) return;
+
+        var raw = currentH + dy;
+        // Rubber-band past limits
+        var h;
+        if(raw < 0){
+          h = -Math.pow(Math.abs(raw), 0.6);
+        } else if(raw > maxH){
+          var over = raw - maxH;
+          h = maxH + Math.pow(over, 0.6);
+        } else {
+          h = raw;
+        }
+        tray.style.height = Math.max(0, h) + 'px';
+
+        // Show open state when past threshold
+        if(h > maxH * 0.15) drawer.classList.add('open');
+        else drawer.classList.remove('open');
+      }
+
+      function onUp(){
+        try{ handle.releasePointerCapture(e.pointerId); }catch(_){}
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerup', onUp);
+
+        if(!dragging) return; // let click handler deal with taps
+
+        var finalH = parseFloat(tray.style.height) || 0;
+        // Use velocity + position to decide open/close
+        var shouldOpen = (velocity > 0.3) || (finalH > maxH * 0.35 && velocity > -0.3);
+        if(shouldOpen) snapOpen(); else snapClosed();
+        dragging = false;
+      }
+
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp);
+    });
+
+    // Idle peek animation to hint interactivity
+    setTimeout(function(){
+      if(isOpen) return;
+      drawer.classList.add('peek');
+      setTimeout(function(){ drawer.classList.remove('peek'); }, 1800);
+    }, 2500);
+  })();
 
   enableClickToPlace(tray);
   refitAllLabels();
