@@ -85,8 +85,6 @@ a{color:inherit;text-decoration:none}
 #undoBtn .ico svg,
 #trashClear .ico svg,
 #saveBtn .ico svg{fill:#111}
-/* Landscape icon uses inline colors — don't override with flat fill */
-.img-add-btn .ico .landscape-ico{fill:none}
 /* Theme toggle icon: match button text color explicitly */
 #themeToggle .ico svg{fill:#111}
 :root[data-theme="light"] #themeToggle .ico svg{fill:#f0f2f5}
@@ -94,11 +92,11 @@ a{color:inherit;text-decoration:none}
 #addTierBtn .btn-icon,
 #undoBtn .btn-icon,
 #trashClear .btn-icon,
-#saveBtn .btn-icon,
-.img-add-btn .btn-icon{filter:none !important}
+#saveBtn .btn-icon{filter:none !important}
 /* Lock GIF icons to dark on colored buttons */
 #trashClear .btn-gif,
-#saveBtn .btn-gif{filter:none}
+#saveBtn .btn-gif,
+.img-add-btn .btn-gif{filter:none}
 
 /* PNG button icons — fixed size, theme-aware color via filter */
 .btn-icon{width:22px;height:22px;pointer-events:none;object-fit:contain;transition:filter .2s ease}
