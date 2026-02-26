@@ -188,7 +188,7 @@ function rowLabel(row){ var chip=row?row.querySelector('.label-chip'):null; retu
 /* ---------- Chip label auto-sizer ---------- */
 function fitChipLabel(chip){
   if (!chip) return;
-  var text = chip.textContent.replace(/\s+/g,' ').trim();
+  var text = chip.textContent.replace(/\s+/g,' ').trim().toUpperCase();
   if (!text) { chip.style.fontSize = ''; return; }
   // Available width: chip width minus horizontal padding
   var chipW = chip.clientWidth || chip.offsetWidth;
@@ -198,9 +198,28 @@ function fitChipLabel(chip){
   var maxPx = 48, minPx = 8;
   var px = maxPx;
   for (; px >= minPx; px--) {
-    if (measureText(text, '900', px) <= availW) break;
+    // account for letter-spacing:.5px
+    if (measureText(text, '900', px) + text.length * 0.5 <= availW) break;
   }
   chip.style.fontSize = Math.max(px, minPx) + 'px';
+}
+
+/* Equalize all tier label font sizes to the smallest needed */
+function uniformizeTierLabels(){
+  var chips = $$('#tierBoard .label-chip');
+  if (!chips.length) return;
+  // Fit each chip individually first
+  chips.forEach(function(c){ fitChipLabel(c); });
+  // Find the smallest font size
+  var minSize = Infinity;
+  chips.forEach(function(c){
+    var sz = parseInt(c.style.fontSize, 10);
+    if (sz && sz < minSize) minSize = sz;
+  });
+  // Apply uniform size to all
+  if (minSize < Infinity && minSize > 0) {
+    chips.forEach(function(c){ c.style.fontSize = minSize + 'px'; });
+  }
 }
 
 /* ---------- Apply tier color to all related elements ---------- */
@@ -228,9 +247,9 @@ function createRow(cfg){
   chip.textContent = cfg.label;
   applyTierColor(node, cfg.color);
 
-  on(chip,'input', function(){ fitChipLabel(chip); });
+  on(chip,'input', function(){ uniformizeTierLabels(); });
   on(chip,'keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); chip.blur(); } });
-  on(chip,'blur', function(){ fitChipLabel(chip); });
+  on(chip,'blur', function(){ uniformizeTierLabels(); });
   fitChipLabel(chip);
 
   /* Color picker — label wraps input so native click opens the dialog */
@@ -249,7 +268,7 @@ function createRow(cfg){
   on(del,'click', function(){
     var tokens = $$('.token', drop);
     flipZones([drop,tray], function(){ tokens.forEach(function(t){ tray.appendChild(t); }); });
-    node.remove(); refreshRadialOptions();
+    node.remove(); uniformizeTierLabels(); refreshRadialOptions();
   });
 
   enableRowReorder(labelArea, node);
@@ -347,7 +366,7 @@ function fitLiveLabel(lbl){
   s.padding = pad + 'px';
   s.overflow = 'hidden';
 }
-function refitAllLabels(){ $$('.token .label').forEach(fitLiveLabel); }
+function refitAllLabels(){ $$('.token .label').forEach(fitLiveLabel); uniformizeTierLabels(); }
 on(window,'resize', debounce(refitAllLabels, 120));
 
 /* ---------- Tokens ---------- */
@@ -1020,7 +1039,12 @@ on($('#saveBtn'),'click', function(){
   document.body.appendChild(cloneWrap);
 
   // Re-fit tier label chips so custom text renders correctly in export
-  $$('.label-chip', clone).forEach(function(chip){ fitChipLabel(chip); });
+  var cloneChips = $$('.label-chip', clone);
+  cloneChips.forEach(function(chip){ fitChipLabel(chip); });
+  // Uniform size across all tier labels in clone
+  var minChipSize = Infinity;
+  cloneChips.forEach(function(c){ var sz = parseInt(c.style.fontSize, 10); if (sz && sz < minChipSize) minChipSize = sz; });
+  if (minChipSize < Infinity && minChipSize > 0) cloneChips.forEach(function(c){ c.style.fontSize = minChipSize + 'px'; });
 
   // Size each label to fit on single line (canvas measurement for accuracy)
   var cloneLabels = $$('.token .label', clone);
@@ -1186,6 +1210,7 @@ function loadTierList(){
       });
       board.appendChild(node);
     });
+    uniformizeTierLabels();
     // Restore tray
     data.tray.forEach(function(tokData){
       if (tokData.type === 'name') {
@@ -1371,6 +1396,7 @@ function applyPrompt(prompt){
     prompt.tiers.forEach(function(t){
       board.appendChild(createRow({ label: t.label, color: t.color }));
     });
+    uniformizeTierLabels();
     refreshRadialOptions();
   }
   scheduleSave();
@@ -1389,6 +1415,7 @@ document.addEventListener('DOMContentLoaded', function start(){
   if (!restored) {
     // rows
     defaultTiers.forEach(function(t){ board.appendChild(createRow(t)); });
+    uniformizeTierLabels();
     // tray defaults (pre-rendered with flat bg + random contrasting text, not custom)
     communityCast.forEach(function(n){ tray.appendChild(buildNameToken(n, nextPreset(), false)); });
   }
@@ -1545,6 +1572,7 @@ document.addEventListener('DOMContentLoaded', function start(){
   on($('#addTierBtn'),'click', function(){
     animateBtn(this);
     board.appendChild(createRow({label:'NEW', color: nextTierColor()}));
+    uniformizeTierLabels();
     refreshRadialOptions();
     scheduleSave();
   });
