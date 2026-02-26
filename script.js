@@ -194,8 +194,8 @@ function fitChipLabel(chip){
     chip.style.fontSize = '';
     return;
   }
-  // Longer custom text: shrink to fit, allow wrapping
-  var maxPx = 26, minPx = 11;
+  // Longer custom text: shrink aggressively to fit, never overflow
+  var maxPx = 26, minPx = 8;
   chip.style.fontSize = maxPx + 'px';
   for (var px = maxPx; px >= minPx; px--) {
     chip.style.fontSize = px + 'px';
@@ -1006,7 +1006,7 @@ on($('#saveBtn'),'click', function(){
     '.board-title-wrap{ text-align:center !important; margin-bottom:20px !important; }',
     '.board-title{ text-align:center !important; font-size:28px !important; }',
     '.title-pen{ display:none !important; }',
-    '.suggestion-pill{ display:none !important; }'
+    '.prompt-drawer{ display:none !important; }'
   ].join('\n');
   clone.appendChild(style);
 
@@ -1237,36 +1237,86 @@ function startAutoSave(){
   }
 }
 
-/* ---------- Rotating prompt suggestions ---------- */
+/* ---------- Prompt suggestions with optional tier configs ---------- */
 var TIER_PROMPTS = [
-  'Most Likely to Survive the Hunger Games',
-  'Best Zombie Apocalypse Survival Team',
-  'Most to Least Cleanly',
-  'Would You Rather Be Stuck in an Elevator With',
-  'Best Road Trip Companion',
-  'Could They Keep a Secret',
-  'Most Likely to Go Viral on TikTok',
-  'Who Would Win in a Roast Battle',
-  'Who Would You Trust to Cook for You',
-  'Trustworthy Enough to Watch Your Phone',
-  'Survival Skills if Lost in the Woods',
-  'Most Dramatic Main Character Energy',
-  'Best Dressed on a Night Out',
-  'Who Would Be the Best Spy',
-  'Most Likely to Start a Cult (Accidentally)',
-  'Could They Talk Their Way Out of a Ticket',
-  'Who Would You Want on Your Trivia Team',
-  'Would They Share Their Fries',
-  'Most Likely to Cry During a Pixar Movie',
-  'Best Duo Combinations',
-  'Most to Least Likely to Be in Fireside in a Year',
-  'Best to Worst Voice in VC',
-  'People You\'re Most to Least Excited to See Chatting in Gen Chat',
-  'Most to Least Likely to End Up in Prison',
-  'Best to Worst Parent in Theory',
-  'Most to Least Likely to Take a Joke Too Far',
-  'Most to Least Funny in Fireside',
-  'Most to Least Wealthy in Fireside Based on What You Know'
+  { text: 'Most Likely to Survive the Hunger Games' },
+  { text: 'Best Zombie Apocalypse Survival Team' },
+  { text: 'Most to Least Cleanly' },
+  { text: 'Would You Rather Be Stuck in an Elevator With' },
+  { text: 'Best Road Trip Companion' },
+  { text: 'Could They Keep a Secret' },
+  { text: 'Most Likely to Go Viral on TikTok' },
+  { text: 'Who Would Win in a Roast Battle' },
+  { text: 'Who Would You Trust to Cook for You' },
+  { text: 'Trustworthy Enough to Watch Your Phone' },
+  { text: 'Survival Skills if Lost in the Woods' },
+  { text: 'Most Dramatic Main Character Energy' },
+  { text: 'Best Dressed on a Night Out' },
+  { text: 'Who Would Be the Best Spy' },
+  { text: 'Most Likely to Start a Cult (Accidentally)' },
+  { text: 'Could They Talk Their Way Out of a Ticket' },
+  { text: 'Who Would You Want on Your Trivia Team' },
+  { text: 'Would They Share Their Fries' },
+  { text: 'Most Likely to Cry During a Pixar Movie' },
+  { text: 'Best Duo Combinations' },
+  { text: 'Most to Least Likely to Be in Fireside in a Year' },
+  { text: 'Best to Worst Voice in VC' },
+  { text: 'People You\'re Most to Least Excited to See Chatting in Gen Chat' },
+  { text: 'Most to Least Likely to End Up in Prison' },
+  { text: 'Best to Worst Parent in Theory' },
+  { text: 'Most to Least Likely to Take a Joke Too Far' },
+  { text: 'Most to Least Funny in Fireside' },
+  { text: 'Most to Least Wealthy in Fireside Based on What You Know' },
+  { text: 'What color aura do these people give off?', tiers: [
+    { label: 'RED', color: '#ef4444' },
+    { label: 'ORANGE', color: '#f97316' },
+    { label: 'YELLOW', color: '#eab308' },
+    { label: 'GREEN', color: '#22c55e' },
+    { label: 'BLUE', color: '#3b82f6' },
+    { label: 'PURPLE', color: '#a855f7' },
+    { label: 'PINK', color: '#ec4899' }
+  ]},
+  { text: 'How well do you actually know these people?', tiers: [
+    { label: 'BESTIE', color: '#ec4899' },
+    { label: 'CLOSE', color: '#a855f7' },
+    { label: 'COOL', color: '#3b82f6' },
+    { label: 'CHILL', color: '#22c55e' },
+    { label: 'MET ONCE', color: '#eab308' },
+    { label: 'WHO?', color: '#6b7280' }
+  ]},
+  { text: 'Which element are these people?', tiers: [
+    { label: 'FIRE', color: '#ef4444' },
+    { label: 'WATER', color: '#3b82f6' },
+    { label: 'EARTH', color: '#84cc16' },
+    { label: 'AIR', color: '#a5b4fc' }
+  ]},
+  { text: 'What Hogwarts house would they be in?', tiers: [
+    { label: 'GRYFFINDOR', color: '#dc2626' },
+    { label: 'SLYTHERIN', color: '#16a34a' },
+    { label: 'RAVENCLAW', color: '#2563eb' },
+    { label: 'HUFFLEPUFF', color: '#eab308' }
+  ]},
+  { text: 'How trustworthy are they on a scale?', tiers: [
+    { label: 'VAULT', color: '#22c55e' },
+    { label: 'SOLID', color: '#3b82f6' },
+    { label: 'OKAY', color: '#eab308' },
+    { label: 'RISKY', color: '#f97316' },
+    { label: 'SNITCH', color: '#ef4444' }
+  ]},
+  { text: 'What role would they play in a heist?', tiers: [
+    { label: 'MASTERMIND', color: '#6366f1' },
+    { label: 'HACKER', color: '#06b6d4' },
+    { label: 'MUSCLE', color: '#ef4444' },
+    { label: 'DRIVER', color: '#f59e0b' },
+    { label: 'INSIDE MAN', color: '#22c55e' },
+    { label: 'LOOSE CANNON', color: '#ec4899' }
+  ]},
+  { text: 'What season energy do they give?', tiers: [
+    { label: 'SUMMER', color: '#f59e0b' },
+    { label: 'AUTUMN', color: '#ea580c' },
+    { label: 'WINTER', color: '#6366f1' },
+    { label: 'SPRING', color: '#22c55e' }
+  ]}
 ];
 shuffleArray(TIER_PROMPTS);
 var _promptIndex = 0;
@@ -1276,37 +1326,23 @@ var _promptUserSet = false;
 function startPromptRotation(){
   stopPromptRotation();
   var titleEl = $('.board-title');
-  var pill = $('#suggestionPill');
-  if(!titleEl || !pill) return;
-  if(titleEl.textContent.trim()) { _promptUserSet = true; pill.classList.add('hidden'); return; }
+  var drawer = $('#promptDrawer');
+  if(!titleEl || !drawer) return;
+  if(titleEl.textContent.trim()) { _promptUserSet = true; drawer.classList.add('hidden'); return; }
   _promptUserSet = false;
-  pill.classList.remove('hidden');
-  showPrompt(true);
+  drawer.classList.remove('hidden');
+  showCurrentPrompt();
   _promptInterval = setInterval(function(){
     if(_promptUserSet || titleEl.textContent.trim()) { stopPromptRotation(); return; }
     _promptIndex = (_promptIndex + 1) % TIER_PROMPTS.length;
-    showPrompt(false);
+    showCurrentPrompt();
   }, 6000);
 }
 
-function showPrompt(instant){
-  var pillText = $('#pillText');
-  if(!pillText) return;
-  if(instant){
-    pillText.textContent = TIER_PROMPTS[_promptIndex];
-    pillText.style.opacity = '1';
-    pillText.style.transform = 'translateY(0)';
-    return;
-  }
-  pillText.style.opacity = '0';
-  pillText.style.transform = 'translateY(6px)';
-  setTimeout(function(){
-    pillText.textContent = TIER_PROMPTS[_promptIndex];
-    pillText.style.transform = 'translateY(-6px)';
-    void pillText.offsetWidth;
-    pillText.style.opacity = '1';
-    pillText.style.transform = 'translateY(0)';
-  }, 300);
+function showCurrentPrompt(){
+  var el = $('#promptCurrent');
+  if(!el) return;
+  el.textContent = TIER_PROMPTS[_promptIndex].text;
 }
 
 function stopPromptRotation(){
@@ -1315,6 +1351,31 @@ function stopPromptRotation(){
 
 function getCurrentPrompt(){
   return TIER_PROMPTS[_promptIndex];
+}
+
+/* Apply a prompt: set title, optionally reconfigure tiers */
+function applyPrompt(prompt){
+  var titleEl = $('.board-title');
+  if(!titleEl) return;
+  stopPromptRotation();
+  _promptUserSet = true;
+  titleEl.textContent = prompt.text;
+  var drawer = $('#promptDrawer');
+  if(drawer) drawer.classList.add('hidden');
+
+  // If prompt defines custom tiers, rebuild the board rows
+  if(prompt.tiers && prompt.tiers.length){
+    // Move all placed tokens back to tray
+    $$('.tier-drop .token').forEach(function(tok){ tray.appendChild(tok); });
+    // Remove existing rows
+    board.innerHTML = '';
+    // Create new rows from prompt config
+    prompt.tiers.forEach(function(t){
+      board.appendChild(createRow({ label: t.label, color: t.color }));
+    });
+    refreshRadialOptions();
+  }
+  scheduleSave();
 }
 
 /* ---------- Init ---------- */
@@ -1338,30 +1399,128 @@ document.addEventListener('DOMContentLoaded', function start(){
   startAutoSave();
   updateTrayCount();
 
-  // Title + suggestion pill
+  // Title + prompt drawer
   var titleEl = $('.board-title');
-  var pill = $('#suggestionPill');
+  var promptDrawer = $('#promptDrawer');
   if(titleEl){
-    // Pill click: adopt suggestion into title, focus for editing
-    if(pill){
-      on(pill, 'click', function(){
-        var prompt = getCurrentPrompt();
-        stopPromptRotation();
-        titleEl.textContent = prompt;
-        _promptUserSet = true;
-        pill.classList.add('hidden');
+    // Tap the current prompt pill: adopt it into the title
+    var promptCurrent = $('#promptCurrent');
+    if(promptCurrent){
+      on(promptCurrent, 'click', function(e){
+        e.stopPropagation();
+        applyPrompt(getCurrentPrompt());
         titleEl.focus();
-        setTimeout(function(){
-          var range = document.createRange();
-          range.selectNodeContents(titleEl);
-          var sel = window.getSelection();
-          sel.removeAllRanges();
-          sel.addRange(range);
-        }, 0);
-        scheduleSave();
       });
     }
-    // On blur: if title is empty, show pill and restart rotation
+
+    // Build prompt drawer interaction
+    (function(){
+      var drawer = $('#promptDrawer');
+      var handle = $('#promptHandle');
+      var trayEl = $('#promptTray');
+      var list   = $('#promptList');
+      if(!drawer || !handle || !trayEl || !list) return;
+
+      // Populate prompt list
+      function buildPromptList(){
+        list.innerHTML = '';
+        TIER_PROMPTS.forEach(function(p, i){
+          var btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'prompt-item' + (p.tiers ? ' has-tiers' : '');
+          btn.style.transitionDelay = (i * 20) + 'ms';
+          btn.innerHTML = '<span class="prompt-dot"></span><span>' + p.text + '</span>' +
+            (p.tiers ? '<span class="prompt-badge">CUSTOM</span>' : '');
+          on(btn, 'click', function(e){
+            e.stopPropagation();
+            applyPrompt(p);
+            snapClosed();
+          });
+          list.appendChild(btn);
+        });
+      }
+      buildPromptList();
+
+      var isOpen = false;
+      var dragging = false;
+      var startY = 0, currentH = 0, maxH = 0, velocity = 0, lastY = 0, lastT = 0;
+
+      function measure(){ maxH = list.scrollHeight; }
+
+      function snapOpen(){
+        measure();
+        isOpen = true;
+        drawer.classList.add('animating','open');
+        trayEl.style.height = maxH + 'px';
+        setTimeout(function(){ drawer.classList.remove('animating'); }, 460);
+      }
+      function snapClosed(){
+        isOpen = false;
+        drawer.classList.add('animating');
+        drawer.classList.remove('open');
+        trayEl.style.height = '0px';
+        setTimeout(function(){ drawer.classList.remove('animating'); }, 460);
+      }
+
+      // Click handle area to toggle (but not the current-prompt pill)
+      on(handle, 'click', function(e){
+        if(dragging) return;
+        if(e.target.closest('.prompt-current')) return;
+        if(isOpen) snapClosed(); else snapOpen();
+      });
+
+      // Drag interaction on handle
+      on(handle, 'pointerdown', function(e){
+        if(e.target.closest('.prompt-current')) return;
+        if(e.button && e.button !== 0) return;
+        e.preventDefault();
+        handle.setPointerCapture(e.pointerId);
+        measure();
+        dragging = false;
+        startY = e.clientY;
+        currentH = isOpen ? maxH : 0;
+        velocity = 0; lastY = e.clientY; lastT = Date.now();
+        drawer.classList.remove('animating');
+
+        function onMove(ev){
+          var dy = ev.clientY - startY;
+          var now = Date.now(); var dt = now - lastT;
+          if(dt > 0) velocity = (ev.clientY - lastY) / dt;
+          lastY = ev.clientY; lastT = now;
+          if(!dragging && Math.abs(dy) > 4) dragging = true;
+          if(!dragging) return;
+          var raw = currentH + dy;
+          var h;
+          if(raw < 0) h = -Math.pow(Math.abs(raw), 0.6);
+          else if(raw > maxH){ var over = raw - maxH; h = maxH + Math.pow(over, 0.6); }
+          else h = raw;
+          trayEl.style.height = Math.max(0, h) + 'px';
+          if(h > maxH * 0.15) drawer.classList.add('open');
+          else drawer.classList.remove('open');
+        }
+        function onUp(){
+          try{ handle.releasePointerCapture(e.pointerId); }catch(_){}
+          document.removeEventListener('pointermove', onMove);
+          document.removeEventListener('pointerup', onUp);
+          if(!dragging) return;
+          var finalH = parseFloat(trayEl.style.height) || 0;
+          var shouldOpen = (velocity > 0.3) || (finalH > maxH * 0.35 && velocity > -0.3);
+          if(shouldOpen) snapOpen(); else snapClosed();
+          dragging = false;
+        }
+        document.addEventListener('pointermove', onMove);
+        document.addEventListener('pointerup', onUp);
+      });
+
+      // Idle peek
+      setTimeout(function(){
+        if(isOpen || _promptUserSet) return;
+        drawer.classList.add('peek');
+        setTimeout(function(){ drawer.classList.remove('peek'); }, 1800);
+      }, 4000);
+    })();
+
+    // On blur: if title is empty, show drawer and restart rotation
     on(titleEl, 'blur', function(){
       if(!titleEl.textContent.trim()){
         titleEl.textContent = '';
@@ -1370,7 +1529,7 @@ document.addEventListener('DOMContentLoaded', function start(){
         scheduleSave();
       }
     });
-    // On input: if cleared, restart; if has text, hide pill
+    // On input: if cleared, restart; if has text, hide drawer
     on(titleEl, 'input', function(){
       if(!titleEl.textContent.trim()){
         _promptUserSet = false;
@@ -1378,7 +1537,7 @@ document.addEventListener('DOMContentLoaded', function start(){
       } else {
         _promptUserSet = true;
         stopPromptRotation();
-        if(pill) pill.classList.add('hidden');
+        if(promptDrawer) promptDrawer.classList.add('hidden');
       }
     });
     startPromptRotation();
