@@ -189,18 +189,18 @@ function rowLabel(row){ var chip=row?row.querySelector('.label-chip'):null; retu
 function fitChipLabel(chip){
   if (!chip) return;
   var text = chip.textContent.replace(/\s+/g,' ').trim();
-  // Default short labels (1-3 chars) get max size
-  if (text.length <= 3) {
-    chip.style.fontSize = '';
-    return;
+  if (!text) { chip.style.fontSize = ''; return; }
+  // Available width: chip width minus horizontal padding
+  var chipW = chip.clientWidth || chip.offsetWidth;
+  if (!chipW) chipW = isSmall() ? 128 : 178;
+  var availW = chipW - 16;
+  // Start large, shrink until single-line text fits
+  var maxPx = 48, minPx = 8;
+  var px = maxPx;
+  for (; px >= minPx; px--) {
+    if (measureText(text, '900', px) <= availW) break;
   }
-  // Longer custom text: shrink aggressively to fit, never overflow
-  var maxPx = 26, minPx = 8;
-  chip.style.fontSize = maxPx + 'px';
-  for (var px = maxPx; px >= minPx; px--) {
-    chip.style.fontSize = px + 'px';
-    if (chip.scrollHeight <= chip.clientHeight && chip.scrollWidth <= chip.clientWidth) break;
-  }
+  chip.style.fontSize = Math.max(px, minPx) + 'px';
 }
 
 /* ---------- Apply tier color to all related elements ---------- */
@@ -992,15 +992,13 @@ on($('#saveBtn'),'click', function(){
     '  align-items:center !important;',
     '  justify-content:center !important;',
     '  width:100% !important;',
-    '  height:86px !important;',
+    '  height:100% !important;',
     '  line-height:1.1 !important;',
     '  text-align:center !important;',
     '  color:#ffffff !important;',
     '  padding:6px 8px !important;',
     '  margin:0 !important;',
-    '  overflow-wrap:break-word !important;',
-    '  word-break:normal !important;',
-    '  white-space:normal !important;',
+    '  white-space:nowrap !important;',
     '  overflow:hidden !important;',
     '}',
     '.board-title-wrap{ text-align:center !important; margin-bottom:20px !important; }',
