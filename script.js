@@ -995,28 +995,32 @@ on($('#saveBtn'),'click', function(){
   clone.style.width = '1200px';
   clone.style.maxWidth = '1200px';
 
-  // Export styles: hide delete buttons, color pickers, reorder arrows, center labels using line-height (most reliable for html2canvas)
+  // Export styles: hide UI chrome, force desktop layout, use real flex centering
+  // html-to-image uses the browser's SVG foreignObject renderer so all CSS works correctly
   var style = document.createElement('style');
   style.textContent = [
     '.row-del{ display:none !important; }',
     '.token-del{ display:none !important; }',
     '.color-pick-btn{ display:none !important; }',
     '.color-pick-input{ display:none !important; }',
+    // Always render at desktop column widths regardless of device
+    '.tier-row{ grid-template-columns:180px 1fr !important; }',
     // Token container
     '.token{',
     '  width:99px !important;',
     '  height:99px !important;',
     '  position:relative !important;',
     '}',
-    // Token label - line-height centering (most reliable for html2canvas)
+    // Token label - proper flex centering (html-to-image renders CSS correctly)
     '.token .label{',
-    '  display:block !important;',
+    '  display:flex !important;',
+    '  align-items:center !important;',
+    '  justify-content:center !important;',
     '  position:absolute !important;',
     '  top:0 !important;',
     '  left:0 !important;',
     '  width:99px !important;',
     '  height:99px !important;',
-    '  line-height:99px !important;',
     '  text-align:center !important;',
     '  font-weight:900 !important;',
     '  white-space:nowrap !important;',
@@ -1030,7 +1034,13 @@ on($('#saveBtn'),'click', function(){
     '  width:100% !important;',
     '  height:100% !important;',
     '}',
-    // Tier label chip - flex centering (supports multi-line custom labels)
+    // chip-area fills the label box
+    '.chip-area{',
+    '  display:flex !important;',
+    '  width:100% !important;',
+    '  height:100% !important;',
+    '}',
+    // Tier label chip - flex centering (correctly rendered by html-to-image)
     '.label-chip{',
     '  display:flex !important;',
     '  align-items:center !important;',
@@ -1083,21 +1093,23 @@ on($('#saveBtn'),'click', function(){
     lbl.style.fontSize = px + 'px';
   });
 
-  if (typeof html2canvas !== 'function') {
+  if (typeof htmlToImage === 'undefined' || typeof htmlToImage.toPng !== 'function') {
     cloneWrap.remove();
     showSaveToast('Export library failed to load — check your connection');
     return;
   }
-  html2canvas(clone, {
-    backgroundColor: cssVar('--surface') || null,
-    useCORS: true,
-    scale: 2,
+  // html-to-image uses the browser's own SVG renderer — text, flex, and grid all
+  // render pixel-perfectly. Returns a data URL directly (no intermediate canvas).
+  htmlToImage.toPng(clone, {
+    pixelRatio: 2,
     width: 1200,
-    windowWidth: 1200
-  }).then(function(canvas){
+    backgroundColor: cssVar('--surface') || '#ffffff',
+    fetchRequestInit: { mode: 'cors', cache: 'no-cache' },
+    cacheBust: true
+  }).then(function(dataUrl){
     var boardTitle = ($('.board-title') || {}).textContent || '';
     var slug = boardTitle.trim().replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase();
-    var a=document.createElement('a'); a.href=canvas.toDataURL('image/png'); a.download=(slug || 'tier-list')+'.png';
+    var a=document.createElement('a'); a.href=dataUrl; a.download=(slug || 'tier-list')+'.png';
     document.body.appendChild(a); a.click();
     setTimeout(function(){ a.remove(); }, 300);
     cloneWrap.remove();
