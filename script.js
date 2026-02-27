@@ -120,7 +120,7 @@ function flipZones(zones, mutate){
           t.style.transform='translate('+dx+'px,'+dy+'px)';
           requestAnimationFrame(function(){
             t.style.transform='translate(0,0)';
-            setTimeout(function(){ t.classList.remove('flip-anim'); t.style.transform=''; },220);
+            setTimeout(function(){ t.classList.remove('flip-anim'); t.style.transform=''; },180);
           });
         }
       });
@@ -230,7 +230,7 @@ function applyTierColor(node, color){
   var colorBtn = node.querySelector('.color-pick-btn');
   var colorInput = node.querySelector('.color-pick-input');
 
-  if(chip){ chip.dataset.color = color; chip.style.background = color; chip.style.color = '#ffffff'; }
+  if(chip){ chip.dataset.color = color; chip.style.background = color; chip.style.color = contrastColor(color); }
   if(del) del.style.background = darken(color, 0.35);
   if(drop){ drop.style.background = tintFrom(color); drop.dataset.manual = 'false'; }
   if(colorBtn){ var dot = colorBtn.querySelector('.color-dot-indicator'); if(dot) dot.style.background = colorPickDotColor(color); }
@@ -385,6 +385,9 @@ function buildTokenBase(isCustom){
     delBtn.setAttribute('aria-label', 'Delete');
     on(delBtn, 'click', function(ev){
       ev.stopPropagation();
+      var parent = el.parentElement;
+      var next = el.nextElementSibling;
+      recordDeletion(el, parent, next);
       el.remove();
       scheduleSave();
     });
@@ -454,14 +457,36 @@ function buildImageToken(src, alt){
 }
 
 /* ---------- History (Undo) ---------- */
-var historyStack = []; // {itemId, fromId, toId, originBeforeId}
+var historyStack = []; // {itemId, fromId, toId, originBeforeId} or {type:'delete', element, parentId, beforeId}
 function recordPlacement(itemId, fromId, toId, originBeforeId){
   if (!fromId || !toId || fromId===toId) return;
   historyStack.push({itemId:itemId, fromId:fromId, toId:toId, originBeforeId: originBeforeId||''});
   var u = $('#undoBtn'); if (u) u.disabled = historyStack.length===0;
 }
+function recordDeletion(element, parentEl, nextSibling){
+  var parentId = ensureId(parentEl, 'zone');
+  var beforeId = nextSibling ? ensureId(nextSibling, 'tok') : '';
+  historyStack.push({type:'delete', element:element, parentId:parentId, beforeId:beforeId});
+  var u = $('#undoBtn'); if (u) u.disabled = historyStack.length===0;
+}
 function undoLast(){
   var last = historyStack.pop(); if (!last) return;
+  // Handle deletion undo — re-insert the removed element
+  if (last.type === 'delete') {
+    var parent = document.getElementById(last.parentId);
+    if (!parent) return;
+    if (last.beforeId) {
+      var before = document.getElementById(last.beforeId);
+      if (before && before.parentElement === parent) parent.insertBefore(last.element, before);
+      else parent.appendChild(last.element);
+    } else {
+      parent.appendChild(last.element);
+    }
+    var u = $('#undoBtn'); if (u) u.disabled = historyStack.length===0;
+    live('Restored deleted token');
+    return;
+  }
+  // Handle placement undo
   var item = document.getElementById(last.itemId);
   var origin = document.getElementById(last.fromId);
   if (!item || !origin) return;
@@ -475,7 +500,7 @@ function undoLast(){
   });
   // Prevent viewport shift on mobile after DOM move
   if (isSmall()) window.scrollTo(0, scrollSnap);
-  $('#undoBtn').disabled = historyStack.length===0;
+  var u = $('#undoBtn'); if (u) u.disabled = historyStack.length===0;
 }
 
 /* ---------- Insert helper (drop between tokens) ---------- */
@@ -1014,7 +1039,6 @@ on($('#saveBtn'),'click', function(){
     '  height:100% !important;',
     '  line-height:1.1 !important;',
     '  text-align:center !important;',
-    '  color:#ffffff !important;',
     '  padding:6px 8px !important;',
     '  margin:0 !important;',
     '  white-space:nowrap !important;',
@@ -1070,7 +1094,9 @@ on($('#saveBtn'),'click', function(){
     width: 1200,
     windowWidth: 1200
   }).then(function(canvas){
-    var a=document.createElement('a'); a.href=canvas.toDataURL('image/png'); a.download='tier-list.png';
+    var boardTitle = ($('.board-title') || {}).textContent || '';
+    var slug = boardTitle.trim().replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase();
+    var a=document.createElement('a'); a.href=canvas.toDataURL('image/png'); a.download=(slug || 'tier-list')+'.png';
     document.body.appendChild(a); a.click();
     setTimeout(function(){ a.remove(); }, 300);
     cloneWrap.remove();
@@ -1136,7 +1162,8 @@ function compressImage(file, maxSize, callback){
     canvas.height = Math.round(h * scale);
     var ctx = canvas.getContext('2d');
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    callback(canvas.toDataURL('image/jpeg', 0.85));
+    var isPng = file.type === 'image/png';
+    callback(canvas.toDataURL(isPng ? 'image/png' : 'image/jpeg', isPng ? undefined : 0.85));
   };
   img.onerror = function(){ URL.revokeObjectURL(blobUrl); callback(null); };
   img.src = blobUrl;
@@ -1454,8 +1481,10 @@ document.addEventListener('DOMContentLoaded', function start(){
           btn.type = 'button';
           btn.className = 'prompt-item' + (p.tiers ? ' has-tiers' : '');
           btn.style.transitionDelay = (i * 20) + 'ms';
-          btn.innerHTML = '<span class="prompt-dot"></span><span>' + p.text + '</span>' +
-            (p.tiers ? '<span class="prompt-badge">CUSTOM</span>' : '');
+          var dot = document.createElement('span'); dot.className = 'prompt-dot';
+          var label = document.createElement('span'); label.textContent = p.text;
+          btn.appendChild(dot); btn.appendChild(label);
+          if (p.tiers) { var badge = document.createElement('span'); badge.className = 'prompt-badge'; badge.textContent = 'CUSTOM'; btn.appendChild(badge); }
           on(btn, 'click', function(e){
             e.stopPropagation();
             applyPrompt(p);
@@ -1656,9 +1685,9 @@ document.addEventListener('DOMContentLoaded', function start(){
   (function(){
     var drawer = $('#helpDrawer');
     var handle = $('#helpHandle');
-    var tray   = $('#helpTray');
+    var helpTrayEl = $('#helpTray');
     var tips   = $('#helpTips');
-    if(!drawer || !handle || !tray || !tips) return;
+    if(!drawer || !handle || !helpTrayEl || !tips) return;
 
     // Populate tips
     var tipData = [
@@ -1687,14 +1716,14 @@ document.addEventListener('DOMContentLoaded', function start(){
       measure();
       isOpen = true;
       drawer.classList.add('animating','open');
-      tray.style.height = maxH + 'px';
+      helpTrayEl.style.height = maxH + 'px';
       setTimeout(function(){ drawer.classList.remove('animating'); }, 460);
     }
     function snapClosed(){
       isOpen = false;
       drawer.classList.add('animating');
       drawer.classList.remove('open');
-      tray.style.height = '0px';
+      helpTrayEl.style.height = '0px';
       setTimeout(function(){ drawer.classList.remove('animating'); }, 460);
     }
 
@@ -1742,7 +1771,7 @@ document.addEventListener('DOMContentLoaded', function start(){
         } else {
           h = raw;
         }
-        tray.style.height = Math.max(0, h) + 'px';
+        helpTrayEl.style.height = Math.max(0, h) + 'px';
 
         // Show open state when past threshold
         if(h > maxH * 0.15) drawer.classList.add('open');
@@ -1756,7 +1785,7 @@ document.addEventListener('DOMContentLoaded', function start(){
 
         if(!dragging) return; // let click handler deal with taps
 
-        var finalH = parseFloat(tray.style.height) || 0;
+        var finalH = parseFloat(helpTrayEl.style.height) || 0;
         // Use velocity + position to decide open/close
         var shouldOpen = (velocity > 0.3) || (finalH > maxH * 0.35 && velocity > -0.3);
         if(shouldOpen) snapOpen(); else snapClosed();
