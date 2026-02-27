@@ -1376,12 +1376,11 @@ var _maxVisibleCards = 3;
 var _hintTimer = null;
 
 /* ---------- Prompt card stack ---------- */
-function buildPromptCard(promptIndex, stackPos){
+function buildPromptCard(promptIndex){
   var prompt = TIER_PROMPTS[promptIndex % TIER_PROMPTS.length];
   var card = document.createElement('div');
   card.className = 'prompt-card';
   card.dataset.promptIndex = promptIndex % TIER_PROMPTS.length;
-  card.style.zIndex = 10 - stackPos;
 
   var text = document.createElement('span');
   text.className = 'prompt-card-text';
@@ -1394,31 +1393,78 @@ function buildPromptCard(promptIndex, stackPos){
     badge.textContent = '\u2726';
     card.appendChild(badge);
   }
-
-  setCardStackPos(card, stackPos, false);
   return card;
 }
 
 function setCardStackPos(card, pos, animate){
-  card.style.transition = animate ? 'transform .3s ease, opacity .3s ease' : 'none';
+  if(animate){
+    card.style.transition = 'transform .35s cubic-bezier(.4,.0,.2,1), opacity .35s cubic-bezier(.4,.0,.2,1), z-index 0s';
+  } else {
+    card.style.transition = 'none';
+  }
+  card.style.zIndex = 10 - pos;
   if(pos===0){ card.style.transform='scale(1) translateY(0)'; card.style.opacity='1'; }
   else if(pos===1){ card.style.transform='scale(.96) translateY(8px)'; card.style.opacity='.65'; }
   else { card.style.transform='scale(.92) translateY(16px)'; card.style.opacity='.4'; }
 }
 
+/* Initial full render — only used on first load or when stack reappears */
 function renderCardStack(){
   var container = $('#promptCards');
   if(!container) return;
   container.innerHTML = '';
   var count = Math.min(_maxVisibleCards, TIER_PROMPTS.length);
-  // Render back-to-front so last child (top card) is in front
   for(var i=count-1; i>=0; i--){
     var idx = (_deckIndex + i) % TIER_PROMPTS.length;
-    var card = buildPromptCard(idx, i);
+    var card = buildPromptCard(idx);
+    setCardStackPos(card, i, false);
     container.appendChild(card);
   }
   var top = container.lastElementChild;
   if(top) enableCardSwipe(top);
+  scheduleHint();
+}
+
+/* Advance the stack smoothly — promote existing cards, add new one at back */
+function advanceCardStack(){
+  var container = $('#promptCards');
+  if(!container) return;
+  _deckIndex = (_deckIndex + 1) % TIER_PROMPTS.length;
+
+  // The top card (lastChild) is already flying off — remove it after transition
+  var flyingCard = container.lastElementChild;
+  if(flyingCard){
+    setTimeout(function(){ if(flyingCard.parentNode) flyingCard.parentNode.removeChild(flyingCard); }, 400);
+  }
+
+  // Gather remaining cards (excluding the flying one)
+  var remaining = [];
+  var child = container.firstElementChild;
+  while(child){
+    if(child !== flyingCard) remaining.push(child);
+    child = child.nextElementSibling;
+  }
+
+  // Promote each remaining card up one position with animation
+  // remaining[0] was pos 2 (back), remaining[1] was pos 1 (middle)
+  // Now: remaining[0] → pos 1, remaining[1] → pos 0
+  for(var i=0; i<remaining.length; i++){
+    var newPos = remaining.length - 1 - i;
+    setCardStackPos(remaining[i], newPos, true);
+  }
+
+  // Add a new card at the back (pos = _maxVisibleCards - 1)
+  var backPos = _maxVisibleCards - 1;
+  var newIdx = (_deckIndex + backPos) % TIER_PROMPTS.length;
+  var newCard = buildPromptCard(newIdx);
+  setCardStackPos(newCard, backPos, false);
+  // Insert at the beginning so it's behind everything
+  container.insertBefore(newCard, container.firstElementChild);
+
+  // Enable swipe on the new top card after promotion transition
+  var newTop = remaining.length > 0 ? remaining[remaining.length - 1] : newCard;
+  // Small delay so the promotion transition is already underway
+  setTimeout(function(){ enableCardSwipe(newTop); }, 50);
   scheduleHint();
 }
 
@@ -1451,12 +1497,12 @@ function enableCardSwipe(card){
 
       if(!dragging){
         // Tap = use prompt (right-swipe shortcut)
-        card.style.transition = 'transform .3s cubic-bezier(.2,.8,.3,1), opacity .25s ease';
+        card.style.transition = 'transform .35s cubic-bezier(.4,.0,.2,1), opacity .3s ease';
         card.style.transform = 'translateX(120%) rotate(10deg)';
         card.style.opacity = '0';
         var pIdx = parseInt(card.dataset.promptIndex, 10);
         vib(6);
-        setTimeout(function(){ applyPrompt(TIER_PROMPTS[pIdx]); }, 200);
+        setTimeout(function(){ applyPrompt(TIER_PROMPTS[pIdx]); }, 250);
         return;
       }
 
@@ -1465,7 +1511,7 @@ function enableCardSwipe(card){
         var dir = dx > 0 ? 1 : -1;
         var flyX = dir * (cardW + 100);
         var flyRotate = dir * 16;
-        card.style.transition = 'transform .35s cubic-bezier(.2,.8,.3,1), opacity .3s ease';
+        card.style.transition = 'transform .35s cubic-bezier(.4,.0,.2,1), opacity .3s ease';
         card.style.transform = 'translateX('+flyX+'px) rotate('+flyRotate+'deg)';
         card.style.opacity = '0';
         vib(6);
@@ -1473,13 +1519,10 @@ function enableCardSwipe(card){
         if(dir > 0){
           // Right swipe = apply prompt
           var pIdx2 = parseInt(card.dataset.promptIndex, 10);
-          setTimeout(function(){ applyPrompt(TIER_PROMPTS[pIdx2]); }, 200);
+          setTimeout(function(){ applyPrompt(TIER_PROMPTS[pIdx2]); }, 250);
         } else {
-          // Left swipe = skip, advance card
-          setTimeout(function(){
-            _deckIndex = (_deckIndex + 1) % TIER_PROMPTS.length;
-            renderCardStack();
-          }, 350);
+          // Left swipe = skip — promote existing cards smoothly
+          advanceCardStack();
         }
       } else {
         // Spring back
