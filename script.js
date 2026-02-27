@@ -1402,8 +1402,8 @@ function buildPromptCard(promptIndex, stackPos){
 function setCardStackPos(card, pos, animate){
   card.style.transition = animate ? 'transform .3s ease, opacity .3s ease' : 'none';
   if(pos===0){ card.style.transform='scale(1) translateY(0)'; card.style.opacity='1'; }
-  else if(pos===1){ card.style.transform='scale(.97) translateY(5px)'; card.style.opacity='.55'; }
-  else { card.style.transform='scale(.94) translateY(10px)'; card.style.opacity='.3'; }
+  else if(pos===1){ card.style.transform='scale(.96) translateY(8px)'; card.style.opacity='.65'; }
+  else { card.style.transform='scale(.92) translateY(16px)'; card.style.opacity='.4'; }
 }
 
 function renderCardStack(){
