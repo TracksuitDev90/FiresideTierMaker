@@ -1034,11 +1034,16 @@ on($('#saveBtn'),'click', function(){
     '  margin:0 !important;',
     '  box-sizing:border-box !important;',
     '}',
-    // Tier label container
+    // Tier label container — no shadow in a flat export image
     '.tier-label{',
     '  position:relative !important;',
     '  width:100% !important;',
     '  height:100% !important;',
+    '  box-shadow:none !important;',
+    '}',
+    // Token drop zone — strip shadow so it doesn't bleed left onto the tier label
+    '.tier-drop{',
+    '  box-shadow:none !important;',
     '}',
     // chip-area fills the label box
     '.chip-area{',
