@@ -230,7 +230,7 @@ function applyTierColor(node, color){
   var colorBtn = node.querySelector('.color-pick-btn');
   var colorInput = node.querySelector('.color-pick-input');
 
-  if(chip){ chip.dataset.color = color; chip.style.background = color; chip.style.color = contrastColor(color); }
+  if(chip){ chip.dataset.color = color; chip.style.background = color; chip.style.color = '#ffffff'; }
   if(del) del.style.background = darken(color, 0.35);
   if(drop){ drop.style.background = tintFrom(color); drop.dataset.manual = 'false'; }
   if(colorBtn){ var dot = colorBtn.querySelector('.color-dot-indicator'); if(dot) dot.style.background = colorPickDotColor(color); }
@@ -1039,6 +1039,7 @@ on($('#saveBtn'),'click', function(){
     '  height:100% !important;',
     '  line-height:1.1 !important;',
     '  text-align:center !important;',
+    '  color:#ffffff !important;',
     '  padding:6px 8px !important;',
     '  margin:0 !important;',
     '  white-space:nowrap !important;',
@@ -1047,7 +1048,7 @@ on($('#saveBtn'),'click', function(){
     '.board-title-wrap{ text-align:center !important; margin-bottom:20px !important; }',
     '.board-title{ text-align:center !important; font-size:28px !important; }',
     '.title-pen{ display:none !important; }',
-    '.prompt-drawer{ display:none !important; }'
+    '.prompt-stack-wrap{ display:none !important; }'
   ].join('\n');
   clone.appendChild(style);
 
@@ -1369,49 +1370,158 @@ var TIER_PROMPTS = [
   ]}
 ];
 shuffleArray(TIER_PROMPTS);
-var _promptIndex = 0;
-var _promptInterval = null;
+var _deckIndex = 0;
 var _promptUserSet = false;
+var _maxVisibleCards = 3;
+var _hintTimer = null;
 
-function startPromptRotation(){
-  stopPromptRotation();
-  var titleEl = $('.board-title');
-  var drawer = $('#promptDrawer');
-  if(!titleEl || !drawer) return;
-  if(titleEl.textContent.trim()) { _promptUserSet = true; drawer.classList.add('hidden'); return; }
-  _promptUserSet = false;
-  drawer.classList.remove('hidden');
-  showCurrentPrompt();
-  _promptInterval = setInterval(function(){
-    if(_promptUserSet || titleEl.textContent.trim()) { stopPromptRotation(); return; }
-    _promptIndex = (_promptIndex + 1) % TIER_PROMPTS.length;
-    showCurrentPrompt();
-  }, 6000);
+/* ---------- Prompt card stack ---------- */
+function buildPromptCard(promptIndex, stackPos){
+  var prompt = TIER_PROMPTS[promptIndex % TIER_PROMPTS.length];
+  var card = document.createElement('div');
+  card.className = 'prompt-card';
+  card.dataset.promptIndex = promptIndex % TIER_PROMPTS.length;
+  card.style.zIndex = 10 - stackPos;
+
+  var text = document.createElement('span');
+  text.className = 'prompt-card-text';
+  text.textContent = prompt.text;
+  card.appendChild(text);
+
+  if(prompt.tiers){
+    var badge = document.createElement('span');
+    badge.className = 'prompt-card-badge';
+    badge.textContent = '\u2726';
+    card.appendChild(badge);
+  }
+
+  setCardStackPos(card, stackPos, false);
+  return card;
 }
 
-function showCurrentPrompt(){
-  var el = $('#promptCurrent');
-  if(!el) return;
-  el.textContent = TIER_PROMPTS[_promptIndex].text;
+function setCardStackPos(card, pos, animate){
+  card.style.transition = animate ? 'transform .3s ease, opacity .3s ease' : 'none';
+  if(pos===0){ card.style.transform='scale(1) translateY(0)'; card.style.opacity='1'; }
+  else if(pos===1){ card.style.transform='scale(.97) translateY(5px)'; card.style.opacity='.55'; }
+  else { card.style.transform='scale(.94) translateY(10px)'; card.style.opacity='.3'; }
 }
 
-function stopPromptRotation(){
-  if(_promptInterval){ clearInterval(_promptInterval); _promptInterval = null; }
+function renderCardStack(){
+  var container = $('#promptCards');
+  if(!container) return;
+  container.innerHTML = '';
+  var count = Math.min(_maxVisibleCards, TIER_PROMPTS.length);
+  // Render back-to-front so last child (top card) is in front
+  for(var i=count-1; i>=0; i--){
+    var idx = (_deckIndex + i) % TIER_PROMPTS.length;
+    var card = buildPromptCard(idx, i);
+    container.appendChild(card);
+  }
+  var top = container.lastElementChild;
+  if(top) enableCardSwipe(top);
+  scheduleHint();
 }
 
-function getCurrentPrompt(){
-  return TIER_PROMPTS[_promptIndex];
+function enableCardSwipe(card){
+  on(card, 'pointerdown', function(e){
+    if(e.button && e.button!==0) return;
+    e.preventDefault();
+    card.setPointerCapture(e.pointerId);
+    clearTimeout(_hintTimer);
+    card.classList.remove('hint');
+
+    var startX = e.clientX, dx = 0, dragging = false;
+    var cardW = card.offsetWidth || 300;
+    var threshold = cardW * 0.25;
+    card.style.transition = 'none';
+
+    function onMove(ev){
+      dx = ev.clientX - startX;
+      if(!dragging && Math.abs(dx) > 4) dragging = true;
+      if(!dragging) return;
+      var rotate = dx * 0.06;
+      var opacity = Math.max(0.5, 1 - Math.abs(dx) / cardW);
+      card.style.transform = 'translateX('+dx+'px) rotate('+rotate+'deg)';
+      card.style.opacity = opacity;
+    }
+    function onUp(){
+      try{ card.releasePointerCapture(e.pointerId); }catch(_){}
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+
+      if(!dragging){
+        // Tap = use prompt (right-swipe shortcut)
+        card.style.transition = 'transform .3s cubic-bezier(.2,.8,.3,1), opacity .25s ease';
+        card.style.transform = 'translateX(120%) rotate(10deg)';
+        card.style.opacity = '0';
+        var pIdx = parseInt(card.dataset.promptIndex, 10);
+        vib(6);
+        setTimeout(function(){ applyPrompt(TIER_PROMPTS[pIdx]); }, 200);
+        return;
+      }
+
+      if(Math.abs(dx) >= threshold){
+        // Commit swipe
+        var dir = dx > 0 ? 1 : -1;
+        var flyX = dir * (cardW + 100);
+        var flyRotate = dir * 16;
+        card.style.transition = 'transform .35s cubic-bezier(.2,.8,.3,1), opacity .3s ease';
+        card.style.transform = 'translateX('+flyX+'px) rotate('+flyRotate+'deg)';
+        card.style.opacity = '0';
+        vib(6);
+
+        if(dir > 0){
+          // Right swipe = apply prompt
+          var pIdx2 = parseInt(card.dataset.promptIndex, 10);
+          setTimeout(function(){ applyPrompt(TIER_PROMPTS[pIdx2]); }, 200);
+        } else {
+          // Left swipe = skip, advance card
+          setTimeout(function(){
+            _deckIndex = (_deckIndex + 1) % TIER_PROMPTS.length;
+            renderCardStack();
+          }, 350);
+        }
+      } else {
+        // Spring back
+        card.style.transition = 'transform .4s cubic-bezier(.34,1.56,.64,1), opacity .25s ease';
+        card.style.transform = 'scale(1) translateY(0)';
+        card.style.opacity = '1';
+        scheduleHint();
+      }
+    }
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
+  });
+}
+
+function scheduleHint(){
+  clearTimeout(_hintTimer);
+  _hintTimer = setTimeout(function(){
+    if(_promptUserSet) return;
+    var top = $('#promptCards .prompt-card:last-child');
+    if(top){ top.classList.remove('hint'); void top.offsetWidth; top.classList.add('hint'); }
+  }, 3500);
+}
+
+function showPromptStack(){
+  var wrap = $('#promptStack');
+  if(wrap) wrap.classList.remove('hidden');
+  renderCardStack();
+}
+
+function hidePromptStack(){
+  var wrap = $('#promptStack');
+  if(wrap) wrap.classList.add('hidden');
+  clearTimeout(_hintTimer);
 }
 
 /* Apply a prompt: set title, optionally reconfigure tiers */
 function applyPrompt(prompt){
   var titleEl = $('.board-title');
   if(!titleEl) return;
-  stopPromptRotation();
   _promptUserSet = true;
   titleEl.textContent = prompt.text;
-  var drawer = $('#promptDrawer');
-  if(drawer) drawer.classList.add('hidden');
+  hidePromptStack();
 
   // If prompt defines custom tiers, rebuild the board rows
   if(prompt.tiers && prompt.tiers.length){
@@ -1451,150 +1561,36 @@ document.addEventListener('DOMContentLoaded', function start(){
   startAutoSave();
   updateTrayCount();
 
-  // Title + prompt drawer
+  // Title + prompt card stack
   var titleEl = $('.board-title');
-  var promptDrawer = $('#promptDrawer');
   if(titleEl){
-    // Tap the current prompt pill: adopt it into the title
-    var promptCurrent = $('#promptCurrent');
-    if(promptCurrent){
-      on(promptCurrent, 'click', function(e){
-        e.stopPropagation();
-        applyPrompt(getCurrentPrompt());
-        titleEl.focus();
-      });
+    // Show or hide cards based on whether title exists
+    if(titleEl.textContent.trim()){
+      _promptUserSet = true;
+      hidePromptStack();
+    } else {
+      showPromptStack();
     }
 
-    // Build prompt drawer interaction
-    (function(){
-      var drawer = $('#promptDrawer');
-      var handle = $('#promptHandle');
-      var trayEl = $('#promptTray');
-      var list   = $('#promptList');
-      if(!drawer || !handle || !trayEl || !list) return;
-
-      // Populate prompt list
-      function buildPromptList(){
-        list.innerHTML = '';
-        TIER_PROMPTS.forEach(function(p, i){
-          var btn = document.createElement('button');
-          btn.type = 'button';
-          btn.className = 'prompt-item' + (p.tiers ? ' has-tiers' : '');
-          btn.style.transitionDelay = (i * 20) + 'ms';
-          var dot = document.createElement('span'); dot.className = 'prompt-dot';
-          var label = document.createElement('span'); label.textContent = p.text;
-          btn.appendChild(dot); btn.appendChild(label);
-          if (p.tiers) { var badge = document.createElement('span'); badge.className = 'prompt-badge'; badge.textContent = 'CUSTOM'; btn.appendChild(badge); }
-          on(btn, 'click', function(e){
-            e.stopPropagation();
-            applyPrompt(p);
-            snapClosed();
-          });
-          list.appendChild(btn);
-        });
-      }
-      buildPromptList();
-
-      var isOpen = false;
-      var dragging = false;
-      var startY = 0, currentH = 0, maxH = 0, velocity = 0, lastY = 0, lastT = 0;
-
-      function measure(){ maxH = list.scrollHeight; }
-
-      function snapOpen(){
-        measure();
-        isOpen = true;
-        drawer.classList.add('animating','open');
-        trayEl.style.height = maxH + 'px';
-        setTimeout(function(){ drawer.classList.remove('animating'); }, 460);
-      }
-      function snapClosed(){
-        isOpen = false;
-        drawer.classList.add('animating');
-        drawer.classList.remove('open');
-        trayEl.style.height = '0px';
-        setTimeout(function(){ drawer.classList.remove('animating'); }, 460);
-      }
-
-      // Click handle area to toggle (but not the current-prompt pill)
-      on(handle, 'click', function(e){
-        if(dragging) return;
-        if(e.target.closest('.prompt-current')) return;
-        if(isOpen) snapClosed(); else snapOpen();
-      });
-
-      // Drag interaction on handle
-      on(handle, 'pointerdown', function(e){
-        if(e.target.closest('.prompt-current')) return;
-        if(e.button && e.button !== 0) return;
-        e.preventDefault();
-        handle.setPointerCapture(e.pointerId);
-        measure();
-        dragging = false;
-        startY = e.clientY;
-        currentH = isOpen ? maxH : 0;
-        velocity = 0; lastY = e.clientY; lastT = Date.now();
-        drawer.classList.remove('animating');
-
-        function onMove(ev){
-          var dy = ev.clientY - startY;
-          var now = Date.now(); var dt = now - lastT;
-          if(dt > 0) velocity = (ev.clientY - lastY) / dt;
-          lastY = ev.clientY; lastT = now;
-          if(!dragging && Math.abs(dy) > 4) dragging = true;
-          if(!dragging) return;
-          var raw = currentH + dy;
-          var h;
-          if(raw < 0) h = -Math.pow(Math.abs(raw), 0.6);
-          else if(raw > maxH){ var over = raw - maxH; h = maxH + Math.pow(over, 0.6); }
-          else h = raw;
-          trayEl.style.height = Math.max(0, h) + 'px';
-          if(h > maxH * 0.15) drawer.classList.add('open');
-          else drawer.classList.remove('open');
-        }
-        function onUp(){
-          try{ handle.releasePointerCapture(e.pointerId); }catch(_){}
-          document.removeEventListener('pointermove', onMove);
-          document.removeEventListener('pointerup', onUp);
-          if(!dragging) return;
-          var finalH = parseFloat(trayEl.style.height) || 0;
-          var shouldOpen = (velocity > 0.3) || (finalH > maxH * 0.35 && velocity > -0.3);
-          if(shouldOpen) snapOpen(); else snapClosed();
-          dragging = false;
-        }
-        document.addEventListener('pointermove', onMove);
-        document.addEventListener('pointerup', onUp);
-      });
-
-      // Idle peek
-      setTimeout(function(){
-        if(isOpen || _promptUserSet) return;
-        drawer.classList.add('peek');
-        setTimeout(function(){ drawer.classList.remove('peek'); }, 1800);
-      }, 4000);
-    })();
-
-    // On blur: if title is empty, show drawer and restart rotation
+    // On blur: if title is empty, show cards again
     on(titleEl, 'blur', function(){
       if(!titleEl.textContent.trim()){
         titleEl.textContent = '';
         _promptUserSet = false;
-        startPromptRotation();
+        showPromptStack();
         scheduleSave();
       }
     });
-    // On input: if cleared, restart; if has text, hide drawer
+    // On input: if cleared, show cards; if has text, hide cards
     on(titleEl, 'input', function(){
       if(!titleEl.textContent.trim()){
         _promptUserSet = false;
-        startPromptRotation();
+        showPromptStack();
       } else {
         _promptUserSet = true;
-        stopPromptRotation();
-        if(promptDrawer) promptDrawer.classList.add('hidden');
+        hidePromptStack();
       }
     });
-    startPromptRotation();
   }
 
   // add tier
