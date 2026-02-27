@@ -994,6 +994,12 @@ on($('#saveBtn'),'click', function(){
   var clone = panel.cloneNode(true);
   clone.style.width = '1200px';
   clone.style.maxWidth = '1200px';
+  // Strip the panel's outer decoration — it's a page card effect, not part of the image.
+  // Removing it prevents html-to-image from adding canvas padding for shadow bleed,
+  // which would otherwise appear as a faint shadow at the left edge of every row.
+  clone.style.boxShadow = 'none';
+  clone.style.border = 'none';
+  clone.style.borderRadius = '0';
 
   // Export styles: hide UI chrome, force desktop layout, use real flex centering
   // html-to-image uses the browser's SVG foreignObject renderer so all CSS works correctly
