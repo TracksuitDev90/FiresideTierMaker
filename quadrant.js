@@ -82,7 +82,6 @@
     gridWrap.className = 'q-grid-wrap';
 
     var positions = Q_POSITIONS;
-    var labels = ['Top Left','Top Right','Bottom Left','Bottom Right'];
     qZones = [];
 
     for(var i=0;i<4;i++){
@@ -91,12 +90,6 @@
       zone.id = 'qzone-'+positions[i];
       zone.setAttribute('role','list');
       zone.setAttribute('tabindex','0');
-
-      // Corner label
-      var zLabel = document.createElement('span');
-      zLabel.className = 'q-zone-label';
-      zLabel.textContent = labels[i];
-      zone.appendChild(zLabel);
 
       // Color picker
       var colorPick = document.createElement('label');
@@ -254,7 +247,7 @@
       e.stopPropagation();
       token.setPointerCapture(e.pointerId);
 
-      // Lock viewport: prevent overflow and scroll/zoom during drag
+      // Lock viewport: prevent overflow, scroll, zoom, text selection, callout
       document.body.classList.add('dragging-item','q-dragging');
       document.documentElement.classList.add('q-dragging-lock');
 
@@ -264,43 +257,46 @@
       var originTop = token.style.top;
       var sz = qTokenSize();
 
-      // --- Direct manipulation: move the actual token, no ghost clone ---
-      // Record where the token started in page coordinates
+      // Snapshot the token's screen position before we start
       var tokRect = token.getBoundingClientRect();
-      var startPageX = tokRect.left;
-      var startPageY = tokRect.top;
-      var fingerOffX = e.clientX - tokRect.left;
-      var fingerOffY = e.clientY - tokRect.top;
+      var anchorX = tokRect.left;
+      var anchorY = tokRect.top;
+      var fingerOffX = e.clientX - anchorX;
+      var fingerOffY = e.clientY - anchorY;
 
-      // Pull the token out of flow into a fixed overlay so it tracks the finger
-      // exactly, with zero lag (no RAF, no clone, just CSS transform)
+      // Reparent to body with fixed positioning at the exact same spot,
+      // then use transform:translate3d for all movement (GPU, zero layout thrash)
       token.classList.add('q-dragging-token');
-      token.style.position = 'fixed';
-      token.style.left = startPageX + 'px';
-      token.style.top = startPageY + 'px';
-      token.style.width = sz + 'px';
-      token.style.height = sz + 'px';
-      token.style.zIndex = '60';
-      token.style.transform = 'scale(1.08)';
-      token.style.transition = 'none';
-      // Move to body so it's above everything
+      token.style.cssText =
+        'position:fixed !important;' +
+        'left:' + anchorX + 'px !important;' +
+        'top:' + anchorY + 'px !important;' +
+        'width:' + sz + 'px !important;' +
+        'height:' + sz + 'px !important;' +
+        'z-index:9999 !important;' +
+        'margin:0 !important;' +
+        'transform:translate3d(0,0,0) scale(1.06) !important;' +
+        'transition:none !important;' +
+        'touch-action:none !important;' +
+        'user-select:none !important;' +
+        '-webkit-user-select:none !important;' +
+        'pointer-events:auto !important;';
       document.body.appendChild(token);
 
       var lastDZ = null;
-      var x = e.clientX, y = e.clientY;
+      var dx = 0, dy = 0;
 
       function move(ev){
-        ev.preventDefault(); // block scroll/zoom
-        x = ev.clientX;
-        y = ev.clientY;
-        // Directly set position — synchronous, zero lag
-        token.style.left = (x - fingerOffX) + 'px';
-        token.style.top = (y - fingerOffY) + 'px';
+        ev.preventDefault(); // block scroll / zoom / callout
+        dx = ev.clientX - e.clientX;
+        dy = ev.clientY - e.clientY;
+        // GPU-only: transform is composited, no layout/paint
+        token.style.transform = 'translate3d('+dx+'px,'+dy+'px,0) scale(1.06)';
 
         // Hit-test under finger
         token.style.pointerEvents = 'none';
-        var el = document.elementFromPoint(x, y);
-        token.style.pointerEvents = '';
+        var el = document.elementFromPoint(ev.clientX, ev.clientY);
+        token.style.pointerEvents = 'auto';
         var dz = el ? (el.closest('.q-zone') || el.closest('#tray')) : null;
 
         if(lastDZ && lastDZ !== dz) lastDZ.classList.remove('drag-over');
@@ -308,10 +304,11 @@
         lastDZ = dz || null;
       }
 
-      function up(){
+      function up(ev){
         try{token.releasePointerCapture(e.pointerId);}catch(_){}
         document.removeEventListener('pointermove',move,false);
         document.removeEventListener('pointerup',up,false);
+        document.removeEventListener('pointercancel',up,false);
 
         // Unlock viewport
         document.body.classList.remove('dragging-item','q-dragging');
@@ -321,27 +318,21 @@
         qZones.forEach(function(z){z.classList.remove('drag-over');});
         if(tray) tray.classList.remove('drag-over');
 
-        // Clean up fixed-position overrides
-        token.classList.remove('q-dragging-token');
-        token.style.zIndex = '';
-        token.style.width = '';
-        token.style.height = '';
-        token.style.transform = '';
-        token.style.transition = '';
-
         // Determine drop target
         token.style.pointerEvents = 'none';
-        var el = document.elementFromPoint(x, y);
+        var dropX = ev.clientX, dropY = ev.clientY;
+        var el = document.elementFromPoint(dropX, dropY);
         token.style.pointerEvents = '';
         var dropZone = el ? el.closest('.q-zone') : null;
         var dropTray = el ? el.closest('#tray') : null;
 
+        // Strip all inline overrides
+        token.classList.remove('q-dragging-token');
+        token.style.cssText = '';
+
         if(dropTray){
           // Return to tray
           var fromId = ensureId(originZone,'zone');
-          token.style.position = '';
-          token.style.left = '';
-          token.style.top = '';
           flipZones([tray],function(){ tray.appendChild(token); });
           recordPlacement(token.id, fromId, 'tray', '');
           live('Returned "'+(token.innerText||'item')+'" to Image Storage');
@@ -350,8 +341,8 @@
         } else if(dropZone){
           // Place in quadrant zone at finger position
           var rect = dropZone.getBoundingClientRect();
-          var nx = x - rect.left - sz/2;
-          var ny = y - rect.top - sz/2;
+          var nx = dropX - rect.left - sz/2;
+          var ny = dropY - rect.top - sz/2;
           nx = Math.max(0, Math.min(nx, rect.width - sz));
           ny = Math.max(0, Math.min(ny, rect.height - sz));
 
@@ -377,7 +368,8 @@
       // Non-passive so preventDefault blocks scroll/zoom
       document.addEventListener('pointermove',move,{passive:false,capture:false});
       document.addEventListener('pointerup',up,false);
-    }, _supportsPassive?{passive:false}:false);
+      document.addEventListener('pointercancel',up,false);
+    }, {passive:false,capture:false});
   }
 
   /* ---------- Drop from tray to quadrant (pointer drag) ---------- */
@@ -414,8 +406,7 @@
       if(tierBoard) tierBoard.classList.add('hidden-mode');
       qBoard.classList.add('active');
       // Hide prompt stack (tier-specific suggestions)
-      var promptWrap = $('#promptStack');
-      if(promptWrap) promptWrap.classList.add('hidden');
+      if(typeof hidePromptStack === 'function') hidePromptStack();
       // Move tokens from tier rows back to tray (they're tier-specific)
       $$('.tier-drop .token').forEach(function(tok){
         tok.style.position = '';
@@ -429,6 +420,8 @@
       document.body.classList.remove('quadrant-mode');
       if(tierBoard) tierBoard.classList.remove('hidden-mode');
       qBoard.classList.remove('active');
+      // Restore prompt stack for tier mode
+      if(typeof showPromptStack === 'function') showPromptStack();
       // Save quadrant data before moving tokens back
       saveQuadrantData();
       // Move quadrant tokens back to tray
@@ -664,7 +657,6 @@
       '.board-title-wrap{text-align:center !important;margin-bottom:20px !important}',
       '.board-title{text-align:center !important;font-size:28px !important}',
       '.q-color-pick{display:none !important}',
-      '.q-zone-label{display:none !important}',
       '.token-del{display:none !important}',
       '.mode-toggle-wrap{display:none !important}'
     ].join('\n');
