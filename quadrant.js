@@ -253,9 +253,9 @@
       e.preventDefault();
       e.stopPropagation();
       token.setPointerCapture(e.pointerId);
-      document.body.classList.add('dragging-item');
+
       // Lock viewport: prevent overflow and scroll/zoom during drag
-      document.body.classList.add('q-dragging');
+      document.body.classList.add('dragging-item','q-dragging');
       document.documentElement.classList.add('q-dragging-lock');
 
       var zone = token.closest('.q-zone');
@@ -264,45 +264,75 @@
       var originTop = token.style.top;
       var sz = qTokenSize();
 
-      var ghost = token.cloneNode(true);
-      ghost.className = 'q-drag-ghost';
-      ghost.style.width = sz+'px';
-      ghost.style.height = sz+'px';
-      document.body.appendChild(ghost);
-      token.classList.add('drag-hidden');
+      // --- Direct manipulation: move the actual token, no ghost clone ---
+      // Record where the token started in page coordinates
+      var tokRect = token.getBoundingClientRect();
+      var startPageX = tokRect.left;
+      var startPageY = tokRect.top;
+      var fingerOffX = e.clientX - tokRect.left;
+      var fingerOffY = e.clientY - tokRect.top;
 
-      var r = token.getBoundingClientRect();
-      var offsetX = e.clientX - r.left;
-      var offsetY = e.clientY - r.top;
+      // Pull the token out of flow into a fixed overlay so it tracks the finger
+      // exactly, with zero lag (no RAF, no clone, just CSS transform)
+      token.classList.add('q-dragging-token');
+      token.style.position = 'fixed';
+      token.style.left = startPageX + 'px';
+      token.style.top = startPageY + 'px';
+      token.style.width = sz + 'px';
+      token.style.height = sz + 'px';
+      token.style.zIndex = '60';
+      token.style.transform = 'scale(1.08)';
+      token.style.transition = 'none';
+      // Move to body so it's above everything
+      document.body.appendChild(token);
+
+      var lastDZ = null;
       var x = e.clientX, y = e.clientY;
-      var raf = null;
-      var currentDZ = null;
-      var vw = window.innerWidth;
-      var vh = window.innerHeight;
 
       function move(ev){
-        ev.preventDefault(); // prevent scroll/zoom on touch
-        x=ev.clientX; y=ev.clientY;
+        ev.preventDefault(); // block scroll/zoom
+        x = ev.clientX;
+        y = ev.clientY;
+        // Directly set position — synchronous, zero lag
+        token.style.left = (x - fingerOffX) + 'px';
+        token.style.top = (y - fingerOffY) + 'px';
+
+        // Hit-test under finger
+        token.style.pointerEvents = 'none';
+        var el = document.elementFromPoint(x, y);
+        token.style.pointerEvents = '';
+        var dz = el ? (el.closest('.q-zone') || el.closest('#tray')) : null;
+
+        if(lastDZ && lastDZ !== dz) lastDZ.classList.remove('drag-over');
+        if(dz && dz !== lastDZ){ dz.classList.add('drag-over'); vib(4); }
+        lastDZ = dz || null;
       }
 
       function up(){
         try{token.releasePointerCapture(e.pointerId);}catch(_){}
         document.removeEventListener('pointermove',move,false);
         document.removeEventListener('pointerup',up,false);
-        cancelAnimationFrame(raf);
-        if(ghost && ghost.parentNode) ghost.parentNode.removeChild(ghost);
-        token.classList.remove('drag-hidden');
-        document.body.classList.remove('dragging-item');
+
         // Unlock viewport
-        document.body.classList.remove('q-dragging');
+        document.body.classList.remove('dragging-item','q-dragging');
         document.documentElement.classList.remove('q-dragging-lock');
 
-        // Clear drag-over
+        // Clear drag-over highlights
         qZones.forEach(function(z){z.classList.remove('drag-over');});
         if(tray) tray.classList.remove('drag-over');
 
-        // Check where we dropped
-        var el = document.elementFromPoint(x,y);
+        // Clean up fixed-position overrides
+        token.classList.remove('q-dragging-token');
+        token.style.zIndex = '';
+        token.style.width = '';
+        token.style.height = '';
+        token.style.transform = '';
+        token.style.transition = '';
+
+        // Determine drop target
+        token.style.pointerEvents = 'none';
+        var el = document.elementFromPoint(x, y);
+        token.style.pointerEvents = '';
         var dropZone = el ? el.closest('.q-zone') : null;
         var dropTray = el ? el.closest('#tray') : null;
 
@@ -312,15 +342,13 @@
           token.style.position = '';
           token.style.left = '';
           token.style.top = '';
-          token.style.width = '';
-          token.style.height = '';
           flipZones([tray],function(){ tray.appendChild(token); });
           recordPlacement(token.id, fromId, 'tray', '');
           live('Returned "'+(token.innerText||'item')+'" to Image Storage');
           vib(6);
           scheduleQuadrantSave();
         } else if(dropZone){
-          // Place in (possibly different) quadrant zone
+          // Place in quadrant zone at finger position
           var rect = dropZone.getBoundingClientRect();
           var nx = x - rect.left - sz/2;
           var ny = y - rect.top - sz/2;
@@ -329,50 +357,26 @@
 
           if(dropZone !== originZone){
             var fromId2 = ensureId(originZone,'zone');
-            dropZone.appendChild(token);
             recordPlacement(token.id, fromId2, dropZone.id, '');
           }
+          dropZone.appendChild(token);
           token.style.position = 'absolute';
           token.style.left = (nx/rect.width*100)+'%';
           token.style.top = (ny/rect.height*100)+'%';
-          token.classList.add('animate-drop');
-          setTimeout(function(){token.classList.remove('animate-drop');},180);
           vib(6);
           scheduleQuadrantSave();
         } else {
-          // Snap back to original position
+          // Snap back to original zone
+          originZone.appendChild(token);
+          token.style.position = 'absolute';
           token.style.left = originLeft;
           token.style.top = originTop;
         }
-        currentDZ = null;
       }
 
-      function loop(){
-        raf = requestAnimationFrame(loop);
-        // Clamp ghost position so it never extends past the viewport
-        var gx = x - offsetX;
-        var gy = y - offsetY;
-        gx = Math.max(0, Math.min(gx, vw - sz));
-        gy = Math.max(0, Math.min(gy, vh - sz));
-        ghost.style.transform = 'translate3d('+gx+'px,'+gy+'px,0)';
-
-        // Hit-test — use actual finger position, not clamped ghost position
-        ghost.style.pointerEvents='none';
-        var hx = Math.max(0, Math.min(x, vw - 1));
-        var hy = Math.max(0, Math.min(y, vh - 1));
-        var el = document.elementFromPoint(hx, hy);
-        ghost.style.pointerEvents='';
-        var dz = el ? (el.closest('.q-zone') || el.closest('#tray')) : null;
-
-        if(currentDZ && currentDZ !== dz) currentDZ.classList.remove('drag-over');
-        if(dz && dz !== currentDZ) dz.classList.add('drag-over');
-        currentDZ = dz || null;
-      }
-
-      // Non-passive so preventDefault works (prevents scroll/zoom on touch)
+      // Non-passive so preventDefault blocks scroll/zoom
       document.addEventListener('pointermove',move,{passive:false,capture:false});
       document.addEventListener('pointerup',up,false);
-      loop();
     }, _supportsPassive?{passive:false}:false);
   }
 
@@ -441,11 +445,17 @@
     $$('.mode-toggle-btn').forEach(function(btn){
       btn.classList.toggle('active', btn.dataset.mode === mode);
     });
-    // Update save button text
+    // Update control button labels for the active mode
+    var isQ = (mode === 'quadrant');
     var saveBtn = $('#saveBtn');
     if(saveBtn){
       var saveTxt = saveBtn.querySelector('span:last-child');
-      if(saveTxt) saveTxt.textContent = (mode === 'quadrant') ? 'Save Chart' : 'Save Tierlist';
+      if(saveTxt) saveTxt.textContent = isQ ? 'Save Quadrant' : 'Save Tierlist';
+    }
+    var clearBtn = $('#trashClear');
+    if(clearBtn){
+      var clearTxt = clearBtn.querySelector('span:last-child');
+      if(clearTxt) clearTxt.textContent = isQ ? 'Clear Quadrants' : 'Clear Board';
     }
     try{localStorage.setItem('tm_mode', mode);}catch(e){}
     if(typeof updateTrayCount === 'function') updateTrayCount();
@@ -655,7 +665,8 @@
       '.board-title{text-align:center !important;font-size:28px !important}',
       '.q-color-pick{display:none !important}',
       '.q-zone-label{display:none !important}',
-      '.token-del{display:none !important}'
+      '.token-del{display:none !important}',
+      '.mode-toggle-wrap{display:none !important}'
     ].join('\n');
     clone.appendChild(style);
 

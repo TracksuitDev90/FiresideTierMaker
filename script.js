@@ -1012,12 +1012,22 @@ on(window, 'resize', refreshRadialOptions);
 /* ---------- Clear / Undo ---------- */
 on($('#trashClear'),'click', function(){
   replayGif(this);
-  if (!confirm('Clear the board?\n\nThis will remove all custom tokens, written titles, and placements. Everything resets to the default clean state.')) return;
-  // Clear saved data and reload for a fresh start
-  try { localStorage.removeItem(STORAGE_KEY); } catch(e){}
-  try { localStorage.removeItem('tm_quadrant'); } catch(e){}
-  try { localStorage.removeItem('tm_mode'); } catch(e){}
-  location.reload();
+  var isQ = (typeof window.currentChartMode === 'function' && window.currentChartMode() === 'quadrant');
+  var msg = isQ
+    ? 'Clear the quadrants?\n\nThis will remove all token placements from the quadrant chart and reset axis labels.'
+    : 'Clear the board?\n\nThis will remove all custom tokens, written titles, and placements. Everything resets to the default clean state.';
+  if (!confirm(msg)) return;
+  if(isQ){
+    // Quadrant-only clear: remove quadrant data, keep tier data intact
+    try { localStorage.removeItem('tm_quadrant'); } catch(e){}
+    location.reload();
+  } else {
+    // Full clear: remove everything
+    try { localStorage.removeItem(STORAGE_KEY); } catch(e){}
+    try { localStorage.removeItem('tm_quadrant'); } catch(e){}
+    try { localStorage.removeItem('tm_mode'); } catch(e){}
+    location.reload();
+  }
 });
 on($('#undoBtn'),'click', function(){ animateBtn(this); undoLast(); });
 

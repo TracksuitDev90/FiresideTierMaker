@@ -213,14 +213,13 @@
 .q-zone .token img{
   width:100%;height:100%;object-fit:cover;border-radius:999px;pointer-events:none;
 }
-/* Ghost for quadrant drag — smaller to match */
-.q-drag-ghost{
-  position:fixed;left:0;top:0;z-index:50;pointer-events:none;
-  width:65px;height:65px;border-radius:999px;
-  opacity:.92;transform:translate3d(0,0,0) scale(1.08);
-  box-shadow:0 12px 32px rgba(0,0,0,.4);
-  /* Prevent ghost from causing viewport overflow */
-  will-change:transform;
+/* Direct-manipulation drag: the actual token becomes the drag visual */
+.q-dragging-token{
+  /* GPU-composited layer for zero-lag movement */
+  will-change:left,top;
+  box-shadow:0 12px 32px rgba(0,0,0,.4) !important;
+  opacity:.95;
+  pointer-events:none;
 }
 
 /* Lock viewport during quadrant drag to prevent page shrink */
@@ -229,10 +228,10 @@ body.q-dragging{
   touch-action:none !important;
   -webkit-user-select:none !important;
   user-select:none !important;
+  cursor:grabbing !important;
 }
 html.q-dragging-lock{
   overflow:hidden !important;
-}
 }
 
 /* ---------- "Add Tier" hidden in quadrant mode ---------- */
@@ -244,7 +243,6 @@ body.quadrant-mode #addTierBtn{display:none}
   .q-zone{min-height:150px}
   .q-zone .token{width:55px;height:55px}
   .q-zone .token .label{font-size:11px;font-weight:900;padding:3px}
-  .q-drag-ghost{width:55px;height:55px}
   .q-axis-label{font-size:11px;padding:4px 6px}
   .mode-toggle-wrap{max-width:280px}
   .mode-toggle-btn{height:36px;font-size:12px}
@@ -254,7 +252,6 @@ body.quadrant-mode #addTierBtn{display:none}
   .q-zone{min-height:120px}
   .q-zone .token{width:48px;height:48px}
   .q-zone .token .label{font-size:10px;font-weight:900;padding:2px}
-  .q-drag-ghost{width:48px;height:48px}
   .mode-toggle-wrap{max-width:260px}
 }
 
