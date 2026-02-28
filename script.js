@@ -529,13 +529,16 @@ function enableClickToPlace(zone){
     var originNext = selected.nextElementSibling;
     var originBeforeId = originNext ? ensureId(originNext,'tok') : '';
     var scrollSnap = window.pageYOffset;
+    var isQZone = zone.classList.contains('q-zone');
     flipZones([origin, zone], function(){ zone.appendChild(selected); });
+    // Clear absolute positioning when returning to tray or tier row
+    if(!isQZone){ selected.style.position=''; selected.style.left=''; selected.style.top=''; }
     // Prevent viewport shift on mobile after DOM move
     if (isSmall()) window.scrollTo(0, scrollSnap);
     selected.classList.remove('selected');
     recordPlacement(selected.id, fromId, zone.id, originBeforeId);
     var r = zone.closest ? zone.closest('.tier-row') : null;
-    live('Moved "'+(selected.innerText||'item')+'" to '+ (r?rowLabel(r):'Image Storage') );
+    live('Moved "'+(selected.innerText||'item')+'" to '+ (r?rowLabel(r): isQZone?'quadrant chart':'Image Storage') );
     vib(6);
   });
 }
@@ -582,14 +585,33 @@ function enablePointerDrag(node){
         var fromId = ensureId(originParent,'zone');
         var toId   = ensureId(zone,'zone');
         var originBeforeId = originNext ? ensureId(originNext,'tok') : '';
-        var beforeTok = insertBeforeForPoint(zone,x,y,node);
-        flipZones([originParent, zone], function(){
-          if(beforeTok) zone.insertBefore(node, beforeTok); else zone.appendChild(node);
-        });
+        var isQZone = zone.classList.contains('q-zone');
+        if(isQZone){
+          // Quadrant zone: free-place at drop coordinates
+          var rect = zone.getBoundingClientRect();
+          var sz = node.offsetWidth || 65;
+          var nx = x - rect.left - sz/2;
+          var ny = y - rect.top - sz/2;
+          nx = Math.max(0, Math.min(nx, rect.width - sz));
+          ny = Math.max(0, Math.min(ny, rect.height - sz));
+          flipZones([originParent], function(){ zone.appendChild(node); });
+          node.style.position = 'absolute';
+          node.style.left = (nx/rect.width*100)+'%';
+          node.style.top = (ny/rect.height*100)+'%';
+        } else {
+          var beforeTok = insertBeforeForPoint(zone,x,y,node);
+          flipZones([originParent, zone], function(){
+            if(beforeTok) zone.insertBefore(node, beforeTok); else zone.appendChild(node);
+          });
+          // Clear any leftover absolute positioning from quadrant
+          node.style.position = '';
+          node.style.left = '';
+          node.style.top = '';
+        }
         recordPlacement(node.id, fromId, toId, originBeforeId);
         node.classList.add('animate-drop'); setTimeout(function(){ node.classList.remove('animate-drop'); },180);
         var rr = zone.closest ? zone.closest('.tier-row') : null;
-        live('Moved "'+(node.innerText||'item')+'" to '+ (rr?rowLabel(rr):'Image Storage') );
+        live('Moved "'+(node.innerText||'item')+'" to '+ (rr?rowLabel(rr): isQZone?'quadrant chart':'Image Storage') );
         vib(6);
       } else {
         flipZones([originParent], function(){
@@ -645,14 +667,31 @@ function enableMouseTouchDragFallback(node){
     if (zone){
       var fromId=ensureId(originParent,'zone'), toId=ensureId(zone,'zone');
       var originBeforeId = originNext ? ensureId(originNext,'tok') : '';
-      var beforeTok=insertBeforeForPoint(zone,x,y,node);
-      flipZones([originParent, zone], function(){
-        if(beforeTok) zone.insertBefore(node,beforeTok); else zone.appendChild(node);
-      });
+      var isQZone = zone.classList.contains('q-zone');
+      if(isQZone){
+        var rect = zone.getBoundingClientRect();
+        var sz = node.offsetWidth || 65;
+        var nx = x - rect.left - sz/2;
+        var ny = y - rect.top - sz/2;
+        nx = Math.max(0, Math.min(nx, rect.width - sz));
+        ny = Math.max(0, Math.min(ny, rect.height - sz));
+        flipZones([originParent], function(){ zone.appendChild(node); });
+        node.style.position = 'absolute';
+        node.style.left = (nx/rect.width*100)+'%';
+        node.style.top = (ny/rect.height*100)+'%';
+      } else {
+        var beforeTok=insertBeforeForPoint(zone,x,y,node);
+        flipZones([originParent, zone], function(){
+          if(beforeTok) zone.insertBefore(node,beforeTok); else zone.appendChild(node);
+        });
+        node.style.position = '';
+        node.style.left = '';
+        node.style.top = '';
+      }
       recordPlacement(node.id, fromId, toId, originBeforeId);
       node.classList.add('animate-drop'); setTimeout(function(){ node.classList.remove('animate-drop'); },180);
       var rr = zone.closest ? zone.closest('.tier-row') : null;
-      live('Moved "'+(node.innerText||'item')+'" to '+ (rr?rowLabel(rr):'Image Storage') );
+      live('Moved "'+(node.innerText||'item')+'" to '+ (rr?rowLabel(rr): isQZone?'quadrant chart':'Image Storage') );
       vib(6);
     } else {
       flipZones([originParent], function(){
@@ -976,12 +1015,16 @@ on($('#trashClear'),'click', function(){
   if (!confirm('Clear the board?\n\nThis will remove all custom tokens, written titles, and placements. Everything resets to the default clean state.')) return;
   // Clear saved data and reload for a fresh start
   try { localStorage.removeItem(STORAGE_KEY); } catch(e){}
+  try { localStorage.removeItem('tm_quadrant'); } catch(e){}
+  try { localStorage.removeItem('tm_mode'); } catch(e){}
   location.reload();
 });
 on($('#undoBtn'),'click', function(){ animateBtn(this); undoLast(); });
 
 /* ===== Save Tierlist (keeps on-screen circle size) ===== */
 on($('#saveBtn'),'click', function(){
+  // In quadrant mode, let quadrant.js handle the export
+  if(typeof window.currentChartMode === 'function' && window.currentChartMode() === 'quadrant') return;
   replayGif(this);
   $$('.token.selected').forEach(function(t){ t.classList.remove('selected'); });
   $$('.dropzone.drag-over').forEach(function(z){ z.classList.remove('drag-over'); });
@@ -1069,7 +1112,9 @@ on($('#saveBtn'),'click', function(){
     '.board-title-wrap{ text-align:center !important; margin-bottom:20px !important; }',
     '.board-title{ text-align:center !important; font-size:28px !important; }',
     '.title-pen{ display:none !important; }',
-    '.prompt-stack-wrap{ display:none !important; }'
+    '.prompt-stack-wrap{ display:none !important; }',
+    '.mode-toggle-wrap{ display:none !important; }',
+    '#quadrantBoard{ display:none !important; }'
   ].join('\n');
   clone.appendChild(style);
 
@@ -1152,15 +1197,47 @@ on(document,'click', function(e){
 /* ---------- Keyboard quick-jump (1..N) ---------- */
 on(document,'keydown',function(e){
   var selected=$('.token.selected'); if(!selected) return;
-  var n=parseInt(e.key,10); if(!isNaN(n)&&n>=1&&n<=rowCount()){
-    e.preventDefault(); var rows=$$('.tier-row'); var row=rows[n-1]; if(!row) return;
-    var zone=row.querySelector('.tier-drop'); var fromId=ensureId(selected.parentElement,'zone');
-    var origin=selected.parentElement; ensureId(zone,'zone');
+  var n=parseInt(e.key,10); if(isNaN(n)||n<1) return;
+
+  // Quadrant mode: 1-4 map to TL, TR, BL, BR
+  if(typeof window.currentChartMode === 'function' && window.currentChartMode() === 'quadrant'){
+    if(n>4) return;
+    var qz=document.getElementById('qzone-'+['tl','tr','bl','br'][n-1]);
+    if(!qz) return;
+    e.preventDefault();
+    var fromId=ensureId(selected.parentElement,'zone');
+    var origin=selected.parentElement;
     var kbNext=selected.nextElementSibling;
     var kbBeforeId=kbNext?ensureId(kbNext,'tok'):'';
-    flipZones([origin, zone], function(){ zone.appendChild(selected); });
+    var rect=qz.getBoundingClientRect();
+    var sz=selected.offsetWidth||65;
+    // Place near center with slight random offset
+    var cx=(rect.width/2-sz/2)+(Math.random()-0.5)*40;
+    var cy=(rect.height/2-sz/2)+(Math.random()-0.5)*40;
+    cx=Math.max(0,Math.min(cx,rect.width-sz));
+    cy=Math.max(0,Math.min(cy,rect.height-sz));
+    if(origin.id==='tray'){ flipZones([origin],function(){qz.appendChild(selected);}); }
+    else { qz.appendChild(selected); }
+    selected.style.position='absolute';
+    selected.style.left=(cx/rect.width*100)+'%';
+    selected.style.top=(cy/rect.height*100)+'%';
     selected.classList.remove('selected');
-    recordPlacement(selected.id,fromId,zone.id,kbBeforeId); vib(4); live('Moved "'+(selected.innerText||'item')+'" to '+rowLabel(row));
+    recordPlacement(selected.id,fromId,qz.id,kbBeforeId); vib(4);
+    live('Placed "'+(selected.innerText||'item')+'" on quadrant');
+    return;
+  }
+
+  // Tier mode
+  if(n<=rowCount()){
+    e.preventDefault(); var rows=$$('.tier-row'); var row=rows[n-1]; if(!row) return;
+    var zone=row.querySelector('.tier-drop'); var fromId2=ensureId(selected.parentElement,'zone');
+    var origin2=selected.parentElement; ensureId(zone,'zone');
+    var kbNext2=selected.nextElementSibling;
+    var kbBeforeId2=kbNext2?ensureId(kbNext2,'tok'):'';
+    flipZones([origin2, zone], function(){ zone.appendChild(selected); });
+    selected.classList.remove('selected');
+    selected.style.position=''; selected.style.left=''; selected.style.top='';
+    recordPlacement(selected.id,fromId2,zone.id,kbBeforeId2); vib(4); live('Moved "'+(selected.innerText||'item')+'" to '+rowLabel(row));
   }
 });
 
@@ -1280,6 +1357,8 @@ function scheduleSave(){
   clearTimeout(_saveTimeout);
   _saveTimeout = setTimeout(saveTierList, 800);
   updateTrayCount();
+  // Also trigger quadrant save if in quadrant mode
+  if(typeof window.scheduleQuadrantSave === 'function') window.scheduleQuadrantSave();
 }
 
 /* ---------- Token counter ---------- */
