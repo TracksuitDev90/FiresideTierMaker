@@ -145,23 +145,6 @@
 :root[data-theme="light"] .q-zone--bl{background:rgba(251,191,36,.08)}
 :root[data-theme="light"] .q-zone--br{background:rgba(59,130,246,.08)}
 
-/* Quadrant zone label (corner) */
-.q-zone-label{
-  position:absolute;
-  font-weight:800;font-size:11px;letter-spacing:.5px;
-  text-transform:uppercase;
-  color:var(--muted);
-  opacity:.45;
-  padding:8px 10px;
-  pointer-events:none;
-  user-select:none;
-  line-height:1;
-}
-.q-zone--tl .q-zone-label{top:0;left:0}
-.q-zone--tr .q-zone-label{top:0;right:0}
-.q-zone--bl .q-zone-label{bottom:0;left:0}
-.q-zone--br .q-zone-label{bottom:0;right:0}
-
 /* ---------- Per-quadrant color picker ---------- */
 .q-color-pick{
   position:absolute;
@@ -213,29 +196,46 @@
 .q-zone .token img{
   width:100%;height:100%;object-fit:cover;border-radius:999px;pointer-events:none;
 }
+/* Tokens inside quadrant zones — kill all browser touch gestures */
+.q-zone .token{
+  touch-action:none;
+  -webkit-touch-callout:none;
+  -webkit-user-select:none;
+  user-select:none;
+}
+
 /* Direct-manipulation drag: the actual token becomes the drag visual */
 .q-dragging-token{
   /* GPU-composited layer for zero-lag movement */
-  will-change:left,top;
+  will-change:transform;
   box-shadow:0 12px 32px rgba(0,0,0,.4) !important;
   opacity:.95;
-  pointer-events:none;
 }
 
-/* Lock viewport during quadrant drag to prevent page shrink */
+/* Lock viewport during quadrant drag */
 body.q-dragging{
   overflow:hidden !important;
   touch-action:none !important;
   -webkit-user-select:none !important;
   user-select:none !important;
+  -webkit-touch-callout:none !important;
   cursor:grabbing !important;
+}
+body.q-dragging *{
+  -webkit-user-select:none !important;
+  user-select:none !important;
+  -webkit-touch-callout:none !important;
 }
 html.q-dragging-lock{
   overflow:hidden !important;
 }
 
-/* ---------- "Add Tier" hidden in quadrant mode ---------- */
+/* ---------- Controls layout in quadrant mode ---------- */
 body.quadrant-mode #addTierBtn{display:none}
+body.quadrant-mode .controls{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:720px){
+  body.quadrant-mode .controls{grid-template-columns:1fr 1fr}
+}
 
 /* ---------- Responsive ---------- */
 @media (max-width:768px){
@@ -257,5 +257,4 @@ body.quadrant-mode #addTierBtn{display:none}
 
 /* ---------- Export overrides (for save-as-PNG) ---------- */
 .q-export-mode .q-color-pick{display:none !important}
-.q-export-mode .q-zone-label{display:none !important}
 .q-export-mode .mode-toggle-wrap{display:none !important}
