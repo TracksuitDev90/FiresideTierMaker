@@ -254,6 +254,9 @@
       e.stopPropagation();
       token.setPointerCapture(e.pointerId);
       document.body.classList.add('dragging-item');
+      // Lock viewport: prevent overflow and scroll/zoom during drag
+      document.body.classList.add('q-dragging');
+      document.documentElement.classList.add('q-dragging-lock');
 
       var zone = token.closest('.q-zone');
       var originZone = zone;
@@ -274,17 +277,25 @@
       var x = e.clientX, y = e.clientY;
       var raf = null;
       var currentDZ = null;
+      var vw = window.innerWidth;
+      var vh = window.innerHeight;
 
-      function move(ev){ x=ev.clientX; y=ev.clientY; }
+      function move(ev){
+        ev.preventDefault(); // prevent scroll/zoom on touch
+        x=ev.clientX; y=ev.clientY;
+      }
 
       function up(){
         try{token.releasePointerCapture(e.pointerId);}catch(_){}
-        document.removeEventListener('pointermove',move,_supportsPassive?{passive:true}:false);
+        document.removeEventListener('pointermove',move,false);
         document.removeEventListener('pointerup',up,false);
         cancelAnimationFrame(raf);
         if(ghost && ghost.parentNode) ghost.parentNode.removeChild(ghost);
         token.classList.remove('drag-hidden');
         document.body.classList.remove('dragging-item');
+        // Unlock viewport
+        document.body.classList.remove('q-dragging');
+        document.documentElement.classList.remove('q-dragging-lock');
 
         // Clear drag-over
         qZones.forEach(function(z){z.classList.remove('drag-over');});
@@ -338,11 +349,18 @@
 
       function loop(){
         raf = requestAnimationFrame(loop);
-        ghost.style.transform = 'translate3d('+(x-offsetX)+'px,'+(y-offsetY)+'px,0)';
+        // Clamp ghost position so it never extends past the viewport
+        var gx = x - offsetX;
+        var gy = y - offsetY;
+        gx = Math.max(0, Math.min(gx, vw - sz));
+        gy = Math.max(0, Math.min(gy, vh - sz));
+        ghost.style.transform = 'translate3d('+gx+'px,'+gy+'px,0)';
 
-        // Hit-test
+        // Hit-test — use actual finger position, not clamped ghost position
         ghost.style.pointerEvents='none';
-        var el = document.elementFromPoint(x,y);
+        var hx = Math.max(0, Math.min(x, vw - 1));
+        var hy = Math.max(0, Math.min(y, vh - 1));
+        var el = document.elementFromPoint(hx, hy);
         ghost.style.pointerEvents='';
         var dz = el ? (el.closest('.q-zone') || el.closest('#tray')) : null;
 
@@ -351,7 +369,8 @@
         currentDZ = dz || null;
       }
 
-      document.addEventListener('pointermove',move,_supportsPassive?{passive:true}:false);
+      // Non-passive so preventDefault works (prevents scroll/zoom on touch)
+      document.addEventListener('pointermove',move,{passive:false,capture:false});
       document.addEventListener('pointerup',up,false);
       loop();
     }, _supportsPassive?{passive:false}:false);
