@@ -1479,6 +1479,55 @@ var TIER_PROMPTS = [
     { label: 'AUTUMN', color: '#ea580c' },
     { label: 'WINTER', color: '#6366f1' },
     { label: 'SPRING', color: '#22c55e' }
+  ]},
+  { text: "What's their love language?", tiers: [
+    { label: 'WORDS', color: '#ec4899' },
+    { label: 'ACTS', color: '#22c55e' },
+    { label: 'GIFTS', color: '#eab308' },
+    { label: 'QUALITY TIME', color: '#3b82f6' },
+    { label: 'TOUCH', color: '#ef4444' }
+  ]},
+  { text: 'What type of texter are they?', tiers: [
+    { label: 'INSTANT', color: '#22c55e' },
+    { label: 'DOUBLE TEXT', color: '#3b82f6' },
+    { label: 'SEEN ZONE', color: '#eab308' },
+    { label: 'SLOW BURN', color: '#f97316' },
+    { label: 'LEFT ON READ', color: '#ef4444' }
+  ]},
+  { text: "What's their squad role?", tiers: [
+    { label: 'THE PLANNER', color: '#3b82f6' },
+    { label: 'HYPE MAN', color: '#eab308' },
+    { label: 'MOM FRIEND', color: '#ec4899' },
+    { label: 'WILD CARD', color: '#f97316' },
+    { label: 'THE VIBE', color: '#22c55e' },
+    { label: 'THE MENACE', color: '#ef4444' }
+  ]},
+  { text: 'What music genre are they?', tiers: [
+    { label: 'POP', color: '#ec4899' },
+    { label: 'HIP HOP', color: '#a855f7' },
+    { label: 'INDIE', color: '#22c55e' },
+    { label: 'ELECTRONIC', color: '#06b6d4' },
+    { label: 'COUNTRY', color: '#f59e0b' },
+    { label: 'ROCK', color: '#ef4444' }
+  ]},
+  { text: "What's their D&D alignment?", tiers: [
+    { label: 'LAWFUL GOOD', color: '#22c55e' },
+    { label: 'NEUTRAL GOOD', color: '#84cc16' },
+    { label: 'CHAOTIC GOOD', color: '#3b82f6' },
+    { label: 'LAWFUL NEUTRAL', color: '#6366f1' },
+    { label: 'TRUE NEUTRAL', color: '#6b7280' },
+    { label: 'CHAOTIC NEUTRAL', color: '#f59e0b' },
+    { label: 'LAWFUL EVIL', color: '#a855f7' },
+    { label: 'NEUTRAL EVIL', color: '#f97316' },
+    { label: 'CHAOTIC EVIL', color: '#ef4444' }
+  ]},
+  { text: "What's their Pokémon type?", tiers: [
+    { label: 'FIRE', color: '#ef4444' },
+    { label: 'WATER', color: '#3b82f6' },
+    { label: 'GRASS', color: '#22c55e' },
+    { label: 'ELECTRIC', color: '#eab308' },
+    { label: 'PSYCHIC', color: '#ec4899' },
+    { label: 'DARK', color: '#4b5563' }
   ]}
 ];
 shuffleArray(TIER_PROMPTS);
