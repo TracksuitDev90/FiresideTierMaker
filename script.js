@@ -551,6 +551,23 @@ function getDropZoneFromElement(el){
   return null;
 }
 
+/* ---------- Auto-scroll during drag ---------- */
+var _autoScrollEdge = 80;   // px from viewport edge to start scrolling
+var _autoScrollMax  = 18;   // max px per frame
+
+function autoScrollForDrag(clientY){
+  var vh = window.innerHeight;
+  if (clientY < _autoScrollEdge) {
+    // Near top – scroll up; speed proportional to proximity
+    var t = 1 - clientY / _autoScrollEdge;           // 0 at threshold, 1 at edge
+    window.scrollBy(0, -Math.round(_autoScrollMax * t * t));
+  } else if (clientY > vh - _autoScrollEdge) {
+    // Near bottom – scroll down
+    var t = 1 - (vh - clientY) / _autoScrollEdge;
+    window.scrollBy(0, Math.round(_autoScrollMax * t * t));
+  }
+}
+
 /* ---------- Pointer drag (desktop / large screens) ---------- */
 function enablePointerDrag(node){
   var ghost=null, originParent=null, originNext=null, currentZone=null;
@@ -629,6 +646,7 @@ function enablePointerDrag(node){
 
     function loop(){
       raf = requestAnimationFrame(loop);
+      autoScrollForDrag(y);
       ghost.style.transform = 'translate3d('+(x-offsetX)+'px,'+(y-offsetY)+'px,0)';
       var el = document.elementFromPoint(x,y);
       var zone = getDropZoneFromElement(el);
@@ -716,6 +734,7 @@ function enableMouseTouchDragFallback(node){
 
   function loop(){
     raf=requestAnimationFrame(loop);
+    autoScrollForDrag(y);
     ghost.style.transform='translate3d('+(x-offsetX)+'px,'+(y-offsetY)+'px,0)';
     var el=document.elementFromPoint(x,y);
     var zone=getDropZoneFromElement(el);
