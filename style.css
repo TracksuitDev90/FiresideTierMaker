@@ -306,14 +306,12 @@ a{color:inherit;text-decoration:none}
 .prompt-stack-wrap.hidden{display:none}
 .prompt-cards{
   position:relative;
-  width:min(92%,420px);height:56px;
+  width:min(92%,420px);height:64px;
 }
 .prompt-card{
   position:absolute;top:0;left:0;width:100%;height:100%;
-  background:var(--card);
-  border:1px solid var(--neon);
+  border:none;
   border-radius:14px;
-  box-shadow:0 2px 10px rgba(0,0,0,.12);
   display:flex;align-items:center;justify-content:center;gap:8px;
   padding:0 20px;
   cursor:grab;user-select:none;-webkit-user-select:none;
@@ -338,7 +336,7 @@ a{color:inherit;text-decoration:none}
 }
 .prompt-card.hint{animation:card-hint .8s ease-in-out}
 @media(max-width:480px){
-  .prompt-cards{width:96%;height:50px}
+  .prompt-cards{width:96%;height:58px}
   .prompt-card{padding:0 14px;border-radius:12px}
   .prompt-card-text{font-size:12px}
 }

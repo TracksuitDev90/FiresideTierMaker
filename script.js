@@ -1561,22 +1561,42 @@ var _promptUserSet = false;
 var _maxVisibleCards = 3;
 var _hintTimer = null;
 
+/* Prompt card color pairs — each pair rotates text/bg between its two colors */
+var PROMPT_CARD_PAIRS = [
+  ['#317873', '#E4C9B0'], // Petrol Blue / Warm Sand
+  ['#DACD48', '#527882'], // Citron / Blue Slate
+  ['#FF7F50', '#008080'], // Coral / Emerald Sea
+  ['#004643', '#FAFAFA'], // Cyprus / Cloud White
+  ['#1E2B2F', '#FF7F50']  // Cinder / Flame
+];
+function getCardColors(index){
+  var pairIdx = index % PROMPT_CARD_PAIRS.length;
+  var variant = Math.floor(index / PROMPT_CARD_PAIRS.length) % 2;
+  var pair = PROMPT_CARD_PAIRS[pairIdx];
+  return { bg: variant === 0 ? pair[0] : pair[1], fg: variant === 0 ? pair[1] : pair[0] };
+}
+
 /* ---------- Prompt card stack ---------- */
 function buildPromptCard(promptIndex){
   var prompt = TIER_PROMPTS[promptIndex % TIER_PROMPTS.length];
+  var colors = getCardColors(promptIndex);
   var card = document.createElement('div');
   card.className = 'prompt-card';
   card.dataset.promptIndex = promptIndex % TIER_PROMPTS.length;
+  card.style.background = colors.bg;
 
   var text = document.createElement('span');
   text.className = 'prompt-card-text';
   text.textContent = prompt.text;
+  text.style.color = colors.fg;
   card.appendChild(text);
 
   if(prompt.tiers){
     var badge = document.createElement('span');
     badge.className = 'prompt-card-badge';
     badge.textContent = '\u2726';
+    badge.style.color = colors.fg;
+    badge.style.opacity = '1';
     card.appendChild(badge);
   }
   return card;
@@ -1584,14 +1604,15 @@ function buildPromptCard(promptIndex){
 
 function setCardStackPos(card, pos, animate){
   if(animate){
-    card.style.transition = 'transform .35s cubic-bezier(.4,.0,.2,1), opacity .35s cubic-bezier(.4,.0,.2,1), z-index 0s';
+    card.style.transition = 'transform .35s cubic-bezier(.4,.0,.2,1), z-index 0s';
   } else {
     card.style.transition = 'none';
   }
   card.style.zIndex = 10 - pos;
-  if(pos===0){ card.style.transform='scale(1) translateY(0)'; card.style.opacity='1'; }
-  else if(pos===1){ card.style.transform='scale(.96) translateY(8px)'; card.style.opacity='.65'; }
-  else { card.style.transform='scale(.92) translateY(16px)'; card.style.opacity='.4'; }
+  card.style.opacity = '1';
+  if(pos===0){ card.style.transform='scale(1) translateY(0)'; }
+  else if(pos===1){ card.style.transform='scale(.98) translateY(8px)'; }
+  else { card.style.transform='scale(.96) translateY(16px)'; }
 }
 
 /* Initial full render — only used on first load or when stack reappears */
