@@ -320,12 +320,12 @@ a{color:inherit;text-decoration:none}
 }
 .prompt-card:active{cursor:grabbing}
 .prompt-card-text{
-  font-size:13px;font-weight:700;color:var(--text);
+  font-size:15px;font-weight:700;color:var(--text);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   text-align:center;flex:1;min-width:0;
 }
 .prompt-card-badge{
-  font-size:13px;color:var(--neon);flex:0 0 auto;opacity:.7;
+  font-size:17px;color:var(--neon);flex:0 0 auto;opacity:.7;
   line-height:1;
 }
 /* Idle hint nudge */
@@ -338,7 +338,7 @@ a{color:inherit;text-decoration:none}
 @media(max-width:480px){
   .prompt-cards{width:96%;height:58px}
   .prompt-card{padding:0 14px;border-radius:12px}
-  .prompt-card-text{font-size:12px}
+  .prompt-card-text{font-size:14px}
 }
 
 #tierBoard{display:grid;gap:12px;margin-top:4px}

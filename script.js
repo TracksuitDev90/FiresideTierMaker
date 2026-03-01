@@ -1567,13 +1567,28 @@ var PROMPT_CARD_PAIRS = [
   ['#DACD48', '#527882'], // Citron / Blue Slate
   ['#FF7F50', '#008080'], // Coral / Emerald Sea
   ['#004643', '#FAFAFA'], // Cyprus / Cloud White
-  ['#1E2B2F', '#FF7F50']  // Cinder / Flame
+  ['#1E2B2F', '#FF7F50'], // Cinder / Flame
+  ['#9A0002', '#EFE6DE'], // Cherry Cola / Creamy Vanilla
+  ['#523D2D', '#F4EFE6'], // Teddy Bear / Vanilla Bean
+  ['#A8C686', '#F5F3EC']  // Matcha / Oat Milk
 ];
 function getCardColors(index){
   var pairIdx = index % PROMPT_CARD_PAIRS.length;
   var variant = Math.floor(index / PROMPT_CARD_PAIRS.length) % 2;
   var pair = PROMPT_CARD_PAIRS[pairIdx];
   return { bg: variant === 0 ? pair[0] : pair[1], fg: variant === 0 ? pair[1] : pair[0] };
+}
+/* Compute an inset border color: lighten 20% for dark bgs, darken 15% for light */
+function adjustHex(hex, amount){
+  var r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
+  if(amount>0){ r=Math.round(r+(255-r)*amount); g=Math.round(g+(255-g)*amount); b=Math.round(b+(255-b)*amount); }
+  else { r=Math.round(r*(1+amount)); g=Math.round(g*(1+amount)); b=Math.round(b*(1+amount)); }
+  return '#'+((1<<24)|(r<<16)|(g<<8)|b).toString(16).slice(1);
+}
+function cardBorderColor(bgHex){
+  var r=parseInt(bgHex.slice(1,3),16)/255, g=parseInt(bgHex.slice(3,5),16)/255, b=parseInt(bgHex.slice(5,7),16)/255;
+  var lum=0.299*r+0.587*g+0.114*b;
+  return lum>0.5 ? adjustHex(bgHex,-0.15) : adjustHex(bgHex,0.20);
 }
 
 /* ---------- Prompt card stack ---------- */
@@ -1584,6 +1599,7 @@ function buildPromptCard(promptIndex){
   card.className = 'prompt-card';
   card.dataset.promptIndex = promptIndex % TIER_PROMPTS.length;
   card.style.background = colors.bg;
+  card.style.boxShadow = 'inset 0 0 0 1.5px ' + cardBorderColor(colors.bg);
 
   var text = document.createElement('span');
   text.className = 'prompt-card-text';
