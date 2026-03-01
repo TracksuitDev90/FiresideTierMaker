@@ -615,6 +615,8 @@ function enablePointerDrag(node){
           node.style.position = 'absolute';
           node.style.left = (nx/rect.width*100)+'%';
           node.style.top = (ny/rect.height*100)+'%';
+          if(typeof window.refitQToken==='function') window.refitQToken(node);
+          if(typeof window.bringQTokenToFront==='function') window.bringQTokenToFront(node);
         } else {
           var beforeTok = insertBeforeForPoint(zone,x,y,node);
           flipZones([originParent, zone], function(){
@@ -697,6 +699,8 @@ function enableMouseTouchDragFallback(node){
         node.style.position = 'absolute';
         node.style.left = (nx/rect.width*100)+'%';
         node.style.top = (ny/rect.height*100)+'%';
+        if(typeof window.refitQToken==='function') window.refitQToken(node);
+        if(typeof window.bringQTokenToFront==='function') window.bringQTokenToFront(node);
       } else {
         var beforeTok=insertBeforeForPoint(zone,x,y,node);
         flipZones([originParent, zone], function(){
@@ -1138,8 +1142,8 @@ on($('#saveBtn'),'click', function(){
     '  white-space:nowrap !important;',
     '  overflow:hidden !important;',
     '}',
-    '.board-title-wrap{ text-align:center !important; margin-bottom:20px !important; }',
-    '.board-title{ text-align:center !important; font-size:28px !important; }',
+    '.board-title-wrap{ display:block !important; text-align:center !important; margin-bottom:20px !important; }',
+    '.board-title{ display:block !important; text-align:center !important; font-size:28px !important; white-space:normal !important; word-wrap:break-word !important; overflow-wrap:break-word !important; }',
     '.title-pen{ display:none !important; }',
     '.prompt-stack-wrap{ display:none !important; }',
     '.mode-toggle-wrap{ display:none !important; }',
@@ -1251,6 +1255,8 @@ on(document,'keydown',function(e){
     selected.style.left=(cx/rect.width*100)+'%';
     selected.style.top=(cy/rect.height*100)+'%';
     selected.classList.remove('selected');
+    if(typeof window.refitQToken==='function') window.refitQToken(selected);
+    if(typeof window.bringQTokenToFront==='function') window.bringQTokenToFront(selected);
     recordPlacement(selected.id,fromId,qz.id,kbBeforeId); vib(4);
     live('Placed "'+(selected.innerText||'item')+'" on quadrant');
     return;

@@ -186,8 +186,17 @@
   cursor:grab;
   /* Remove grid-based positioning */
   margin:0;
+  /* Depth ring for overlapping discernibility */
+  box-shadow:0 2px 8px rgba(0,0,0,.35), 0 0 0 2px rgba(255,255,255,.25);
+  transition:transform .08s ease, box-shadow .15s ease;
+}
+:root[data-theme="light"] .q-zone .token{
+  box-shadow:0 2px 8px rgba(0,0,0,.18), 0 0 0 2px rgba(0,0,0,.12);
 }
 .q-zone .token:active{cursor:grabbing}
+.q-zone .token.selected{
+  box-shadow:0 4px 16px rgba(0,0,0,.45), 0 0 0 3px var(--accent);
+}
 .q-zone .token .label{
   font-weight:900;
   font-size:13px;
