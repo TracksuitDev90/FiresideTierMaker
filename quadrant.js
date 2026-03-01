@@ -30,6 +30,11 @@
 
   var Q_POSITIONS = ['tl','tr','bl','br'];
 
+  /* ---------- Z-index stacking counter ---------- */
+  var _qZCounter = 10; // start above the CSS baseline
+  function nextQZ(){ return ++_qZCounter; }
+  function bringToFront(tok){ tok.style.zIndex = nextQZ(); }
+
   /* Default axis labels */
   var DEFAULT_LABELS = {
     top: 'HIGH',
@@ -197,6 +202,8 @@
         selected.style.left = (x/rect.width*100)+'%';
         selected.style.top = (y/rect.height*100)+'%';
         selected.classList.remove('selected');
+        refitQToken(selected);
+        bringToFront(selected);
         scheduleQuadrantSave();
         return;
       }
@@ -226,6 +233,8 @@
       selected.style.left = (nx/rect2.width*100)+'%';
       selected.style.top = (ny/rect2.height*100)+'%';
       selected.classList.remove('selected');
+      refitQToken(selected);
+      bringToFront(selected);
 
       recordPlacement(selected.id, fromId, zone.id, originBeforeId);
       live('Placed "'+(selected.innerText||'item')+'" on quadrant chart');
@@ -246,6 +255,7 @@
       e.preventDefault();
       e.stopPropagation();
       token.setPointerCapture(e.pointerId);
+      bringToFront(token);
 
       // Lock viewport: prevent overflow, scroll, zoom, text selection, callout
       document.body.classList.add('dragging-item','q-dragging');
@@ -255,6 +265,7 @@
       var originZone = zone;
       var originLeft = token.style.left;
       var originTop = token.style.top;
+      var savedBg = token.style.background || token.style.backgroundColor || '';
       var sz = qTokenSize();
 
       // Snapshot the token's screen position before we start
@@ -329,6 +340,8 @@
         // Strip all inline overrides
         token.classList.remove('q-dragging-token');
         token.style.cssText = '';
+        // Restore token background color that was wiped by cssText override
+        if(savedBg) token.style.background = savedBg;
 
         if(dropTray){
           // Return to tray
@@ -354,6 +367,8 @@
           token.style.position = 'absolute';
           token.style.left = (nx/rect.width*100)+'%';
           token.style.top = (ny/rect.height*100)+'%';
+          refitQToken(token);
+          bringToFront(token);
           vib(6);
           scheduleQuadrantSave();
         } else {
@@ -554,6 +569,7 @@
               qZones[i].appendChild(tok);
               enableQuadrantTokenDrag(tok);
               refitQToken(tok);
+              bringToFront(tok);
             }
           });
         });
@@ -654,8 +670,8 @@
     style.textContent = [
       '.prompt-stack-wrap{display:none !important}',
       '.title-pen{display:none !important}',
-      '.board-title-wrap{text-align:center !important;margin-bottom:20px !important}',
-      '.board-title{text-align:center !important;font-size:28px !important}',
+      '.board-title-wrap{display:block !important;text-align:center !important;margin-bottom:20px !important}',
+      '.board-title{display:block !important;text-align:center !important;font-size:28px !important;white-space:normal !important;word-wrap:break-word !important;overflow-wrap:break-word !important}',
       '.q-color-pick{display:none !important}',
       '.token-del{display:none !important}',
       '.mode-toggle-wrap{display:none !important}'
@@ -801,6 +817,7 @@
 
           enableQuadrantTokenDrag(token);
           refitQToken(token);
+          bringToFront(token);
           recordPlacement(token.id, fromId, zone.id, originBeforeId);
           vib(7);
           if(typeof closeRadial === 'function') closeRadial();
@@ -933,7 +950,9 @@
     }, 50);
   });
 
-  /* Expose scheduleQuadrantSave globally so script.js auto-save can call it */
+  /* Expose globals so script.js keyboard handler can call them */
   window.scheduleQuadrantSave = function(){ scheduleQuadrantSave(); };
+  window.refitQToken = function(tok){ refitQToken(tok); };
+  window.bringQTokenToFront = function(tok){ bringToFront(tok); };
 
 })();
