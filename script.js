@@ -202,6 +202,9 @@ function fitChipLabel(chip){
     if (measureText(text, '900', px) + text.length * 0.5 <= availW) break;
   }
   chip.style.fontSize = Math.max(px, minPx) + 'px';
+  // Reset internal scroll so text stays visible from the start
+  // (contenteditable + overflow:hidden can scroll to keep cursor visible)
+  chip.scrollLeft = 0;
 }
 
 /* Equalize all tier label font sizes to the smallest needed */
@@ -247,9 +250,15 @@ function createRow(cfg){
   chip.textContent = cfg.label;
   applyTierColor(node, cfg.color);
 
-  on(chip,'input', function(){ uniformizeTierLabels(); });
+  on(chip,'input', function(){
+    uniformizeTierLabels();
+    // Browser may re-scroll contenteditable after style changes;
+    // reset scroll in the next frame so text stays left-aligned
+    chip.scrollLeft = 0;
+    requestAnimationFrame(function(){ chip.scrollLeft = 0; });
+  });
   on(chip,'keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); chip.blur(); } });
-  on(chip,'blur', function(){ uniformizeTierLabels(); });
+  on(chip,'blur', function(){ uniformizeTierLabels(); chip.scrollLeft = 0; });
   fitChipLabel(chip);
 
   /* Color picker — label wraps input so native click opens the dialog */
