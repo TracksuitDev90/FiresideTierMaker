@@ -186,24 +186,55 @@ function ensureId(el, prefix){ if(!el.id){ el.id=(prefix||'id')+'-'+uid(); } ret
 function rowLabel(row){ var chip=row?row.querySelector('.label-chip'):null; return chip?chip.textContent.replace(/\s+/g,' ').trim():'row'; }
 
 /* ---------- Chip label auto-sizer ---------- */
+/* Uses a hidden measurement div with real CSS rendering so word-wrap,
+   letter-spacing, font-fallback etc. are all accounted for exactly.
+   Binary-searches for the largest font where the text fits both
+   horizontally (no single word overflows) and vertically (wrapped
+   lines fit inside the chip height). */
+var _fitDiv = null;
 function fitChipLabel(chip){
   if (!chip) return;
-  var text = chip.textContent.replace(/\s+/g,' ').trim().toUpperCase();
+  var text = chip.textContent.replace(/\s+/g,' ').trim();
   if (!text) { chip.style.fontSize = ''; return; }
-  // Available width: chip width minus horizontal padding
+
+  // Available space inside the chip (total size minus padding)
   var chipW = chip.clientWidth || chip.offsetWidth;
-  if (!chipW) chipW = isSmall() ? 128 : 178;
-  var availW = chipW - 16;
-  // Start large, shrink until single-line text fits
-  var maxPx = 48, minPx = 8;
-  var px = maxPx;
-  for (; px >= minPx; px--) {
-    // account for letter-spacing:.5px
-    if (measureText(text, '900', px) + text.length * 0.5 <= availW) break;
+  var chipH = chip.clientHeight || chip.offsetHeight;
+  if (!chipW) chipW = isSmall() ? 130 : 180;
+  if (!chipH) chipH = 99;
+  var availW = chipW - 16;   // 8px padding each side
+  var availH = chipH - 12;   // 6px padding top + bottom
+
+  // Lazily create a hidden div that mirrors the chip's font properties
+  if (!_fitDiv) {
+    _fitDiv = document.createElement('div');
+    _fitDiv.style.cssText =
+      'position:absolute;top:-9999px;left:-9999px;visibility:hidden;pointer-events:none;' +
+      'font-weight:900;text-transform:uppercase;letter-spacing:.5px;' +
+      'line-height:1.1;word-break:normal;overflow-wrap:normal;' +
+      'white-space:normal;padding:0;margin:0;border:0;box-sizing:border-box;' +
+      'overflow:hidden;';
+    document.body.appendChild(_fitDiv);
   }
-  chip.style.fontSize = Math.max(px, minPx) + 'px';
-  // Reset internal scroll so text stays visible from the start
-  // (contenteditable + overflow:hidden can scroll to keep cursor visible)
+  _fitDiv.style.width  = availW + 'px';
+  _fitDiv.style.height = availH + 'px';
+  _fitDiv.textContent  = text;
+
+  // Binary search: largest px in [minPx..maxPx] that fits
+  var maxPx = 32, minPx = 14;
+  var lo = minPx, hi = maxPx;
+  while (lo < hi) {
+    var mid = Math.ceil((lo + hi) / 2);
+    _fitDiv.style.fontSize = mid + 'px';
+    if (_fitDiv.scrollHeight <= _fitDiv.clientHeight &&
+        _fitDiv.scrollWidth  <= _fitDiv.clientWidth) {
+      lo = mid;       // fits — try larger
+    } else {
+      hi = mid - 1;   // overflow — try smaller
+    }
+  }
+
+  chip.style.fontSize = lo + 'px';
   chip.scrollLeft = 0;
 }
 
@@ -251,14 +282,14 @@ function createRow(cfg){
   applyTierColor(node, cfg.color);
 
   on(chip,'input', function(){
-    uniformizeTierLabels();
+    fitChipLabel(chip);
     // Browser may re-scroll contenteditable after style changes;
     // reset scroll in the next frame so text stays left-aligned
     chip.scrollLeft = 0;
     requestAnimationFrame(function(){ chip.scrollLeft = 0; });
   });
   on(chip,'keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); chip.blur(); } });
-  on(chip,'blur', function(){ uniformizeTierLabels(); chip.scrollLeft = 0; });
+  on(chip,'blur', function(){ fitChipLabel(chip); chip.scrollLeft = 0; });
   fitChipLabel(chip);
 
   /* Color picker — label wraps input so native click opens the dialog */
@@ -375,7 +406,7 @@ function fitLiveLabel(lbl){
   s.padding = pad + 'px';
   s.overflow = 'hidden';
 }
-function refitAllLabels(){ $$('.token .label').forEach(fitLiveLabel); uniformizeTierLabels(); }
+function refitAllLabels(){ $$('.token .label').forEach(fitLiveLabel); $$('#tierBoard .label-chip').forEach(fitChipLabel); }
 on(window,'resize', debounce(refitAllLabels, 120));
 
 /* ---------- Tokens ---------- */
@@ -1148,7 +1179,9 @@ on($('#saveBtn'),'click', function(){
     '  color:#ffffff !important;',
     '  padding:6px 8px !important;',
     '  margin:0 !important;',
-    '  white-space:nowrap !important;',
+    '  white-space:normal !important;',
+    '  word-break:normal !important;',
+    '  overflow-wrap:normal !important;',
     '  overflow:hidden !important;',
     '}',
     '.board-title-wrap{ display:block !important; text-align:center !important; margin-bottom:20px !important; }',
