@@ -347,16 +347,11 @@ var communityCast = [
 
 /* ---------- PRE-RENDERED CIRCLE PALETTE ---------- */
 var BASE_PALETTE = [
-  '#FFD54F','#FF8A65','#FFB74D','#FFC107',
-  '#7986CB','#EF5350','#E91E63','#9575CD',
-  '#F48FB1','#4DD0E1','#26C6DA','#FF7043',
-  '#FF9800','#FFAB91','#4FC3F7','#7E57C2',
-  '#FFCA28','#EF9A9A','#80DEEA','#B39DDB',
-  '#81D4FA','#FFCC80','#A5D6A7','#F8BBD0',
-  '#FFA726','#66BB6A','#4DB6AC','#FF80AB','#9FA8DA',
-  '#e57373','#ba68c8','#64b5f6','#4db6ac','#fff176',
-  '#a1887f','#90a4ae','#f06292','#aed581','#ffb300',
-  '#ce93d8','#80cbc4','#e6ee9c','#ffab40','#8c9eff'
+  '#E57373','#F06292','#FF8A65','#FFB74D','#FFD54F',
+  '#FFF176','#E6EE9C','#C5E1A5','#AED581','#81C784',
+  '#80CBC4','#4DB6AC','#81D4FA','#4FC3F7','#64B5F6',
+  '#9FA8DA','#7986CB','#B39DDB','#CE93D8','#BA68C8',
+  '#D7CCC8','#BCAAA4','#A1887F','#B0BEC5','#90A4AE'
 ];
 
 /* Token text: 50% darker than base, lightened for very dark backgrounds */
