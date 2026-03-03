@@ -322,11 +322,11 @@ function createRow(cfg){
 
 /* ---------- Defaults ---------- */
 var defaultTiers = [
-  { label:'S', color:'#F26339' },
-  { label:'A', color:'#F6C84C' },        // slightly more yellow
-  { label:'B', color:'#75C58E' },
-  { label:'C', color:'#62C1E5' },
-  { label:'D', color:'#BAA8E8' },
+  { label:'S', color:'#ff6b6b' },
+  { label:'A', color:'#f5d623' },
+  { label:'B', color:'#22c55e' },
+  { label:'C', color:'#3b82f6' },
+  { label:'D', color:'#a78bfa' },
   { label:'UNKNOWN', color:'#71717a' }       // "do not interact" / unsure
 ];
 
