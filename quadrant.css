@@ -248,19 +248,22 @@ body.quadrant-mode .controls{grid-template-columns:repeat(4,minmax(0,1fr))}
 
 /* ---------- Responsive ---------- */
 @media (max-width:768px){
-  .q-grid-wrap{min-height:380px}
-  .q-zone{min-height:180px}
+  .q-grid-wrap{min-height:420px}
+  .q-zone{min-height:200px}
   .q-zone .token{width:55px;height:55px}
   .q-zone .token .label{font-size:11px;font-weight:900;padding:3px}
-  .q-axis-label{font-size:11px;padding:4px 6px}
+  .q-axis-label{font-size:11px;padding:3px 4px}
+  .q-labels-col,.q-labels-col-right{min-width:24px}
   .mode-toggle-wrap{max-width:280px}
   .mode-toggle-btn{height:36px;font-size:12px}
 }
 @media (max-width:480px){
-  .q-grid-wrap{min-height:320px}
-  .q-zone{min-height:150px}
+  .q-grid-wrap{min-height:370px}
+  .q-zone{min-height:175px}
   .q-zone .token{width:48px;height:48px}
   .q-zone .token .label{font-size:10px;font-weight:900;padding:2px}
+  .q-axis-label{font-size:10px;padding:2px 3px}
+  .q-labels-col,.q-labels-col-right{min-width:20px}
   .mode-toggle-wrap{max-width:260px}
 }
 
