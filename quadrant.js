@@ -764,15 +764,17 @@
     var radialCloseBtn = $('.radial-close', radial);
     if(!radialOpts) return;
 
-    var labels = ['Top Left','Top Right','Bottom Left','Bottom Right'];
-    var colors = [Q_DEFAULTS.tl.solid, Q_DEFAULTS.tr.solid, Q_DEFAULTS.bl.solid, Q_DEFAULTS.br.solid];
+    var labels = ['Top Left','Top Right','Center','Bottom Left','Bottom Right'];
+    var colors = [Q_DEFAULTS.tl.solid, Q_DEFAULTS.tr.solid, '#8b7dff', Q_DEFAULTS.bl.solid, Q_DEFAULTS.br.solid];
 
     // Check for custom colors
     qZones.forEach(function(z,i){
-      if(z.dataset.customColor) colors[i] = z.dataset.customColor;
+      // Map zone index (0-3) to colors array (0,1,3,4 — skipping 2 which is Center)
+      var ci = i < 2 ? i : i + 1;
+      if(z.dataset.customColor) colors[ci] = z.dataset.customColor;
     });
 
-    var N = 4;
+    var N = 5;
     var BTN_H = 52, GAP = 10;
     var totalH = N*BTN_H + (N-1)*GAP;
     var startY = cy - totalH/2;
@@ -800,21 +802,27 @@
         btn.appendChild(dot);
 
         on(btn,'click',function(){
-          var zone = qZones[j];
+          // Map radial index to zone: 0=tl,1=tr,2=center(tl),3=bl,4=br
+          var zoneIdx = j < 2 ? j : (j === 2 ? 0 : j - 1);
+          var zone = qZones[zoneIdx];
           if(!zone || !token) return;
           var fromId = ensureId(token.parentElement,'zone');
           var origin = token.parentElement;
           var originNext = token.nextElementSibling;
           var originBeforeId = originNext ? ensureId(originNext,'tok') : '';
 
-          // Place at center of zone
           var rect = zone.getBoundingClientRect();
           var sz = qTokenSize();
-          var cx2 = (rect.width/2 - sz/2);
-          var cy2 = (rect.height/2 - sz/2);
-          // Add small random offset to avoid stacking
-          cx2 += (Math.random()-0.5)*40;
-          cy2 += (Math.random()-0.5)*40;
+          var cx2, cy2;
+          if(j === 2){
+            // Center: place at intersection of axes (bottom-right corner of tl zone)
+            cx2 = rect.width - sz/2 + (Math.random()-0.5)*20;
+            cy2 = rect.height - sz/2 + (Math.random()-0.5)*20;
+          } else {
+            // Place at center of zone with small random offset
+            cx2 = (rect.width/2 - sz/2) + (Math.random()-0.5)*40;
+            cy2 = (rect.height/2 - sz/2) + (Math.random()-0.5)*40;
+          }
           var clampedR = clampQPosition(cx2, cy2, rect.width, rect.height, sz, zone);
           cx2 = clampedR.x; cy2 = clampedR.y;
 
