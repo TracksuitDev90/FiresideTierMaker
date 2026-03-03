@@ -322,7 +322,7 @@ function createRow(cfg){
 
 /* ---------- Defaults ---------- */
 var defaultTiers = [
-  { label:'S', color:'#EE5646' },
+  { label:'S', color:'#F26339' },
   { label:'A', color:'#F6C84C' },        // slightly more yellow
   { label:'B', color:'#75C58E' },
   { label:'C', color:'#62C1E5' },
