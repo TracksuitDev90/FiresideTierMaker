@@ -1289,8 +1289,9 @@ on(document,'keydown',function(e){
     // Place near center with slight random offset
     var cx=(rect.width/2-sz/2)+(Math.random()-0.5)*40;
     var cy=(rect.height/2-sz/2)+(Math.random()-0.5)*40;
-    cx=Math.max(0,Math.min(cx,rect.width-sz));
-    cy=Math.max(0,Math.min(cy,rect.height-sz));
+    if(typeof window.clampQPosition==='function'){
+      var cl=window.clampQPosition(cx,cy,rect.width,rect.height,sz,qz);cx=cl.x;cy=cl.y;
+    } else { cx=Math.max(0,Math.min(cx,rect.width-sz));cy=Math.max(0,Math.min(cy,rect.height-sz)); }
     if(origin.id==='tray'){ flipZones([origin],function(){qz.appendChild(selected);}); }
     else { qz.appendChild(selected); }
     selected.style.position='absolute';
