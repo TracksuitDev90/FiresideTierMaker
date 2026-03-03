@@ -186,12 +186,10 @@ function ensureId(el, prefix){ if(!el.id){ el.id=(prefix||'id')+'-'+uid(); } ret
 function rowLabel(row){ var chip=row?row.querySelector('.label-chip'):null; return chip?chip.textContent.replace(/\s+/g,' ').trim():'row'; }
 
 /* ---------- Chip label auto-sizer ---------- */
-/* Uses a hidden measurement div with real CSS rendering so word-wrap,
-   letter-spacing, font-fallback etc. are all accounted for exactly.
-   Binary-searches for the largest font where the text fits both
-   horizontally (no single word overflows) and vertically (wrapped
-   lines fit inside the chip height). */
-var _fitDiv = null;
+/* Canvas-based measurement with word-wrap simulation.
+   Binary-searches for the largest font (14-32 px) where the label
+   text fits inside the chip, allowing word-wrap across multiple lines
+   but never breaking a word. */
 function fitChipLabel(chip){
   if (!chip) return;
   var text = chip.textContent.replace(/\s+/g,' ').trim();
@@ -205,29 +203,14 @@ function fitChipLabel(chip){
   var availW = chipW - 16;   // 8px padding each side
   var availH = chipH - 12;   // 6px padding top + bottom
 
-  // Lazily create a hidden div that mirrors the chip's font properties
-  if (!_fitDiv) {
-    _fitDiv = document.createElement('div');
-    _fitDiv.style.cssText =
-      'position:absolute;top:-9999px;left:-9999px;visibility:hidden;pointer-events:none;' +
-      'font-weight:900;text-transform:uppercase;letter-spacing:.5px;' +
-      'line-height:1.1;word-break:normal;overflow-wrap:normal;' +
-      'white-space:normal;padding:0;margin:0;border:0;box-sizing:border-box;' +
-      'overflow:hidden;';
-    document.body.appendChild(_fitDiv);
-  }
-  _fitDiv.style.width  = availW + 'px';
-  _fitDiv.style.height = availH + 'px';
-  _fitDiv.textContent  = text;
+  var upper = text.toUpperCase();
 
   // Binary search: largest px in [minPx..maxPx] that fits
   var maxPx = 32, minPx = 14;
   var lo = minPx, hi = maxPx;
   while (lo < hi) {
     var mid = Math.ceil((lo + hi) / 2);
-    _fitDiv.style.fontSize = mid + 'px';
-    if (_fitDiv.scrollHeight <= _fitDiv.clientHeight &&
-        _fitDiv.scrollWidth  <= _fitDiv.clientWidth) {
+    if (labelFitsAt(upper, mid, availW, availH)) {
       lo = mid;       // fits — try larger
     } else {
       hi = mid - 1;   // overflow — try smaller
@@ -236,6 +219,27 @@ function fitChipLabel(chip){
 
   chip.style.fontSize = lo + 'px';
   chip.scrollLeft = 0;
+}
+
+/* Check whether uppercased `text` at `px` font-size fits inside
+   w × h, simulating CSS word-wrap (break at spaces, never mid-word). */
+function labelFitsAt(text, px, w, h) {
+  var words = text.split(/\s+/);
+  var lineH = px * 1.1;   // matches CSS line-height:1.1
+  var spaceW = measureText(' ', '900', px) + 0.5;  // + letter-spacing
+  var lines = 1, lineW = 0;
+
+  for (var i = 0; i < words.length; i++) {
+    var ww = measureText(words[i], '900', px) + words[i].length * 0.5;
+    if (ww > w) return false;            // single word too wide
+    if (lineW > 0 && lineW + spaceW + ww > w) {
+      lines++;                           // wrap to next line
+      lineW = ww;
+    } else {
+      lineW += (lineW > 0 ? spaceW : 0) + ww;
+    }
+  }
+  return lines * lineH <= h;
 }
 
 /* Equalize all tier label font sizes to the smallest needed */
