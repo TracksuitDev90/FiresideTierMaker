@@ -327,7 +327,7 @@ var defaultTiers = [
   { label:'B', color:'#22c55e' },
   { label:'C', color:'#3b82f6' },
   { label:'D', color:'#a78bfa' },
-  { label:'DNI', color:'#71717a' }       // "do not interact" / unsure
+  { label:'UNKNOWN', color:'#71717a' }       // "do not interact" / unsure
 ];
 
 /* Fresh colors for new tiers (avoids default S/A/B/C/D colors) */
