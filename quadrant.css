@@ -122,7 +122,7 @@
 /* ---------- Individual quadrant zones ---------- */
 .q-zone{
   position:relative;
-  overflow:hidden;
+  overflow:visible;
   min-height:200px;
   transition:background .25s ease;
   cursor:crosshair;
@@ -248,8 +248,8 @@ body.quadrant-mode .controls{grid-template-columns:repeat(4,minmax(0,1fr))}
 
 /* ---------- Responsive ---------- */
 @media (max-width:768px){
-  .q-grid-wrap{min-height:320px}
-  .q-zone{min-height:150px}
+  .q-grid-wrap{min-height:380px}
+  .q-zone{min-height:180px}
   .q-zone .token{width:55px;height:55px}
   .q-zone .token .label{font-size:11px;font-weight:900;padding:3px}
   .q-axis-label{font-size:11px;padding:4px 6px}
@@ -257,8 +257,8 @@ body.quadrant-mode .controls{grid-template-columns:repeat(4,minmax(0,1fr))}
   .mode-toggle-btn{height:36px;font-size:12px}
 }
 @media (max-width:480px){
-  .q-grid-wrap{min-height:260px}
-  .q-zone{min-height:120px}
+  .q-grid-wrap{min-height:320px}
+  .q-zone{min-height:150px}
   .q-zone .token{width:48px;height:48px}
   .q-zone .token .label{font-size:10px;font-weight:900;padding:2px}
   .mode-toggle-wrap{max-width:260px}

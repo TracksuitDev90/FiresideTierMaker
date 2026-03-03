@@ -50,6 +50,19 @@
     return 65;
   }
 
+  /* ---------- Clamp token position allowing overflow toward center axes ---------- */
+  function clampQPosition(x, y, w, h, sz, zone){
+    var pos = zone && zone.id ? zone.id.replace('qzone-','') : '';
+    var minX = 0, maxX = w - sz;
+    var minY = 0, maxY = h - sz;
+    // Allow tokens to extend half their size past the axis-side edges
+    if(pos === 'tl' || pos === 'bl') maxX = w - sz/2;   // right edge is axis
+    if(pos === 'tr' || pos === 'br') minX = -sz/2;       // left edge is axis
+    if(pos === 'tl' || pos === 'tr') maxY = h - sz/2;    // bottom edge is axis
+    if(pos === 'bl' || pos === 'br') minY = -sz/2;       // top edge is axis
+    return { x: Math.max(minX, Math.min(x, maxX)), y: Math.max(minY, Math.min(y, maxY)) };
+  }
+
   /* ---------- Build quadrant DOM ---------- */
   function buildQuadrantBoard(){
     var outer = document.createElement('div');
@@ -197,8 +210,8 @@
         var sz = qTokenSize();
         var x = e.clientX - rect.left - sz/2;
         var y = e.clientY - rect.top - sz/2;
-        x = Math.max(0, Math.min(x, rect.width - sz));
-        y = Math.max(0, Math.min(y, rect.height - sz));
+        var clamped = clampQPosition(x, y, rect.width, rect.height, sz, zone);
+        x = clamped.x; y = clamped.y;
         selected.style.left = (x/rect.width*100)+'%';
         selected.style.top = (y/rect.height*100)+'%';
         selected.classList.remove('selected');
@@ -218,8 +231,8 @@
       var sz2 = qTokenSize();
       var nx = e.clientX - rect2.left - sz2/2;
       var ny = e.clientY - rect2.top - sz2/2;
-      nx = Math.max(0, Math.min(nx, rect2.width - sz2));
-      ny = Math.max(0, Math.min(ny, rect2.height - sz2));
+      var clamped2 = clampQPosition(nx, ny, rect2.width, rect2.height, sz2, zone);
+      nx = clamped2.x; ny = clamped2.y;
 
       // If coming from tray, use flipZones for smooth tray animation
       if(origin.id === 'tray'){
@@ -356,8 +369,8 @@
           var rect = dropZone.getBoundingClientRect();
           var nx = dropX - rect.left - sz/2;
           var ny = dropY - rect.top - sz/2;
-          nx = Math.max(0, Math.min(nx, rect.width - sz));
-          ny = Math.max(0, Math.min(ny, rect.height - sz));
+          var clampedDrop = clampQPosition(nx, ny, rect.width, rect.height, sz, dropZone);
+          nx = clampedDrop.x; ny = clampedDrop.y;
 
           if(dropZone !== originZone){
             var fromId2 = ensureId(originZone,'zone');
@@ -802,8 +815,8 @@
           // Add small random offset to avoid stacking
           cx2 += (Math.random()-0.5)*40;
           cy2 += (Math.random()-0.5)*40;
-          cx2 = Math.max(0, Math.min(cx2, rect.width - sz));
-          cy2 = Math.max(0, Math.min(cy2, rect.height - sz));
+          var clampedR = clampQPosition(cx2, cy2, rect.width, rect.height, sz, zone);
+          cx2 = clampedR.x; cy2 = clampedR.y;
 
           if(origin.id === 'tray'){
             flipZones([origin],function(){ zone.appendChild(token); });
@@ -954,5 +967,6 @@
   window.scheduleQuadrantSave = function(){ scheduleQuadrantSave(); };
   window.refitQToken = function(tok){ refitQToken(tok); };
   window.bringQTokenToFront = function(tok){ bringToFront(tok); };
+  window.clampQPosition = function(x,y,w,h,sz,zone){ return clampQPosition(x,y,w,h,sz,zone); };
 
 })();
