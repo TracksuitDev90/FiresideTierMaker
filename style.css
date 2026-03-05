@@ -59,7 +59,10 @@ a{color:inherit;text-decoration:none}
 /* ---------- Controls row ---------- */
 .controls{display:grid;gap:14px;grid-template-columns:repeat(5,minmax(0,1fr))}
 @media (max-width:900px){.controls{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media (max-width:720px){.controls{grid-template-columns:1fr 1fr}}
+@media (max-width:720px){
+  .controls{grid-template-columns:1fr 1fr}
+  .controls .btn{justify-content:start;padding-left:min(6vw,28px)}
+}
 
 .btn{
   display:inline-flex;align-items:center;justify-content:center;gap:10px;
