@@ -859,7 +859,7 @@
 
     // Show radial
     if(typeof _savedScrollY !== 'undefined' && _savedScrollY === null){
-      window._savedScrollY = window.pageYOffset;
+      _savedScrollY = window.pageYOffset;
     }
     document.body.style.top = '-'+(window.pageYOffset||0)+'px';
     document.body.classList.add('radial-open');
