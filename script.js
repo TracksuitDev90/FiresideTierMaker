@@ -91,16 +91,7 @@ function mixHex(aHex,bHex,t){ var a=hexToRgb(aHex), b=hexToRgb(bHex);
       var icon=$('.theme-icon',toggle), text=$('.theme-text',toggle);
       if(text) text.textContent = target;
       toggle.setAttribute('aria-pressed', mode==='light' ? 'true' : 'false');
-      // Defer icon swap until after the animate class is removed (300ms)
-      // to prevent CSS filter glitch where moon loses coloring
-      var swapIcon = function(){
-        if(icon) icon.innerHTML = (target==='Light' ? SUN_HTML : MOON_HTML);
-      };
-      if(toggle.classList.contains('animate')){
-        setTimeout(swapIcon, 320);
-      } else {
-        swapIcon();
-      }
+      if(icon) icon.innerHTML = (target==='Light' ? SUN_HTML : MOON_HTML);
     }
     $$('.tier-row').forEach(function(row){
       var chip=$('.label-chip',row), drop=$('.tier-drop',row);
