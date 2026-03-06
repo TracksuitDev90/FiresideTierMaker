@@ -13,6 +13,7 @@
   <title>FIRESIDE tier maker</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="quadrant.css" />
+  <link rel="stylesheet" href="image-search.css" />
 </head>
 <body>
   <div class="wrap">
@@ -42,6 +43,10 @@
             <button id="linkOptBtn" class="img-option" type="button">
               <svg viewBox="0 0 24 24" width="18" height="18"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z" fill="currentColor"/></svg>
               <span>Paste image URL</span>
+            </button>
+            <button id="searchImgBtn" class="img-option" type="button">
+              <svg viewBox="0 0 24 24" width="18" height="18"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" fill="currentColor"/></svg>
+              <span>Search for images</span>
             </button>
             <div id="urlInputRow" class="url-input-row hidden">
               <label class="sr" for="imageUrlInput">Image URL</label>
@@ -150,6 +155,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.min.js" crossorigin="anonymous"></script>
   <script src="script.js"></script>
+  <script src="image-search.js"></script>
   <script src="quadrant.js"></script>
 </body>
 </html>
