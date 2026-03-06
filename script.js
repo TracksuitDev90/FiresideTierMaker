@@ -1999,6 +1999,10 @@ function applyPrompt(prompt){
   scheduleSave();
 }
 
+/* ---------- Expose for image-search module ---------- */
+window.buildImageToken = buildImageToken;
+window.scheduleSave    = scheduleSave;
+
 /* ---------- Init ---------- */
 document.addEventListener('DOMContentLoaded', function start(){
   board = $('#tierBoard'); tray = $('#tray');
@@ -2107,6 +2111,11 @@ document.addEventListener('DOMContentLoaded', function start(){
       var inp = $('#imageUrlInput');
       if(inp) inp.focus();
     }
+  });
+  // Search images option
+  on($('#searchImgBtn'), 'click', function(){
+    if(imgDropdown) imgDropdown.classList.add('hidden');
+    if(window.ImageSearch) window.ImageSearch.open();
   });
 
   // Image upload with compression
