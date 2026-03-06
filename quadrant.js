@@ -109,37 +109,6 @@
       zone.setAttribute('role','list');
       zone.setAttribute('tabindex','0');
 
-      // Color picker
-      var colorPick = document.createElement('label');
-      colorPick.className = 'q-color-pick';
-      colorPick.setAttribute('aria-label','Change quadrant color');
-      var colorDot = document.createElement('span');
-      colorDot.className = 'q-color-dot';
-      colorDot.style.background = colorPickDotColor(Q_DEFAULTS[positions[i]].solid);
-      colorPick.appendChild(colorDot);
-      var colorInput = document.createElement('input');
-      colorInput.type = 'color';
-      colorInput.className = 'q-color-input';
-      colorInput.value = Q_DEFAULTS[positions[i]].solid;
-      colorInput.setAttribute('tabindex','-1');
-      colorInput.setAttribute('aria-hidden','true');
-      colorPick.appendChild(colorInput);
-      zone.appendChild(colorPick);
-
-      // Wire color picker
-      (function(z, ci, cd, pos){
-        on(ci,'input',function(){
-          applyQZoneColor(z, ci.value, pos);
-          cd.style.background = colorPickDotColor(ci.value);
-          scheduleQuadrantSave();
-        });
-        on(ci,'change',function(){
-          applyQZoneColor(z, ci.value, pos);
-          cd.style.background = colorPickDotColor(ci.value);
-          scheduleQuadrantSave();
-        });
-      })(zone, colorInput, colorDot, positions[i]);
-
       gridWrap.appendChild(zone);
       qZones.push(zone);
 
@@ -258,6 +227,10 @@
 
   /* ---------- Pointer drag for tokens within quadrant ---------- */
   function enableQuadrantTokenDrag(token){
+    // Guard: only attach one handler per token
+    if(token._qDragAttached) return;
+    token._qDragAttached = true;
+
     // This is called in addition to the tier drag handlers.
     // We intercept when in quadrant mode.
     on(token,'pointerdown',function(e){
@@ -279,6 +252,7 @@
       var originLeft = token.style.left;
       var originTop = token.style.top;
       var savedBg = token.style.background || token.style.backgroundColor || '';
+      var savedZIndex = token.style.zIndex || '';
       var sz = qTokenSize();
 
       // Snapshot the token's screen position before we start
@@ -304,7 +278,8 @@
         'touch-action:none !important;' +
         'user-select:none !important;' +
         '-webkit-user-select:none !important;' +
-        'pointer-events:auto !important;';
+        'pointer-events:auto !important;' +
+        (savedBg ? 'background:' + savedBg + ' !important;' : '');
       document.body.appendChild(token);
 
       var lastDZ = null;
@@ -350,14 +325,17 @@
         var dropZone = el ? el.closest('.q-zone') : null;
         var dropTray = el ? el.closest('#tray') : null;
 
-        // Strip all inline overrides
+        // Strip all inline overrides and restore preserved styles
         token.classList.remove('q-dragging-token');
         token.style.cssText = '';
-        // Restore token background color that was wiped by cssText override
         if(savedBg) token.style.background = savedBg;
 
         if(dropTray){
           // Return to tray
+          token.style.position = '';
+          token.style.left = '';
+          token.style.top = '';
+          token.style.zIndex = '';
           var fromId = ensureId(originZone,'zone');
           flipZones([tray],function(){ tray.appendChild(token); });
           recordPlacement(token.id, fromId, 'tray', '');
@@ -390,6 +368,7 @@
           token.style.position = 'absolute';
           token.style.left = originLeft;
           token.style.top = originTop;
+          token.style.zIndex = savedZIndex;
         }
       }
 
@@ -547,10 +526,6 @@
         Q_POSITIONS.forEach(function(pos,i){
           if(data.colors[pos] && qZones[i]){
             applyQZoneColor(qZones[i], data.colors[pos], pos);
-            var ci = qZones[i].querySelector('.q-color-input');
-            var cd = qZones[i].querySelector('.q-color-dot');
-            if(ci) ci.value = data.colors[pos];
-            if(cd) cd.style.background = colorPickDotColor(data.colors[pos]);
           }
         });
       }
@@ -685,9 +660,16 @@
       '.title-pen{display:none !important}',
       '.board-title-wrap{display:block !important;text-align:center !important;margin-bottom:20px !important}',
       '.board-title{display:block !important;text-align:center !important;font-size:28px !important;white-space:normal !important;word-wrap:break-word !important;overflow-wrap:break-word !important}',
-      '.q-color-pick{display:none !important}',
       '.token-del{display:none !important}',
-      '.mode-toggle-wrap{display:none !important}'
+      '.mode-toggle-wrap{display:none !important}',
+      // Force token sizing and layout for clean export
+      '.q-zone .token{width:65px !important;height:65px !important;position:absolute !important}',
+      '.q-zone .token .label{font-weight:900 !important;text-align:center !important;display:flex !important;align-items:center !important;justify-content:center !important;position:absolute !important;top:0 !important;left:0 !important;width:65px !important;height:65px !important;padding:4px !important;white-space:nowrap !important;box-sizing:border-box !important}',
+      '.q-zone .token img{width:100% !important;height:100% !important;object-fit:cover !important;border-radius:999px !important}',
+      // Ensure quadrant grid renders properly at export width
+      '.q-grid-wrap{min-height:500px !important}',
+      '.q-zone{min-height:240px !important;overflow:visible !important}',
+      '.q-axis-label{font-size:16px !important}'
     ].join('\n');
     clone.appendChild(style);
 
@@ -701,6 +683,19 @@
 
     cloneWrap.appendChild(clone);
     document.body.appendChild(cloneWrap);
+
+    // Refit token labels in clone for crisp export rendering
+    var cloneTokenLabels = clone.querySelectorAll ? clone.querySelectorAll('.q-zone .token .label') : [];
+    for(var li=0; li<cloneTokenLabels.length; li++){
+      var lbl = cloneTokenLabels[li];
+      var text = lbl.textContent;
+      var maxW = 65 - 8; // token width minus padding
+      var px = 13;
+      for(; px >= 8; px--){
+        if(measureText(text,'900',px) <= maxW) break;
+      }
+      lbl.style.fontSize = Math.max(px,8)+'px';
+    }
 
     if(typeof htmlToImage === 'undefined' || typeof htmlToImage.toPng !== 'function'){
       cloneWrap.remove();
@@ -731,6 +726,39 @@
       console.error('Quadrant PNG export error:', err);
     });
   }
+
+  /* ---------- Arrow-key nudge for precise token positioning ---------- */
+  on(document,'keydown',function(e){
+    if(currentMode !== 'quadrant') return;
+    var arrows = {ArrowUp:1,ArrowDown:1,ArrowLeft:1,ArrowRight:1};
+    if(!arrows[e.key]) return;
+    var tok = $('.token.selected');
+    if(!tok || !tok.closest('.q-zone')) return;
+    e.preventDefault();
+
+    var zone = tok.closest('.q-zone');
+    var rect = zone.getBoundingClientRect();
+    var sz = qTokenSize();
+    // Shift = 1px micro-nudge, normal = 5px
+    var step = e.shiftKey ? 1 : 5;
+    var pxPerPctW = rect.width / 100;
+    var pxPerPctH = rect.height / 100;
+
+    var curLeft = parseFloat(tok.style.left) || 0;
+    var curTop = parseFloat(tok.style.top) || 0;
+    var curX = curLeft / 100 * rect.width;
+    var curY = curTop / 100 * rect.height;
+
+    if(e.key === 'ArrowLeft')  curX -= step;
+    if(e.key === 'ArrowRight') curX += step;
+    if(e.key === 'ArrowUp')    curY -= step;
+    if(e.key === 'ArrowDown')  curY += step;
+
+    var clamped = clampQPosition(curX, curY, rect.width, rect.height, sz, zone);
+    tok.style.left = (clamped.x / rect.width * 100) + '%';
+    tok.style.top = (clamped.y / rect.height * 100) + '%';
+    scheduleQuadrantSave();
+  });
 
   /* ---------- Hook into existing token creation ---------- */
   // Whenever a token is built, also attach quadrant drag handler
