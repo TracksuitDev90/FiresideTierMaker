@@ -127,11 +127,11 @@
   transition:background .25s ease;
   cursor:crosshair;
 }
-/* Thick inner lines via borders on individual quadrants */
-.q-zone--tl{border-right:2px solid var(--q-line-color, rgba(255,255,255,.2));border-bottom:2px solid var(--q-line-color, rgba(255,255,255,.2))}
-.q-zone--tr{border-left:2px solid var(--q-line-color, rgba(255,255,255,.2));border-bottom:2px solid var(--q-line-color, rgba(255,255,255,.2))}
-.q-zone--bl{border-right:2px solid var(--q-line-color, rgba(255,255,255,.2));border-top:2px solid var(--q-line-color, rgba(255,255,255,.2))}
-.q-zone--br{border-left:2px solid var(--q-line-color, rgba(255,255,255,.2));border-top:2px solid var(--q-line-color, rgba(255,255,255,.2))}
+/* Thick inner lines via borders on individual quadrants; inner r = outer 16 - border 3 = 13 */
+.q-zone--tl{border-right:2px solid var(--q-line-color, rgba(255,255,255,.2));border-bottom:2px solid var(--q-line-color, rgba(255,255,255,.2));border-radius:13px 0 0 0}
+.q-zone--tr{border-left:2px solid var(--q-line-color, rgba(255,255,255,.2));border-bottom:2px solid var(--q-line-color, rgba(255,255,255,.2));border-radius:0 13px 0 0}
+.q-zone--bl{border-right:2px solid var(--q-line-color, rgba(255,255,255,.2));border-top:2px solid var(--q-line-color, rgba(255,255,255,.2));border-radius:0 0 0 13px}
+.q-zone--br{border-left:2px solid var(--q-line-color, rgba(255,255,255,.2));border-top:2px solid var(--q-line-color, rgba(255,255,255,.2));border-radius:0 0 13px 0}
 
 /* Default quadrant colors — dark mode */
 .q-zone--tl{background:rgba(239,68,68,.12)}   /* red tint */
