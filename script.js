@@ -231,8 +231,18 @@ function labelFitsAt(text, px, w, h) {
 
   for (var i = 0; i < words.length; i++) {
     var ww = measureText(words[i], '900', px) + words[i].length * 0.5;
-    if (ww > w) return false;            // single word too wide
-    if (lineW > 0 && lineW + spaceW + ww > w) {
+    if (ww > w) {
+      // Word too wide — simulate overflow-wrap:break-word (char-level break)
+      for (var ci = 0; ci < words[i].length; ci++) {
+        var cw = measureText(words[i][ci], '900', px) + 0.5;
+        if (lineW > 0 && lineW + cw > w) {
+          lines++;
+          lineW = cw;
+        } else {
+          lineW += cw;
+        }
+      }
+    } else if (lineW > 0 && lineW + spaceW + ww > w) {
       lines++;                           // wrap to next line
       lineW = ww;
     } else {
@@ -1729,7 +1739,9 @@ var TIER_PROMPTS = [
     { label: 'THE REALIST', color: '#22c55e' },
     { label: 'THE GHOST', color: '#6b7280' }
   ]},
-  { text: "What era are they living in?", tiers: [
+  { text: "Which era would they best fit in?", tiers: [
+    { label: '50s', color: '#92400e' },
+    { label: '60s', color: '#dc2626' },
     { label: '70s', color: '#f59e0b' },
     { label: '80s', color: '#ec4899' },
     { label: '90s', color: '#6366f1' },
