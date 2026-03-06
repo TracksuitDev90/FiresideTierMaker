@@ -28,8 +28,8 @@
 }
 
 /* ---------- Header ---------- */
-.img-search-header{padding:18px 20px 12px;border-bottom:1px solid var(--border)}
-.img-search-title-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.img-search-header{padding:18px 20px 14px;border-bottom:1px solid var(--border)}
+.img-search-title-row{display:flex;align-items:center;gap:10px;margin-bottom:12px}
 .img-search-title{margin:0;font-size:18px;font-weight:800;flex:1}
 .img-search-close{
   font-size:28px;line-height:1;width:36px;height:36px;
@@ -39,36 +39,8 @@
 .img-search-close:hover{background:rgba(255,255,255,.08)}
 :root[data-theme="light"] .img-search-close:hover{background:rgba(0,0,0,.06)}
 
-.img-search-settings-btn{
-  width:34px;height:34px;display:flex;align-items:center;justify-content:center;
-  border-radius:10px;transition:background .15s;color:var(--muted);
-}
-.img-search-settings-btn:hover{background:rgba(255,255,255,.08);color:var(--text)}
-:root[data-theme="light"] .img-search-settings-btn:hover{background:rgba(0,0,0,.06)}
-
-/* ---------- Settings panel ---------- */
-.img-search-settings{
-  padding:12px 0 6px;
-  border-top:1px solid var(--border);margin-top:6px;
-}
-.img-search-provider-row{display:flex;flex-direction:column;gap:8px}
-.img-search-radio-label{
-  display:flex;align-items:center;gap:8px;
-  font-size:14px;cursor:pointer;
-}
-.img-search-radio-label input[type="radio"]{accent-color:var(--accent)}
-.provider-tag{
-  font-size:11px;font-weight:600;
-  padding:2px 8px;border-radius:6px;
-  background:var(--border);color:var(--muted);
-}
-.img-search-google-fields{
-  display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;
-}
-.img-search-google-fields .img-search-input.small{flex:1;min-width:140px}
-
 /* ---------- Search bar ---------- */
-.img-search-bar{display:flex;gap:8px;margin-top:4px}
+.img-search-bar{display:flex;gap:8px}
 .img-search-input{
   flex:1;
   padding:10px 14px;border-radius:10px;
@@ -81,9 +53,8 @@
   border-color:var(--accent);
   box-shadow:0 0 0 3px rgba(139,125,255,.2);
 }
-.img-search-input.small{padding:8px 10px;font-size:13px;border-radius:8px}
 .img-search-go{
-  padding:10px 20px;border-radius:10px;
+  padding:10px 22px;border-radius:10px;
   background:var(--accent);color:#fff;font-weight:700;font-size:14px;
   border:none;cursor:pointer;white-space:nowrap;
   transition:filter .15s;
@@ -100,7 +71,7 @@
   flex:1;overflow-y:auto;overflow-x:hidden;
   padding:4px 16px 16px;
   display:grid;
-  grid-template-columns:repeat(auto-fill, minmax(120px, 1fr));
+  grid-template-columns:repeat(3, 1fr);
   gap:10px;
   scrollbar-width:thin;
   scrollbar-color:var(--border) transparent;
@@ -110,23 +81,34 @@
 
 /* ---------- Card ---------- */
 .img-search-card{
-  position:relative;aspect-ratio:1;
+  position:relative;
   border-radius:10px;overflow:hidden;cursor:pointer;
   border:2px solid transparent;
   background:var(--surface);
   transition:border-color .15s, transform .12s, box-shadow .15s;
+  display:flex;flex-direction:column;
 }
 .img-search-card:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.25)}
 .img-search-card.selected{
   border-color:var(--accent);
   box-shadow:0 0 0 3px rgba(139,125,255,.3);
 }
+
+/* Image area: fixed height, cropped to center */
 .img-search-card img{
-  width:100%;height:100%;object-fit:cover;
-  transition:opacity .2s;
+  width:100%;height:140px;object-fit:cover;
+  display:block;background:var(--surface);
 }
 .img-search-card.broken{opacity:.3;pointer-events:none}
 .img-search-card.broken img{display:none}
+
+/* Label under the image */
+.img-search-label{
+  display:block;padding:6px 8px;
+  font-size:11px;line-height:1.3;font-weight:500;
+  color:var(--muted);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
 
 /* checkmark */
 .img-search-check{
@@ -167,8 +149,8 @@
 /* ---------- Responsive ---------- */
 @media (max-width:520px){
   .img-search-modal{border-radius:14px 14px 0 0;max-height:95vh;margin-top:auto}
-  .img-search-grid{grid-template-columns:repeat(auto-fill, minmax(90px, 1fr));gap:8px}
+  .img-search-grid{grid-template-columns:repeat(2, 1fr);gap:8px}
+  .img-search-card img{height:110px}
   .img-search-header{padding:14px 16px 10px}
   .img-search-footer{padding:10px 16px}
-  .img-search-google-fields{flex-direction:column}
 }
