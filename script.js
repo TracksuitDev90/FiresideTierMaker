@@ -770,7 +770,7 @@ function enableMouseTouchDragFallback(node){
   function onMouseMove(e){ move(e.clientX,e.clientY); }
   function onMouseUp(){ document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onMouseUp); end(); }
 
-  on(node,'touchstart', function(e){ var t=e.touches[0]; start(e,t.clientX,t.clientY);
+  on(node,'touchstart', function(e){ var t=e.touches[0]; if(!t) return; start(e,t.clientX,t.clientY);
     on(document,'touchmove', onTouchMove, _supportsPassive?{passive:true}:false);
     on(document,'touchend', onTouchEnd, false); }, _supportsPassive?{passive:false}:false);
   function onTouchMove(e){ var t=e.touches[0]; if(t) move(t.clientX,t.clientY); }
@@ -1059,6 +1059,8 @@ function closeRadial(){
   radial.setAttribute('aria-hidden', 'true');
   radialForToken = null;
   _radialGeo = [];
+  // Clear old radial buttons so their event listeners can be garbage-collected
+  var opts = radial.querySelector('.radial-options'); if(opts) opts.innerHTML = '';
   // Unlock body scroll and restore position - capture before unlocking
   var scrollY = _savedScrollY;
   _savedScrollY = null;
