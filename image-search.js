@@ -58,7 +58,6 @@
         '<div class="img-search-status"></div>' +
         '<div class="img-search-grid" role="list"></div>' +
         '<div class="img-search-footer">' +
-          '<button class="img-search-more" type="button" style="display:none">Load more</button>' +
           '<div class="img-search-sel-count"></div>' +
           '<button class="img-search-add" type="button" disabled>Add selected <span class="img-search-add-count"></span></button>' +
         '</div>' +
@@ -74,8 +73,14 @@
     overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
     qs('.img-search-go', overlay).addEventListener('click', function () { doSearch(true); });
     input.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); doSearch(true); } });
-    qs('.img-search-more', overlay).addEventListener('click', function () { doSearch(false); });
     qs('.img-search-add', overlay).addEventListener('click', addSelected);
+
+    /* infinite scroll */
+    grid.addEventListener('scroll', function () {
+      if (loading || !hasMore) return;
+      var remaining = grid.scrollHeight - grid.scrollTop - grid.clientHeight;
+      if (remaining < 200) doSearch(false);
+    });
 
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape' && !overlay.classList.contains('hidden')) close();
@@ -109,6 +114,7 @@
     if (loading || !hasMore) return;
     loading = true;
     setStatus('Searching\u2026');
+    showSpinner();
 
     /* First page: try Wikipedia article images for best relevance,
        then fill remaining slots with Commons search.
@@ -122,7 +128,7 @@
           var merged = dedup(wikiResults.concat(commonsResults));
           renderResults(merged);
           hasMore = more;
-          toggleMore(hasMore);
+          removeSpinner();
           page++;
           if (!merged.length) setStatus('No results found. Try different keywords.');
           else setStatus('');
@@ -135,7 +141,7 @@
         var unique = dedup(results);
         renderResults(unique);
         hasMore = more;
-        toggleMore(hasMore);
+        removeSpinner();
         page++;
         if (!unique.length && !more) setStatus('No more results.');
         else setStatus('');
@@ -258,11 +264,6 @@
       img.addEventListener('error', function () { card.classList.add('broken'); });
       card.appendChild(img);
 
-      var label = document.createElement('span');
-      label.className = 'img-search-label';
-      label.textContent = r.title.length > 40 ? r.title.slice(0, 38) + '\u2026' : r.title;
-      card.appendChild(label);
-
       var check = document.createElement('span');
       check.className = 'img-search-check';
       check.innerHTML = '&#10003;';
@@ -299,9 +300,16 @@
     if (addCount) addCount.textContent = n ? '(' + n + ')' : '';
   }
 
-  function toggleMore(show) {
-    var btn = qs('.img-search-more', overlay);
-    if (btn) btn.style.display = show ? '' : 'none';
+  function showSpinner() {
+    removeSpinner();
+    var el = document.createElement('div');
+    el.className = 'img-search-loading';
+    el.innerHTML = '<div class="img-search-spinner"></div>';
+    grid.appendChild(el);
+  }
+  function removeSpinner() {
+    var s = qs('.img-search-loading', grid);
+    if (s) s.remove();
   }
 
   /* ---------- add selected images to tray ---------- */
