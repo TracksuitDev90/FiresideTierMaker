@@ -145,34 +145,6 @@
 :root[data-theme="light"] .q-zone--bl{background:rgba(251,191,36,.08)}
 :root[data-theme="light"] .q-zone--br{background:rgba(59,130,246,.08)}
 
-/* ---------- Per-quadrant color picker ---------- */
-.q-color-pick{
-  position:absolute;
-  width:24px;height:24px;border-radius:999px;
-  display:grid;place-items:center;cursor:pointer;z-index:8;
-  border:none;box-shadow:none;background:none;padding:0;
-  opacity:0;transform:scale(0.5);
-  transition:opacity .25s ease,transform .35s cubic-bezier(.34,1.56,.64,1);
-}
-.q-zone:hover .q-color-pick,
-.q-zone:focus-within .q-color-pick{
-  opacity:1;transform:scale(1);
-  animation:dot-pulse 1.8s ease-in-out infinite;
-}
-.q-color-pick:active{transform:scale(.85);animation:none}
-.q-color-dot{
-  width:20px;height:20px;border-radius:999px;display:block;
-  box-shadow:0 2px 6px rgba(0,0,0,.3);
-  transition:background .2s ease;
-}
-.q-color-input{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;border:0;padding:0;clip:rect(0 0 0 0)}
-
-/* Position color pickers in opposite corners from zone labels */
-.q-zone--tl .q-color-pick{bottom:8px;right:8px}
-.q-zone--tr .q-color-pick{bottom:8px;left:8px}
-.q-zone--bl .q-color-pick{top:8px;right:8px}
-.q-zone--br .q-color-pick{top:8px;left:8px}
-
 /* ---------- Quadrant drag-over ---------- */
 .q-zone.drag-over{
   box-shadow:inset 0 0 0 3px rgba(139,125,255,.4);
@@ -268,5 +240,4 @@ body.quadrant-mode .controls{grid-template-columns:repeat(4,minmax(0,1fr))}
 }
 
 /* ---------- Export overrides (for save-as-PNG) ---------- */
-.q-export-mode .q-color-pick{display:none !important}
 .q-export-mode .mode-toggle-wrap{display:none !important}
