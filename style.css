@@ -395,6 +395,13 @@ a{color:inherit;text-decoration:none}
   color:#fff;display:grid;place-items:center;
   box-shadow:0 6px 14px rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.18);
   font-weight:900;z-index:8;
+  opacity:0;pointer-events:none;
+  transition:opacity .25s ease;
+}
+.tier-label:hover .row-del,
+.tier-label:focus-within .row-del,
+.tier-label.show-tools .row-del{
+  opacity:1;pointer-events:auto;
 }
 .row-del svg{width:16px;height:16px;fill:currentColor}
 
