@@ -406,7 +406,18 @@ function fitLiveLabel(lbl){
   s.padding = pad + 'px';
   s.overflow = 'hidden';
 }
-function refitAllLabels(){ $$('.token .label').forEach(fitLiveLabel); $$('#tierBoard .label-chip').forEach(fitChipLabel); }
+function refitAllLabels(){
+  $$('.token .label').forEach(function(lbl){
+    // Skip quadrant tokens — they use refitQToken with a smaller max size
+    if(lbl.closest('.q-zone')) return;
+    fitLiveLabel(lbl);
+  });
+  $$('#tierBoard .label-chip').forEach(fitChipLabel);
+  // Refit quadrant tokens separately
+  $$('.q-zone .token').forEach(function(tok){
+    if(typeof window.refitQToken === 'function') window.refitQToken(tok);
+  });
+}
 on(window,'resize', debounce(refitAllLabels, 120));
 
 /* ---------- Tokens ---------- */
@@ -644,19 +655,28 @@ function enablePointerDrag(node){
         var originBeforeId = originNext ? ensureId(originNext,'tok') : '';
         var isQZone = zone.classList.contains('q-zone');
         if(isQZone){
-          // Quadrant zone: free-place at drop coordinates
+          // Quadrant zone: clone token, place clone, leave original in tray
+          var qClone = typeof window.cloneTokenForQuadrant === 'function' ? window.cloneTokenForQuadrant(node) : null;
+          var placed = qClone || node;
           var rect = zone.getBoundingClientRect();
-          var sz = node.offsetWidth || 65;
+          var sz = placed.offsetWidth || 65;
           var nx = x - rect.left - sz/2;
           var ny = y - rect.top - sz/2;
           nx = Math.max(0, Math.min(nx, rect.width - sz));
           ny = Math.max(0, Math.min(ny, rect.height - sz));
-          flipZones([originParent], function(){ zone.appendChild(node); });
-          node.style.position = 'absolute';
-          node.style.left = (nx/rect.width*100)+'%';
-          node.style.top = (ny/rect.height*100)+'%';
-          if(typeof window.refitQToken==='function') window.refitQToken(node);
-          if(typeof window.bringQTokenToFront==='function') window.bringQTokenToFront(node);
+          zone.appendChild(placed);
+          placed.style.position = 'absolute';
+          placed.style.left = (nx/rect.width*100)+'%';
+          placed.style.top = (ny/rect.height*100)+'%';
+          if(typeof window.refitQToken==='function') window.refitQToken(placed);
+          if(typeof window.bringQTokenToFront==='function') window.bringQTokenToFront(placed);
+          // Original stays in tray — restore its position
+          if(qClone){
+            flipZones([originParent], function(){
+              if(originNext && originNext.parentElement===originParent) originParent.insertBefore(node, originNext);
+              else originParent.appendChild(node);
+            });
+          }
         } else {
           var beforeTok = insertBeforeForPoint(zone,x,y,node);
           flipZones([originParent, zone], function(){
@@ -667,7 +687,7 @@ function enablePointerDrag(node){
           node.style.left = '';
           node.style.top = '';
         }
-        recordPlacement(node.id, fromId, toId, originBeforeId);
+        if(!isQZone) recordPlacement(node.id, fromId, toId, originBeforeId);
         node.classList.add('animate-drop'); setTimeout(function(){ node.classList.remove('animate-drop'); },180);
         var rr = zone.closest ? zone.closest('.tier-row') : null;
         live('Moved "'+(node.innerText||'item')+'" to '+ (rr?rowLabel(rr): isQZone?'quadrant chart':'Image Storage') );
@@ -729,18 +749,26 @@ function enableMouseTouchDragFallback(node){
       var originBeforeId = originNext ? ensureId(originNext,'tok') : '';
       var isQZone = zone.classList.contains('q-zone');
       if(isQZone){
+        var qClone2 = typeof window.cloneTokenForQuadrant === 'function' ? window.cloneTokenForQuadrant(node) : null;
+        var placed2 = qClone2 || node;
         var rect = zone.getBoundingClientRect();
-        var sz = node.offsetWidth || 65;
+        var sz = placed2.offsetWidth || 65;
         var nx = x - rect.left - sz/2;
         var ny = y - rect.top - sz/2;
         nx = Math.max(0, Math.min(nx, rect.width - sz));
         ny = Math.max(0, Math.min(ny, rect.height - sz));
-        flipZones([originParent], function(){ zone.appendChild(node); });
-        node.style.position = 'absolute';
-        node.style.left = (nx/rect.width*100)+'%';
-        node.style.top = (ny/rect.height*100)+'%';
-        if(typeof window.refitQToken==='function') window.refitQToken(node);
-        if(typeof window.bringQTokenToFront==='function') window.bringQTokenToFront(node);
+        zone.appendChild(placed2);
+        placed2.style.position = 'absolute';
+        placed2.style.left = (nx/rect.width*100)+'%';
+        placed2.style.top = (ny/rect.height*100)+'%';
+        if(typeof window.refitQToken==='function') window.refitQToken(placed2);
+        if(typeof window.bringQTokenToFront==='function') window.bringQTokenToFront(placed2);
+        if(qClone2){
+          flipZones([originParent], function(){
+            if(originNext && originNext.parentElement===originParent) originParent.insertBefore(node, originNext);
+            else originParent.appendChild(node);
+          });
+        }
       } else {
         var beforeTok=insertBeforeForPoint(zone,x,y,node);
         flipZones([originParent, zone], function(){
@@ -750,7 +778,7 @@ function enableMouseTouchDragFallback(node){
         node.style.left = '';
         node.style.top = '';
       }
-      recordPlacement(node.id, fromId, toId, originBeforeId);
+      if(!isQZone) recordPlacement(node.id, fromId, toId, originBeforeId);
       node.classList.add('animate-drop'); setTimeout(function(){ node.classList.remove('animate-drop'); },180);
       var rr = zone.closest ? zone.closest('.tier-row') : null;
       live('Moved "'+(node.innerText||'item')+'" to '+ (rr?rowLabel(rr): isQZone?'quadrant chart':'Image Storage') );
@@ -1083,9 +1111,8 @@ on($('#trashClear'),'click', function(){
     : 'Clear the board?\n\nThis will remove all custom tokens, written titles, and placements. Everything resets to the default clean state.';
   if (!confirm(msg)) return;
   if(isQ){
-    // Quadrant-only clear: remove quadrant data, keep tier data intact
-    try { localStorage.removeItem('tm_quadrant'); } catch(e){}
-    location.reload();
+    // Quadrant-only clear: remove quadrant clones and data in-place
+    if(typeof window.clearQuadrants === 'function') window.clearQuadrants();
   } else {
     // Full clear: remove everything
     try { localStorage.removeItem(STORAGE_KEY); } catch(e){}
@@ -1282,10 +1309,8 @@ on(document,'keydown',function(e){
     var qz=document.getElementById('qzone-'+['tl','tr','bl','br'][n-1]);
     if(!qz) return;
     e.preventDefault();
-    var fromId=ensureId(selected.parentElement,'zone');
     var origin=selected.parentElement;
-    var kbNext=selected.nextElementSibling;
-    var kbBeforeId=kbNext?ensureId(kbNext,'tok'):'';
+    var fromTray=(origin.id==='tray');
     var rect=qz.getBoundingClientRect();
     var sz=selected.offsetWidth||65;
     // Place near center with slight random offset
@@ -1294,16 +1319,25 @@ on(document,'keydown',function(e){
     if(typeof window.clampQPosition==='function'){
       var cl=window.clampQPosition(cx,cy,rect.width,rect.height,sz,qz);cx=cl.x;cy=cl.y;
     } else { cx=Math.max(0,Math.min(cx,rect.width-sz));cy=Math.max(0,Math.min(cy,rect.height-sz)); }
-    if(origin.id==='tray'){ flipZones([origin],function(){qz.appendChild(selected);}); }
-    else { qz.appendChild(selected); }
-    selected.style.position='absolute';
-    selected.style.left=(cx/rect.width*100)+'%';
-    selected.style.top=(cy/rect.height*100)+'%';
-    selected.classList.remove('selected');
-    if(typeof window.refitQToken==='function') window.refitQToken(selected);
-    if(typeof window.bringQTokenToFront==='function') window.bringQTokenToFront(selected);
-    recordPlacement(selected.id,fromId,qz.id,kbBeforeId); vib(4);
-    live('Placed "'+(selected.innerText||'item')+'" on quadrant');
+    var placed;
+    if(fromTray && typeof window.cloneTokenForQuadrant==='function'){
+      placed=window.cloneTokenForQuadrant(selected);
+      if(!placed) return;
+      selected.classList.remove('selected');
+      qz.appendChild(placed);
+    } else {
+      placed=selected;
+      qz.appendChild(placed);
+    }
+    placed.style.position='absolute';
+    placed.style.left=(cx/rect.width*100)+'%';
+    placed.style.top=(cy/rect.height*100)+'%';
+    placed.classList.remove('selected');
+    if(typeof window.refitQToken==='function') window.refitQToken(placed);
+    if(typeof window.bringQTokenToFront==='function') window.bringQTokenToFront(placed);
+    vib(4);
+    live('Placed "'+(placed.innerText||'item')+'" on quadrant');
+    if(typeof window.scheduleQuadrantSave==='function') window.scheduleQuadrantSave();
     return;
   }
 

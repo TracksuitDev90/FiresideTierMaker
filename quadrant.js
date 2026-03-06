@@ -165,6 +165,22 @@
     zone.dataset.customColor = hexColor;
   }
 
+  /* ---------- Clone a tray token for independent quadrant use ---------- */
+  function cloneTokenForQuadrant(original){
+    var lbl = original.querySelector('.label');
+    var img = original.querySelector('img');
+    var clone;
+    if(lbl){
+      clone = buildNameToken(lbl.textContent, original.style.background || '#7da7ff', !!original.dataset.custom, lbl.style.color);
+    } else if(img){
+      clone = buildImageToken(img.src, img.alt);
+    } else {
+      return null;
+    }
+    enableQuadrantTokenDrag(clone);
+    return clone;
+  }
+
   /* ---------- Free-placement drag within quadrant zones ---------- */
   function enableQuadrantDrop(zone){
     // Click-to-place: if a token is selected, place it at click position
@@ -190,11 +206,9 @@
         return;
       }
 
-      // Move from tray or another zone into this zone
-      var fromId = ensureId(selected.parentElement,'zone');
-      var originNext = selected.nextElementSibling;
-      var originBeforeId = originNext ? ensureId(originNext,'tok') : '';
       var origin = selected.parentElement;
+      var fromTray = (origin.id === 'tray');
+      var fromOtherZone = !fromTray && origin.classList.contains('q-zone');
 
       var rect2 = zone.getBoundingClientRect();
       var sz2 = qTokenSize();
@@ -203,23 +217,26 @@
       var clamped2 = clampQPosition(nx, ny, rect2.width, rect2.height, sz2, zone);
       nx = clamped2.x; ny = clamped2.y;
 
-      // If coming from tray, use flipZones for smooth tray animation
-      if(origin.id === 'tray'){
-        flipZones([origin], function(){
-          zone.appendChild(selected);
-        });
+      var placed;
+      if(fromTray){
+        // Clone from tray — original stays in tray
+        placed = cloneTokenForQuadrant(selected);
+        if(!placed) return;
+        selected.classList.remove('selected');
+        zone.appendChild(placed);
       } else {
-        zone.appendChild(selected);
+        // Moving between quadrant zones
+        placed = selected;
+        zone.appendChild(placed);
       }
-      selected.style.position = 'absolute';
-      selected.style.left = (nx/rect2.width*100)+'%';
-      selected.style.top = (ny/rect2.height*100)+'%';
-      selected.classList.remove('selected');
-      refitQToken(selected);
-      bringToFront(selected);
+      placed.style.position = 'absolute';
+      placed.style.left = (nx/rect2.width*100)+'%';
+      placed.style.top = (ny/rect2.height*100)+'%';
+      placed.classList.remove('selected');
+      refitQToken(placed);
+      bringToFront(placed);
 
-      recordPlacement(selected.id, fromId, zone.id, originBeforeId);
-      live('Placed "'+(selected.innerText||'item')+'" on quadrant chart');
+      live('Placed "'+(placed.innerText||'item')+'" on quadrant chart');
       vib(6);
       scheduleQuadrantSave();
     });
@@ -331,15 +348,9 @@
         if(savedBg) token.style.background = savedBg;
 
         if(dropTray){
-          // Return to tray
-          token.style.position = '';
-          token.style.left = '';
-          token.style.top = '';
-          token.style.zIndex = '';
-          var fromId = ensureId(originZone,'zone');
-          flipZones([tray],function(){ tray.appendChild(token); });
-          recordPlacement(token.id, fromId, 'tray', '');
-          live('Returned "'+(token.innerText||'item')+'" to Image Storage');
+          // Destroy quadrant clone — original is still in tray
+          token.remove();
+          live('Removed from quadrant chart');
           vib(6);
           scheduleQuadrantSave();
         } else if(dropZone){
@@ -414,14 +425,7 @@
       qBoard.classList.add('active');
       // Hide prompt stack (tier-specific suggestions)
       if(typeof hidePromptStack === 'function') hidePromptStack();
-      // Move tokens from tier rows back to tray (they're tier-specific)
-      $$('.tier-drop .token').forEach(function(tok){
-        tok.style.position = '';
-        tok.style.left = '';
-        tok.style.top = '';
-        tray.appendChild(tok);
-      });
-      // Load quadrant-specific token placements
+      // Load quadrant-specific token clones (independent from tier tokens)
       loadQuadrantData();
     } else {
       document.body.classList.remove('quadrant-mode');
@@ -429,16 +433,10 @@
       qBoard.classList.remove('active');
       // Restore prompt stack for tier mode
       if(typeof showPromptStack === 'function') showPromptStack();
-      // Save quadrant data before moving tokens back
+      // Save quadrant data then destroy clones (they live only in quadrant mode)
       saveQuadrantData();
-      // Move quadrant tokens back to tray
       qZones.forEach(function(z){
-        $$('.token',z).forEach(function(tok){
-          tok.style.position = '';
-          tok.style.left = '';
-          tok.style.top = '';
-          tray.appendChild(tok);
-        });
+        $$('.token',z).forEach(function(tok){ tok.remove(); });
       });
     }
     // Update toggle buttons
@@ -530,7 +528,7 @@
         });
       }
 
-      // Restore tokens in zones
+      // Restore tokens in zones as independent clones
       if(data.zones){
         Q_POSITIONS.forEach(function(pos,i){
           var zoneTokens = data.zones[pos];
@@ -538,19 +536,11 @@
           zoneTokens.forEach(function(td){
             var tok = null;
             if(td.type === 'name'){
-              // Try to find this token in the tray first (by name match)
-              tok = findTrayToken(td.name, td.type);
-              if(!tok){
-                tok = buildNameToken(td.name, td.color || '#7da7ff', !!td.custom, td.textColor);
-              }
+              tok = buildNameToken(td.name, td.color || '#7da7ff', !!td.custom, td.textColor);
             } else if(td.type === 'image'){
-              tok = findTrayToken(td.alt || td.src, td.type, td.src);
-              if(!tok){
-                tok = buildImageToken(td.src, td.alt);
-              }
+              tok = buildImageToken(td.src, td.alt);
             }
             if(tok){
-              var sz = qTokenSize();
               tok.style.position = 'absolute';
               tok.style.left = td.left || '10%';
               tok.style.top = td.top || '10%';
@@ -565,21 +555,24 @@
     }catch(e){}
   }
 
-  /* Find a token in the tray by name/type to reuse it */
-  function findTrayToken(name, type, src){
-    if(!tray) return null;
-    var tokens = $$('.token', tray);
-    for(var i=0;i<tokens.length;i++){
-      var tok = tokens[i];
-      if(type === 'name'){
-        var lbl = tok.querySelector('.label');
-        if(lbl && lbl.textContent === name) return tok;
-      } else if(type === 'image'){
-        var img = tok.querySelector('img');
-        if(img && (img.src === src || img.alt === name)) return tok;
-      }
-    }
-    return null;
+  /* ---------- Clear quadrant zones in-place (no reload) ---------- */
+  function clearQuadrants(){
+    // Remove all quadrant token clones
+    qZones.forEach(function(z){
+      $$('.token',z).forEach(function(tok){ tok.remove(); });
+    });
+    // Reset axis labels to defaults
+    ['top','bottom','left','right'].forEach(function(dir){
+      if(qAxisLabels[dir]) qAxisLabels[dir].textContent = DEFAULT_LABELS[dir];
+    });
+    // Reset zone colors to defaults (clear inline styles)
+    qZones.forEach(function(z){
+      z.style.background = '';
+      delete z.dataset.customColor;
+    });
+    // Clear saved data
+    try{ localStorage.removeItem(QUADRANT_STORAGE_KEY); }catch(e){}
+    if(typeof showSaveToast === 'function') showSaveToast('Quadrants cleared');
   }
 
   /* Refit token label for smaller size in quadrant */
@@ -662,8 +655,8 @@
       '.board-title{display:block !important;text-align:center !important;font-size:28px !important;white-space:normal !important;word-wrap:break-word !important;overflow-wrap:break-word !important}',
       '.token-del{display:none !important}',
       '.mode-toggle-wrap{display:none !important}',
-      // Force token sizing and layout for clean export
-      '.q-zone .token{width:65px !important;height:65px !important;position:absolute !important}',
+      // Force token sizing and layout for clean export — strip box-shadow to prevent 3D bubble artifact
+      '.q-zone .token{width:65px !important;height:65px !important;position:absolute !important;box-shadow:none !important}',
       '.q-zone .token .label{font-weight:900 !important;text-align:center !important;display:flex !important;align-items:center !important;justify-content:center !important;position:absolute !important;top:0 !important;left:0 !important;width:65px !important;height:65px !important;padding:4px !important;white-space:nowrap !important;box-sizing:border-box !important}',
       '.q-zone .token img{width:100% !important;height:100% !important;object-fit:cover !important;border-radius:999px !important}',
       // Ensure quadrant grid renders properly at export width
@@ -834,10 +827,8 @@
           var zoneIdx = j < 2 ? j : (j === 2 ? 0 : j - 1);
           var zone = qZones[zoneIdx];
           if(!zone || !token) return;
-          var fromId = ensureId(token.parentElement,'zone');
           var origin = token.parentElement;
-          var originNext = token.nextElementSibling;
-          var originBeforeId = originNext ? ensureId(originNext,'tok') : '';
+          var fromTray = (origin.id === 'tray');
 
           var rect = zone.getBoundingClientRect();
           var sz = qTokenSize();
@@ -854,20 +845,23 @@
           var clampedR = clampQPosition(cx2, cy2, rect.width, rect.height, sz, zone);
           cx2 = clampedR.x; cy2 = clampedR.y;
 
-          if(origin.id === 'tray'){
-            flipZones([origin],function(){ zone.appendChild(token); });
+          var placed;
+          if(fromTray){
+            placed = cloneTokenForQuadrant(token);
+            if(!placed) return;
+            token.classList.remove('selected');
+            zone.appendChild(placed);
           } else {
-            zone.appendChild(token);
+            placed = token;
+            zone.appendChild(placed);
           }
-          token.style.position = 'absolute';
-          token.style.left = (cx2/rect.width*100)+'%';
-          token.style.top = (cy2/rect.height*100)+'%';
-          token.classList.remove('selected');
+          placed.style.position = 'absolute';
+          placed.style.left = (cx2/rect.width*100)+'%';
+          placed.style.top = (cy2/rect.height*100)+'%';
+          placed.classList.remove('selected');
 
-          enableQuadrantTokenDrag(token);
-          refitQToken(token);
-          bringToFront(token);
-          recordPlacement(token.id, fromId, zone.id, originBeforeId);
+          refitQToken(placed);
+          bringToFront(placed);
           vib(7);
           if(typeof closeRadial === 'function') closeRadial();
           scheduleQuadrantSave();
@@ -1004,5 +998,7 @@
   window.refitQToken = function(tok){ refitQToken(tok); };
   window.bringQTokenToFront = function(tok){ bringToFront(tok); };
   window.clampQPosition = function(x,y,w,h,sz,zone){ return clampQPosition(x,y,w,h,sz,zone); };
+  window.clearQuadrants = function(){ clearQuadrants(); };
+  window.cloneTokenForQuadrant = function(tok){ return cloneTokenForQuadrant(tok); };
 
 })();
