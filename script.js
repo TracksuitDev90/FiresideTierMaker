@@ -1691,6 +1691,58 @@ var TIER_PROMPTS = [
     { label: 'ELECTRIC', color: '#eab308' },
     { label: 'PSYCHIC', color: '#ec4899' },
     { label: 'DARK', color: '#4b5563' }
+  ]},
+  { text: "What's their vibe at a party?", tiers: [
+    { label: 'HOST MODE', color: '#f59e0b' },
+    { label: 'LIFE OF THE PARTY', color: '#ef4444' },
+    { label: 'DEEP CONVO CORNER', color: '#6366f1' },
+    { label: 'PHONE IN HAND', color: '#6b7280' },
+    { label: 'EARLY LEAVER', color: '#3b82f6' }
+  ]},
+  { text: "What's their chaos level?", tiers: [
+    { label: 'FULLY LAWFUL', color: '#22c55e' },
+    { label: 'MOSTLY CHILL', color: '#3b82f6' },
+    { label: 'UNPREDICTABLE', color: '#eab308' },
+    { label: 'GREMLIN', color: '#f97316' },
+    { label: 'AGENT OF CHAOS', color: '#ef4444' }
+  ]},
+  { text: "What coffee order are they?", tiers: [
+    { label: 'ESPRESSO', color: '#78350f' },
+    { label: 'BLACK COFFEE', color: '#292524' },
+    { label: 'OAT LATTE', color: '#d4a96a' },
+    { label: 'FRAPPUCCINO', color: '#ec4899' },
+    { label: 'MATCHA', color: '#84cc16' },
+    { label: 'DECAF', color: '#9ca3af' }
+  ]},
+  { text: "What's their villain arc?", tiers: [
+    { label: 'MASTERMIND', color: '#6366f1' },
+    { label: 'RELUCTANT VILLAIN', color: '#a855f7' },
+    { label: 'REDEEMABLE ARC', color: '#3b82f6' },
+    { label: 'JUST MISUNDERSTOOD', color: '#22c55e' },
+    { label: 'ABSOLUTE MENACE', color: '#ef4444' }
+  ]},
+  { text: "What archetype are they in the group?", tiers: [
+    { label: 'THE VISIONARY', color: '#6366f1' },
+    { label: 'THE CONNECTOR', color: '#ec4899' },
+    { label: 'THE ANCHOR', color: '#3b82f6' },
+    { label: 'THE WILDCARD', color: '#f97316' },
+    { label: 'THE REALIST', color: '#22c55e' },
+    { label: 'THE GHOST', color: '#6b7280' }
+  ]},
+  { text: "What era are they living in?", tiers: [
+    { label: '70s', color: '#f59e0b' },
+    { label: '80s', color: '#ec4899' },
+    { label: '90s', color: '#6366f1' },
+    { label: '2000s', color: '#06b6d4' },
+    { label: '2010s', color: '#22c55e' },
+    { label: 'TIMELESS', color: '#4b5563' }
+  ]},
+  { text: "Most Valuable to Fireside — if they left, how big would the impact be?", tiers: [
+    { label: 'IRREPLACEABLE', color: '#22c55e' },
+    { label: 'HUGE LOSS', color: '#3b82f6' },
+    { label: 'NOTICEABLE', color: '#eab308' },
+    { label: "THEY'D MANAGE", color: '#f97316' },
+    { label: 'BARELY A BLIP', color: '#ef4444' }
   ]}
 ];
 shuffleArray(TIER_PROMPTS);
