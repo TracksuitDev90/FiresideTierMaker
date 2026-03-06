@@ -1276,20 +1276,21 @@ on($('#saveBtn'),'click', function(){
     showSaveToast('Saved!');
   }).catch(function(err){
     cloneWrap.remove();
-    showSaveToast('Export failed — try again');
+    showSaveToast('Export failed — try again', true);
     console.error('PNG export error:', err);
   });
 });
 
 /* ---------- Save toast feedback ---------- */
-function showSaveToast(msg){
+function showSaveToast(msg, isError){
   var existing = $('#saveToast');
   if (existing) existing.remove();
   var toast = document.createElement('div');
   toast.id = 'saveToast';
+  toast.className = 'toast' + (isError ? ' toast-error' : '');
   toast.textContent = msg;
-  toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#22c55e;color:#fff;padding:12px 24px;border-radius:12px;font-weight:700;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.3);animation:toast-in .25s ease';
   document.body.appendChild(toast);
+  setTimeout(function(){ toast.classList.add('toast-out'); }, 1800);
   setTimeout(function(){ toast.remove(); }, 2200);
 }
 
