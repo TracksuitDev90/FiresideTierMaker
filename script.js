@@ -206,7 +206,7 @@ function fitChipLabel(chip){
   var upper = text.toUpperCase();
 
   // Binary search: largest px in [minPx..maxPx] that fits
-  var maxPx = 32, minPx = 14;
+  var maxPx = 32, minPx = 10;
   var lo = minPx, hi = maxPx;
   while (lo < hi) {
     var mid = Math.ceil((lo + hi) / 2);
@@ -231,18 +231,8 @@ function labelFitsAt(text, px, w, h) {
 
   for (var i = 0; i < words.length; i++) {
     var ww = measureText(words[i], '900', px) + words[i].length * 0.5;
-    if (ww > w) {
-      // Word too wide — simulate overflow-wrap:break-word (char-level break)
-      for (var ci = 0; ci < words[i].length; ci++) {
-        var cw = measureText(words[i][ci], '900', px) + 0.5;
-        if (lineW > 0 && lineW + cw > w) {
-          lines++;
-          lineW = cw;
-        } else {
-          lineW += cw;
-        }
-      }
-    } else if (lineW > 0 && lineW + spaceW + ww > w) {
+    if (ww > w) return false;            // single word too wide
+    if (lineW > 0 && lineW + spaceW + ww > w) {
       lines++;                           // wrap to next line
       lineW = ww;
     } else {
