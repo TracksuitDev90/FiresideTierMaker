@@ -143,11 +143,6 @@ a{color:inherit;text-decoration:none}
 :root[data-theme="light"] #themeToggle{background:#1e1b3a;color:#f0f2f5;border-color:rgba(255,255,255,.1);box-shadow:var(--shadow),inset 0 0 0 1px rgba(255,255,255,.1)}
 #themeToggle.animate .ico svg{transform:rotate(180deg)}
 
-/* Disabled state for any button */
-.btn[disabled],.btn:disabled{
-  opacity:.4;cursor:not-allowed;filter:grayscale(.4);
-  transform:none;pointer-events:none;
-}
 .btn.small{height:42px;padding:0 12px;border-radius:12px;font-weight:700}
 
 /* ---------- Creator ---------- */
