@@ -299,7 +299,10 @@ function createRow(cfg){
   /* Color picker — label wraps input so native click opens the dialog */
   on(colorBtn,'click', function(e){ e.stopPropagation(); });
   on(colorInput,'input', function(){ applyTierColor(node, colorInput.value); scheduleSave(); });
-  on(colorInput,'change', function(){ applyTierColor(node, colorInput.value); scheduleSave(); });
+  on(colorInput,'change', function(){
+    applyTierColor(node, colorInput.value); scheduleSave();
+    node.classList.add('color-flash'); setTimeout(function(){ node.classList.remove('color-flash'); }, 350);
+  });
 
   /* Reveal color dot on tap (mobile — no hover) */
   on(labelArea,'pointerdown', function(e){
@@ -423,9 +426,10 @@ on(window,'resize', debounce(refitAllLabels, 120));
 /* ---------- Tokens ---------- */
 function buildTokenBase(isCustom){
   var el = document.createElement('div');
-  el.className='token'; el.id = uid(); el.setAttribute('tabindex','0'); el.setAttribute('role','listitem');
+  el.className='token token-enter'; el.id = uid(); el.setAttribute('tabindex','0'); el.setAttribute('role','listitem');
   el.style.touchAction='none'; el.setAttribute('draggable','false');
   if (isCustom) el.dataset.custom = 'true';
+  setTimeout(function(){ el.classList.remove('token-enter'); }, 300);
 
   // Add delete button for custom tokens
   if (isCustom) {
@@ -1102,24 +1106,72 @@ function closeRadial(){
 }
 on(window, 'resize', refreshRadialOptions);
 
+/* ---------- Custom confirm modal ---------- */
+function showConfirm(title, msg, onConfirm){
+  var overlay = document.createElement('div');
+  overlay.className = 'confirm-overlay';
+  var card = document.createElement('div');
+  card.className = 'confirm-card';
+
+  var h = document.createElement('h3');
+  h.className = 'confirm-title';
+  h.textContent = title;
+
+  var p = document.createElement('p');
+  p.className = 'confirm-msg';
+  p.textContent = msg;
+
+  var actions = document.createElement('div');
+  actions.className = 'confirm-actions';
+
+  var cancelBtn = document.createElement('button');
+  cancelBtn.className = 'btn confirm-cancel';
+  cancelBtn.type = 'button';
+  cancelBtn.textContent = 'Cancel';
+
+  var okBtn = document.createElement('button');
+  okBtn.className = 'btn confirm-ok';
+  okBtn.type = 'button';
+  okBtn.textContent = 'Clear';
+
+  actions.appendChild(cancelBtn);
+  actions.appendChild(okBtn);
+  card.appendChild(h);
+  card.appendChild(p);
+  card.appendChild(actions);
+  overlay.appendChild(card);
+  document.body.appendChild(overlay);
+
+  function close(){ overlay.remove(); }
+  on(cancelBtn, 'click', close);
+  on(overlay, 'click', function(e){ if(e.target === overlay) close(); });
+  on(okBtn, 'click', function(){ close(); onConfirm(); });
+  // Esc to cancel
+  function onKey(e){ if(e.key==='Escape'){ close(); document.removeEventListener('keydown', onKey); } }
+  document.addEventListener('keydown', onKey);
+  okBtn.focus();
+}
+
 /* ---------- Clear / Undo ---------- */
 on($('#trashClear'),'click', function(){
   replayGif(this);
   var isQ = (typeof window.currentChartMode === 'function' && window.currentChartMode() === 'quadrant');
+  var title = isQ ? 'Clear the quadrants?' : 'Clear the board?';
   var msg = isQ
-    ? 'Clear the quadrants?\n\nThis will remove all token placements from the quadrant chart and reset axis labels.'
-    : 'Clear the board?\n\nThis will remove all custom tokens, written titles, and placements. Everything resets to the default clean state.';
-  if (!confirm(msg)) return;
-  if(isQ){
-    // Quadrant-only clear: remove quadrant clones and data in-place
-    if(typeof window.clearQuadrants === 'function') window.clearQuadrants();
-  } else {
-    // Full clear: remove everything
-    try { localStorage.removeItem(STORAGE_KEY); } catch(e){}
-    try { localStorage.removeItem('tm_quadrant'); } catch(e){}
-    try { localStorage.removeItem('tm_mode'); } catch(e){}
-    location.reload();
-  }
+    ? 'This will remove all token placements from the quadrant chart and reset axis labels.'
+    : 'This will remove all custom tokens, written titles, and placements. Everything resets to the default clean state.';
+  showConfirm(title, msg, function(){
+    if(isQ){
+      // Quadrant-only clear: remove quadrant clones and data in-place
+      if(typeof window.clearQuadrants === 'function') window.clearQuadrants();
+    } else {
+      // Full clear: remove everything
+      try { localStorage.removeItem(STORAGE_KEY); } catch(e){}
+      try { localStorage.removeItem('tm_quadrant'); } catch(e){}
+      try { localStorage.removeItem('tm_mode'); } catch(e){}
+      location.reload();
+    }
+  });
 });
 on($('#undoBtn'),'click', function(){ animateBtn(this); undoLast(); });
 
@@ -1488,6 +1540,12 @@ function updateTrayCount(){
     badge.classList.remove('pulse');
     void badge.offsetWidth; // reflow to re-trigger
     badge.classList.add('pulse');
+    // Glow when going from 0 to non-zero
+    if (prev === 0 && count > 0) {
+      badge.classList.remove('glow'); void badge.offsetWidth;
+      badge.classList.add('glow');
+      setTimeout(function(){ badge.classList.remove('glow'); }, 600);
+    }
   }
 }
 
@@ -1944,7 +2002,10 @@ document.addEventListener('DOMContentLoaded', function start(){
   // add tier
   on($('#addTierBtn'),'click', function(){
     animateBtn(this);
-    board.appendChild(createRow({label:'NEW', color: nextTierColor()}));
+    var newRow = createRow({label:'NEW', color: nextTierColor()});
+    newRow.classList.add('row-enter');
+    board.appendChild(newRow);
+    setTimeout(function(){ newRow.classList.remove('row-enter'); }, 350);
     uniformizeTierLabels();
     refreshRadialOptions();
     scheduleSave();
