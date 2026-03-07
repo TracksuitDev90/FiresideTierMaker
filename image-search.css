@@ -87,6 +87,9 @@
   border:2px solid transparent;
   background:var(--surface);
   transition:border-color .15s, transform .12s, box-shadow .15s;
+  /* give every card a consistent size so images aren't tiny strips */
+  min-height:140px;
+  display:flex;align-items:center;justify-content:center;
 }
 .img-search-card:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.25)}
 .img-search-card.selected{
@@ -94,9 +97,11 @@
   box-shadow:0 0 0 3px rgba(139,125,255,.3);
 }
 
-/* Show the full image, no cropping */
+/* Show the full image inside the card – contain keeps the whole photo visible */
 .img-search-card img{
-  width:100%;height:auto;display:block;
+  width:100%;height:100%;
+  object-fit:contain;
+  display:block;
   background:var(--surface);
 }
 .img-search-card.broken{opacity:.3;pointer-events:none}
