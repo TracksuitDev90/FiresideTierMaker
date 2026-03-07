@@ -188,7 +188,7 @@
         var titles = filenames.slice(0, 50).join('|');
         var infoUrl = 'https://en.wikipedia.org/w/api.php?' +
           'action=query&titles=' + encodeURIComponent(titles) +
-          '&prop=imageinfo&iiprop=url|thumbmime&iiurlwidth=300' +
+          '&prop=imageinfo&iiprop=url|thumbmime&iiurlwidth=600' +
           '&format=json&origin=*';
 
         fetch(infoUrl)
@@ -220,7 +220,7 @@
     var url = 'https://commons.wikimedia.org/w/api.php?' +
       'action=query&generator=search&gsrnamespace=6&gsrsearch=' + encodeURIComponent(q) +
       '&gsrlimit=' + BATCH + '&gsroffset=' + offset +
-      '&prop=imageinfo&iiprop=url|thumbmime|extmetadata&iiurlwidth=300' +
+      '&prop=imageinfo&iiprop=url|thumbmime|extmetadata&iiurlwidth=600' +
       '&format=json&origin=*';
 
     fetch(url)
