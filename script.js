@@ -206,7 +206,7 @@ function fitChipLabel(chip){
   var upper = text.toUpperCase();
 
   // Binary search: largest px in [minPx..maxPx] that fits
-  var maxPx = 48, minPx = 6;
+  var maxPx = 48, minPx = 12;
   var lo = minPx, hi = maxPx;
   while (lo < hi) {
     var mid = Math.ceil((lo + hi) / 2);
@@ -334,7 +334,7 @@ function createRow(cfg){
 /* ---------- Defaults ---------- */
 var defaultTiers = [
   { label:'S', color:'#ff6b6b' },
-  { label:'A', color:'#f5d623' },
+  { label:'A', color:'#e8780a' },
   { label:'B', color:'#22c55e' },
   { label:'C', color:'#3b82f6' },
   { label:'D', color:'#a78bfa' },
@@ -1262,13 +1262,17 @@ on($('#saveBtn'),'click', function(){
     '  width:100% !important;',
     '  height:100% !important;',
     '}',
-    // Tier label chip - flex centering (correctly rendered by html-to-image)
+    // Tier label chip - flex centering + explicit font (correctly rendered by html-to-image)
     '.label-chip{',
     '  display:flex !important;',
     '  align-items:center !important;',
     '  justify-content:center !important;',
     '  width:100% !important;',
     '  height:100% !important;',
+    '  font-family:"Bowlby One",sans-serif !important;',
+    '  font-weight:400 !important;',
+    '  text-transform:uppercase !important;',
+    '  letter-spacing:0.5px !important;',
     '  line-height:1.1 !important;',
     '  text-align:center !important;',
     '  color:#ffffff !important;',
