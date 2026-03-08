@@ -236,17 +236,6 @@
   border-radius:20px;
   border:2px solid var(--accent);
 }
-.champion-crown{
-  font-size:48px;
-  line-height:1;
-  margin-bottom:4px;
-  animation:crownBounce 1s ease-out;
-}
-@keyframes crownBounce{
-  0%{transform:translateY(-30px) scale(0);opacity:0}
-  60%{transform:translateY(5px) scale(1.1);opacity:1}
-  100%{transform:translateY(0) scale(1)}
-}
 .champion-title{
   font-family:'Bowlby One',sans-serif;
   font-size:clamp(18px,4vw,28px);
@@ -389,42 +378,11 @@
 .bracket-loser .bracket-token-name{
   color:var(--muted);
 }
-.bracket-crown{
-  position:absolute;
-  top:-4px;right:-2px;
-  font-size:16px;
-  filter:drop-shadow(0 1px 2px rgba(0,0,0,.3));
-}
 
-/* ---------- Result actions ---------- */
-.battle-result-actions{
-  display:flex;
-  justify-content:center;
-  gap:10px;
-  margin-top:20px;
-  padding-bottom:8px;
-  flex-wrap:wrap;
-}
-.battle-btn--save{
-  border-color:#818CF8!important;
-  color:#818CF8!important;
-}
-.battle-btn--save:hover{
-  background:rgba(129,140,248,.12)!important;
-}
-.battle-btn--new{
-  border-color:var(--neon)!important;
-  color:var(--neon)!important;
-}
-.battle-btn--new:hover{
-  background:rgba(216,255,63,.1)!important;
-}
 
-/* ---------- Controls adjustments for battle mode ---------- */
-body.battle-mode #addTierBtn,
-body.battle-mode #trashClear{
-  display:none;
-}
+/* ---------- Hide UI elements not relevant to battle mode ---------- */
+body.battle-mode .board-title-wrap{display:none}
+body.battle-mode #addTierBtn{display:none}
 
 /* ---------- Mobile optimizations ---------- */
 @media(max-width:480px){
@@ -447,14 +405,6 @@ body.battle-mode #trashClear{
   }
   .bracket-circle{
     width:44px;height:44px;
-  }
-  .battle-result-actions{
-    flex-direction:column;
-    align-items:stretch;
-  }
-  .battle-result-actions .btn{
-    width:100%;
-    justify-content:center;
   }
 }
 
