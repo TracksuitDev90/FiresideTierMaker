@@ -484,12 +484,12 @@
       '.bracket-token-name{ font-size:13px !important; }',
       '.champion-circle{ box-shadow:none !important; border:4px solid #8b7dff !important; }',
       '.bracket-winner .bracket-circle{ box-shadow:none !important; }',
-      '.battle-label{ font-family:"Bowlby One",sans-serif !important; }',
-      '.champion-title{ font-family:"Bowlby One",sans-serif !important; }',
-      '.bracket-title{ font-family:"Bowlby One",sans-serif !important; }',
-      '.bracket-round-num{ font-family:"Bowlby One",sans-serif !important; }',
-      '.bracket-vs{ font-family:"Bowlby One",sans-serif !important; }',
-      '.champion-subtitle{ font-family:"Bowlby One",sans-serif !important; }'
+      '.battle-label{ font-family:"Segoe UI",system-ui,-apple-system,sans-serif !important; font-weight:800 !important; }',
+      '.champion-title{ font-family:"Segoe UI",system-ui,-apple-system,sans-serif !important; font-weight:900 !important; }',
+      '.bracket-title{ font-family:"Segoe UI",system-ui,-apple-system,sans-serif !important; font-weight:700 !important; }',
+      '.bracket-round-num{ font-family:"Segoe UI",system-ui,-apple-system,sans-serif !important; font-weight:700 !important; }',
+      '.bracket-vs{ font-family:"Segoe UI",system-ui,-apple-system,sans-serif !important; font-weight:700 !important; }',
+      '.champion-subtitle{ font-family:"Segoe UI",system-ui,-apple-system,sans-serif !important; font-weight:700 !important; }'
     ];
     if(typeof _bowlbyFontFaceCSS === 'string'){
       exportCSS.unshift(_bowlbyFontFaceCSS);
