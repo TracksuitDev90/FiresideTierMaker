@@ -2318,5 +2318,16 @@ document.addEventListener('DOMContentLoaded', function start(){
 
   enableClickToPlace(tray);
   refitAllLabels();
+
+  // Token analytics buttons
+  on($('#recordSnapshotBtn'), 'click', function(){
+    animateBtn(this);
+    if(window.tokenAnalytics) window.tokenAnalytics.record();
+  });
+  on($('#analyticsBtn'), 'click', function(){
+    animateBtn(this);
+    if(window.tokenAnalytics) window.tokenAnalytics.showPanel();
+  });
+
   live('Ready.');
 });

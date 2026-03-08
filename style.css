@@ -579,3 +579,94 @@ body.dragging-item{cursor:grabbing;user-select:none;-webkit-user-select:none}
   background:#F87171;color:#fff;border:1px solid rgba(0,0,0,.1);
   box-shadow:0 2px 8px rgba(248,113,113,.3);
 }
+
+/* ---------- Token Analytics Panel ---------- */
+.analytics-overlay{
+  position:fixed;inset:0;z-index:100;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  animation:confirm-fade-in .2s ease;
+}
+.analytics-panel{
+  background:var(--surface-raised);border:1px solid var(--border);
+  border-radius:16px;box-shadow:0 16px 48px rgba(0,0,0,.4);
+  padding:24px;max-width:560px;width:calc(100% - 32px);
+  max-height:85vh;display:flex;flex-direction:column;
+  animation:confirm-pop-in .25s cubic-bezier(.34,1.4,.64,1);
+}
+.analytics-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.analytics-title{font-size:20px;font-weight:900;margin:0;color:var(--text)}
+.analytics-close{
+  width:36px;height:36px;display:flex;align-items:center;justify-content:center;
+  border-radius:10px;background:var(--card);border:1px solid var(--border);
+  color:var(--muted);transition:background .15s ease;cursor:pointer;
+}
+.analytics-close:hover{background:var(--border);color:var(--text)}
+.analytics-summary{font-size:13px;color:var(--muted);margin-bottom:16px}
+.analytics-empty{
+  text-align:center;color:var(--muted);padding:32px 16px;font-size:14px;line-height:1.6;
+}
+.analytics-empty p{margin:0 0 8px}
+
+/* Filter */
+.analytics-filter{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.analytics-filter-label{font-size:13px;font-weight:700;color:var(--muted)}
+.analytics-select{
+  flex:1;height:36px;padding:0 10px;border-radius:10px;
+  background:var(--card);color:var(--text);border:1px solid var(--border);
+  font-size:13px;font-weight:600;cursor:pointer;
+}
+
+/* Token list */
+.analytics-list{overflow-y:auto;flex:1;min-height:0;padding-right:4px}
+.analytics-list::-webkit-scrollbar{width:5px}
+.analytics-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+
+/* Token card */
+.analytics-token-card{
+  background:var(--card);border:1px solid var(--border);border-radius:12px;
+  padding:14px 16px;margin-bottom:10px;
+  transition:border-color .15s ease;
+}
+.analytics-token-card:hover{border-color:var(--accent)}
+.analytics-name-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.analytics-token-name{font-size:15px;font-weight:800;color:var(--text)}
+.analytics-skew{
+  font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;
+  text-transform:uppercase;letter-spacing:.5px;
+}
+.analytics-skew--high{background:rgba(34,197,94,.15);color:#22c55e}
+.analytics-skew--mid{background:rgba(59,130,246,.15);color:#3b82f6}
+.analytics-skew--low{background:rgba(167,139,250,.15);color:#a78bfa}
+.analytics-count{font-size:12px;color:var(--muted);margin-left:auto;font-weight:600}
+
+/* Distribution bar */
+.analytics-bar-wrap{
+  display:flex;height:28px;border-radius:8px;overflow:hidden;
+  margin-bottom:8px;gap:1px;
+}
+.analytics-bar-seg{
+  display:flex;align-items:center;justify-content:center;
+  min-width:0;transition:width .3s ease;position:relative;
+}
+.analytics-bar-label{font-size:11px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 4px}
+
+/* Tier breakdown chips */
+.analytics-breakdown{display:flex;flex-wrap:wrap;gap:6px}
+.analytics-tier-chip{
+  font-size:11px;font-weight:600;color:var(--muted);
+  padding:2px 8px;border-radius:6px;
+  border:1px solid var(--border);background:transparent;
+}
+
+/* Footer */
+.analytics-footer{
+  margin-top:16px;padding-top:12px;border-top:1px solid var(--border);
+  display:flex;justify-content:space-between;align-items:center;
+}
+.analytics-clear-btn{
+  font-size:12px;font-weight:700;color:var(--muted);
+  padding:6px 14px;border-radius:8px;
+  background:transparent;border:1px solid var(--border);
+}
+.analytics-clear-btn:hover{color:#ef4444;border-color:#ef4444}
