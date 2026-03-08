@@ -226,11 +226,11 @@ function fitChipLabel(chip){
 function labelFitsAt(text, px, w, h) {
   var words = text.split(/\s+/);
   var lineH = px * 1.1;   // matches CSS line-height:1.1
-  var spaceW = measureText(' ', '900', px) + 0.5;  // + letter-spacing
+  var spaceW = measureText(' ', '400', px) + 0.5;  // + letter-spacing
   var lines = 1, lineW = 0;
 
   for (var i = 0; i < words.length; i++) {
-    var ww = measureText(words[i], '900', px) + words[i].length * 0.5;
+    var ww = measureText(words[i], '400', px) + words[i].length * 0.5;
     if (ww > w) return false;            // single word too wide
     if (lineW > 0 && lineW + spaceW + ww > w) {
       lines++;                           // wrap to next line
@@ -286,14 +286,14 @@ function createRow(cfg){
   applyTierColor(node, cfg.color);
 
   on(chip,'input', function(){
-    fitChipLabel(chip);
+    uniformizeTierLabels();
     // Browser may re-scroll contenteditable after style changes;
     // reset scroll in the next frame so text stays left-aligned
     chip.scrollLeft = 0;
     requestAnimationFrame(function(){ chip.scrollLeft = 0; });
   });
   on(chip,'keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); chip.blur(); } });
-  on(chip,'blur', function(){ fitChipLabel(chip); chip.scrollLeft = 0; });
+  on(chip,'blur', function(){ uniformizeTierLabels(); chip.scrollLeft = 0; });
   fitChipLabel(chip);
 
   /* Color picker — label wraps input so native click opens the dialog */
@@ -377,7 +377,7 @@ function nextPreset(){ var c = presetPalette[pIndex % presetPalette.length]; pIn
 var _measureCtx = null;
 function measureText(text, fontWeight, px){
   if(!_measureCtx) _measureCtx = document.createElement('canvas').getContext('2d');
-  _measureCtx.font = fontWeight + ' ' + px + 'px ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial';
+  _measureCtx.font = fontWeight + ' ' + px + 'px "Bowlby One",ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial';
   return _measureCtx.measureText(text).width;
 }
 
@@ -415,7 +415,7 @@ function refitAllLabels(){
     if(lbl.closest('.q-zone')) return;
     fitLiveLabel(lbl);
   });
-  $$('#tierBoard .label-chip').forEach(fitChipLabel);
+  uniformizeTierLabels();
   // Refit quadrant tokens separately
   $$('.q-zone .token').forEach(function(tok){
     if(typeof window.refitQToken === 'function') window.refitQToken(tok);
