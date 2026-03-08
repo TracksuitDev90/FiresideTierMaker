@@ -428,11 +428,7 @@
 
     resultsEl.innerHTML = html;
 
-    // Fit text labels inside bracket circles
-    var bracketLabels = resultsEl.querySelectorAll('.bracket-circle .battle-label');
-    for(var j = 0; j < bracketLabels.length; j++){
-      fitBattleLabel(bracketLabels[j], bracketLabels[j].parentElement);
-    }
+    // Bracket circle labels use CSS-only sizing (clamp + word-break)
     // Also fit champion label if text-only
     var champLabel = resultsEl.querySelector('.champion-circle .battle-label');
     if(champLabel) fitBattleLabel(champLabel, champLabel.parentElement);

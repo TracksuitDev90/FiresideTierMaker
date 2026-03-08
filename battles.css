@@ -377,7 +377,9 @@
   object-fit:cover;border-radius:50%;
 }
 .bracket-circle .battle-label{
-  font-size:clamp(14px,2.5vw,24px);
+  font-size:clamp(14px,2.5vw,22px);
+  overflow:hidden;
+  padding:6px;
 }
 .bracket-token-name{
   font-size:clamp(13px,1.8vw,16px);
