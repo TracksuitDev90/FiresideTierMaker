@@ -359,7 +359,7 @@ a{color:inherit;text-decoration:none}
   display:flex;align-items:center;justify-content:center;
   font-family:'Bowlby One',sans-serif;font-weight:400;font-size:clamp(10px,4vw,48px);
   text-transform:uppercase;letter-spacing:.5px;user-select:none;
-  line-height:1.1;white-space:normal;word-break:normal;overflow-wrap:normal;
+  line-height:1.1;white-space:normal;word-break:normal;overflow-wrap:break-word;
   text-align:center;padding:6px 8px;overflow:hidden;
 }
 
