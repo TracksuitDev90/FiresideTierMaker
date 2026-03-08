@@ -242,21 +242,28 @@ function labelFitsAt(text, px, w, h) {
   return lines * lineH <= h;
 }
 
-/* Equalize all tier label font sizes to the smallest needed */
+/* Equalize all tier label font sizes to the smallest needed.
+   Short labels (1-2 chars like S, A, B, C, D) keep their own large
+   individual size.  Only labels with 3+ characters participate in
+   uniform sizing so that longer/custom text looks consistent without
+   dragging single-letter defaults down. */
 function uniformizeTierLabels(){
   var chips = $$('#tierBoard .label-chip');
   if (!chips.length) return;
   // Fit each chip individually first
   chips.forEach(function(c){ fitChipLabel(c); });
-  // Find the smallest font size
+  // Only uniformize chips whose text is 3+ characters
+  var longChips = chips.filter(function(c){
+    return c.textContent.replace(/\s+/g,' ').trim().length > 2;
+  });
+  if (longChips.length < 2) return;
   var minSize = Infinity;
-  chips.forEach(function(c){
+  longChips.forEach(function(c){
     var sz = parseInt(c.style.fontSize, 10);
     if (sz && sz < minSize) minSize = sz;
   });
-  // Apply uniform size to all
   if (minSize < Infinity && minSize > 0) {
-    chips.forEach(function(c){ c.style.fontSize = minSize + 'px'; });
+    longChips.forEach(function(c){ c.style.fontSize = minSize + 'px'; });
   }
 }
 
@@ -1294,10 +1301,13 @@ on($('#saveBtn'),'click', function(){
   // Re-fit tier label chips so custom text renders correctly in export
   var cloneChips = $$('.label-chip', clone);
   cloneChips.forEach(function(chip){ fitChipLabel(chip); });
-  // Uniform size across all tier labels in clone
-  var minChipSize = Infinity;
-  cloneChips.forEach(function(c){ var sz = parseInt(c.style.fontSize, 10); if (sz && sz < minChipSize) minChipSize = sz; });
-  if (minChipSize < Infinity && minChipSize > 0) cloneChips.forEach(function(c){ c.style.fontSize = minChipSize + 'px'; });
+  // Uniform size across long (3+ char) tier labels in clone
+  var longCloneChips = cloneChips.filter(function(c){ return c.textContent.replace(/\s+/g,' ').trim().length > 2; });
+  if (longCloneChips.length >= 2) {
+    var minChipSize = Infinity;
+    longCloneChips.forEach(function(c){ var sz = parseInt(c.style.fontSize, 10); if (sz && sz < minChipSize) minChipSize = sz; });
+    if (minChipSize < Infinity && minChipSize > 0) longCloneChips.forEach(function(c){ c.style.fontSize = minChipSize + 'px'; });
+  }
 
   // Size each label to fit on single line (canvas measurement for accuracy)
   var cloneLabels = $$('.token .label', clone);
