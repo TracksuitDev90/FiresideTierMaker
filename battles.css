@@ -357,8 +357,8 @@
   opacity:.45;
 }
 .bracket-circle{
-  width:90px;
-  height:90px;
+  width:110px;
+  height:110px;
   border-radius:50%;
   overflow:hidden;
   display:flex;
@@ -377,10 +377,10 @@
   object-fit:cover;border-radius:50%;
 }
 .bracket-circle .battle-label{
-  font-size:20px;
+  font-size:clamp(14px,2.5vw,24px);
 }
 .bracket-token-name{
-  font-size:13px;
+  font-size:clamp(13px,1.8vw,16px);
   font-weight:700;
   color:var(--text);
   text-align:center;
@@ -397,6 +397,7 @@
 /* ---------- Hide/show UI elements per battle mode ---------- */
 body.battle-mode .board-title-wrap{display:none}
 body.battle-mode #addTierBtn{display:none}
+body.battle-mode .panel:has(#tray){display:none}
 body.battle-mode #trashClear span:last-child{/* label set by JS */}
 #newBracketBtn{display:none}
 body.battle-mode #newBracketBtn{display:flex}
@@ -423,7 +424,7 @@ body.battle-mode #newBracketBtn{display:flex}
     padding:6px 8px;
   }
   .bracket-circle{
-    width:70px;height:70px;
+    width:85px;height:85px;
   }
 }
 

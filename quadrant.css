@@ -32,7 +32,7 @@
   color:var(--text);
 }
 .mode-toggle-btn svg{width:16px;height:16px;flex-shrink:0}
-.mode-toggle-btn .mode-toggle-icon{width:16px;height:16px;flex-shrink:0;filter:invert(1);opacity:.55}
+.mode-toggle-btn .mode-toggle-icon{width:20px;height:20px;flex-shrink:0;filter:invert(1);opacity:.55}
 .mode-toggle-btn.active .mode-toggle-icon{filter:invert(1);opacity:1}
 :root[data-theme="light"] .mode-toggle-btn:not(.active) .mode-toggle-icon{filter:none;opacity:.55}
 :root[data-theme="light"] .mode-toggle-btn.active .mode-toggle-icon{filter:invert(1);opacity:1}
