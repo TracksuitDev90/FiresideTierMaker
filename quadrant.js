@@ -973,7 +973,7 @@
         '  <span>Quadrant</span>',
         '</button>',
         '<button class="mode-toggle-btn" data-mode="battles" type="button">',
-        '  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4L6 20M18 4V20M6 12H18M6 4L2 8M6 4L10 8M18 4L14 8M18 4L22 8M6 20L2 16M6 20L10 16M18 20L14 16M18 20L22 16"/></svg>',
+        '  <img class="mode-toggle-icon" src="icons/tournament-bracket-svgrepo-com.svg" alt="" width="16" height="16" />',
         '  <span>Battles</span>',
         '</button>'
       ].join('');

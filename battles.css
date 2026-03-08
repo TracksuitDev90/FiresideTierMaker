@@ -220,6 +220,8 @@
   border-color:var(--accent)!important;
   color:var(--accent)!important;
 }
+.battle-btn--shuffle .ico .btn-icon{filter:invert(1);opacity:.7}
+:root[data-theme="light"] .battle-btn--shuffle .ico .btn-icon{filter:none;opacity:.7}
 .battle-btn--shuffle:hover{
   background:rgba(139,125,255,.12)!important;
 }
@@ -272,6 +274,14 @@
   font-weight:800;
   font-size:clamp(16px,3vw,22px);
   color:var(--text);
+}
+.champion-subtitle{
+  font-family:'Bowlby One',sans-serif;
+  font-size:clamp(12px,2vw,16px);
+  letter-spacing:2px;
+  color:var(--muted);
+  text-transform:uppercase;
+  margin-top:4px;
 }
 
 /* ---------- Bracket grid ---------- */
