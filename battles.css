@@ -17,7 +17,8 @@
   margin-bottom:20px;
 }
 .battle-round-label{
-  font-family:'Bowlby One',sans-serif;
+  font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+  font-weight:700;
   font-size:clamp(13px,2vw,16px);
   color:var(--muted);
   letter-spacing:2px;
@@ -25,16 +26,13 @@
   margin-bottom:4px;
 }
 .battle-category{
-  font-family:'Bowlby One',sans-serif;
+  font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+  font-weight:800;
   font-size:clamp(22px,5vw,38px);
   color:var(--text);
   line-height:1.15;
   margin-bottom:12px;
   text-transform:uppercase;
-  background:linear-gradient(135deg, var(--accent), var(--neon));
-  -webkit-background-clip:text;
-  -webkit-text-fill-color:transparent;
-  background-clip:text;
 }
 
 /* ---------- Progress dots ---------- */
@@ -82,7 +80,8 @@
 }
 
 .battle-vs-badge{
-  font-family:'Bowlby One',sans-serif;
+  font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+  font-weight:900;
   font-size:clamp(20px,4vw,36px);
   color:var(--accent);
   text-shadow:0 0 20px rgba(139,125,255,.5);
@@ -167,7 +166,8 @@
   pointer-events:none;
 }
 .battle-label{
-  font-family:'Bowlby One',sans-serif;
+  font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+  font-weight:800;
   font-size:20px;
   text-align:center;
   word-break:break-word;
@@ -239,7 +239,8 @@
   border:2px solid var(--accent);
 }
 .champion-title{
-  font-family:'Bowlby One',sans-serif;
+  font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+  font-weight:900;
   font-size:clamp(18px,4vw,28px);
   letter-spacing:3px;
   background:linear-gradient(135deg, var(--accent), var(--neon));
@@ -276,7 +277,8 @@
   color:var(--text);
 }
 .champion-subtitle{
-  font-family:'Bowlby One',sans-serif;
+  font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+  font-weight:700;
   font-size:clamp(12px,2vw,16px);
   letter-spacing:2px;
   color:var(--muted);
@@ -289,7 +291,8 @@
   margin-top:16px;
 }
 .bracket-title{
-  font-family:'Bowlby One',sans-serif;
+  font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+  font-weight:700;
   font-size:clamp(14px,2.5vw,20px);
   color:var(--muted);
   letter-spacing:2px;
@@ -312,7 +315,8 @@
   gap:4px;
 }
 .bracket-round-num{
-  font-family:'Bowlby One',sans-serif;
+  font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+  font-weight:700;
   font-size:clamp(11px,1.5vw,14px);
   color:var(--accent);
   letter-spacing:1px;
@@ -332,7 +336,8 @@
   gap:clamp(8px,2vw,20px);
 }
 .bracket-vs{
-  font-family:'Bowlby One',sans-serif;
+  font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+  font-weight:700;
   font-size:clamp(12px,2vw,16px);
   color:var(--muted);
   flex-shrink:0;
