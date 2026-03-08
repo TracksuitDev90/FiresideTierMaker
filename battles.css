@@ -347,8 +347,8 @@
   opacity:.45;
 }
 .bracket-circle{
-  width:clamp(48px,12vw,70px);
-  height:clamp(48px,12vw,70px);
+  width:70px;
+  height:70px;
   border-radius:50%;
   overflow:hidden;
   display:flex;
@@ -356,6 +356,7 @@
   justify-content:center;
   border:2px solid var(--border);
   position:relative;
+  flex-shrink:0;
 }
 .bracket-winner .bracket-circle{
   border-color:var(--accent);
@@ -365,8 +366,11 @@
   width:100%;height:100%;
   object-fit:cover;border-radius:50%;
 }
+.bracket-circle .battle-label{
+  font-size:14px!important;
+}
 .bracket-token-name{
-  font-size:clamp(10px,1.5vw,13px);
+  font-size:13px;
   font-weight:700;
   color:var(--text);
   text-align:center;
@@ -380,9 +384,14 @@
 }
 
 
-/* ---------- Hide UI elements not relevant to battle mode ---------- */
+/* ---------- Hide/show UI elements per battle mode ---------- */
 body.battle-mode .board-title-wrap{display:none}
 body.battle-mode #addTierBtn{display:none}
+body.battle-mode #trashClear span:last-child{/* label set by JS */}
+#newBracketBtn{display:none}
+body.battle-mode #newBracketBtn{display:flex}
+#newBracketBtn{background:#4ADE80;color:#111;border-color:rgba(0,0,0,.12);box-shadow:var(--shadow),inset 0 0 0 1px rgba(255,255,255,.18)}
+#newBracketBtn .ico svg{stroke:#111}
 
 /* ---------- Mobile optimizations ---------- */
 @media(max-width:480px){
@@ -402,9 +411,6 @@ body.battle-mode #addTierBtn{display:none}
   }
   .bracket-round{
     padding:10px 10px;
-  }
-  .bracket-circle{
-    width:44px;height:44px;
   }
 }
 

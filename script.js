@@ -1190,9 +1190,9 @@ function showConfirm(title, msg, onConfirm){
 /* ---------- Clear / Undo ---------- */
 on($('#trashClear'),'click', function(){
   replayGif(this);
-  // Battles mode: restart the battle
+  // Battles mode: restart same category from round 1
   if(typeof window.isBattleMode === 'function' && window.isBattleMode()){
-    if(typeof window.startBattle === 'function') window.startBattle();
+    if(typeof window.restartBattle === 'function') window.restartBattle();
     return;
   }
   var isQ = (typeof window.currentChartMode === 'function' && window.currentChartMode() === 'quadrant');
