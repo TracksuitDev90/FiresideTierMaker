@@ -1,0 +1,465 @@
+/* ========== Battles / Bracket Mode ========== */
+
+/* ---------- Board visibility ---------- */
+#battleBoard{display:none}
+#battleBoard.active{display:block}
+
+/* ---------- Arena layout ---------- */
+.battle-arena{
+  max-width:700px;
+  margin:0 auto;
+  padding:8px 0 0;
+}
+
+/* ---------- Header ---------- */
+.battle-header{
+  text-align:center;
+  margin-bottom:20px;
+}
+.battle-round-label{
+  font-family:'Bowlby One',sans-serif;
+  font-size:clamp(13px,2vw,16px);
+  color:var(--muted);
+  letter-spacing:2px;
+  text-transform:uppercase;
+  margin-bottom:4px;
+}
+.battle-category{
+  font-family:'Bowlby One',sans-serif;
+  font-size:clamp(22px,5vw,38px);
+  color:var(--text);
+  line-height:1.15;
+  margin-bottom:12px;
+  text-transform:uppercase;
+  background:linear-gradient(135deg, var(--accent), var(--neon));
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+
+/* ---------- Progress dots ---------- */
+#battleProgress{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  margin-bottom:6px;
+}
+.progress-dot{
+  width:10px;height:10px;
+  border-radius:50%;
+  background:var(--border);
+  border:2px solid var(--border);
+  transition:all .3s ease;
+}
+.progress-dot.done{
+  background:var(--accent);
+  border-color:var(--accent);
+  box-shadow:0 0 6px rgba(139,125,255,.4);
+}
+.progress-dot.active{
+  background:transparent;
+  border-color:var(--neon);
+  box-shadow:0 0 8px rgba(216,255,63,.4);
+  transform:scale(1.3);
+}
+
+/* ---------- Versus layout ---------- */
+.battle-versus{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:clamp(12px,3vw,32px);
+  margin:16px 0 12px;
+}
+.battle-versus.hidden{display:none}
+
+.battle-slot{
+  flex:1;
+  display:flex;
+  justify-content:center;
+  max-width:240px;
+}
+
+.battle-vs-badge{
+  font-family:'Bowlby One',sans-serif;
+  font-size:clamp(20px,4vw,36px);
+  color:var(--accent);
+  text-shadow:0 0 20px rgba(139,125,255,.5);
+  flex-shrink:0;
+  letter-spacing:2px;
+  user-select:none;
+  animation: vsPulse 2s ease-in-out infinite;
+}
+@keyframes vsPulse{
+  0%,100%{transform:scale(1);opacity:1}
+  50%{transform:scale(1.1);opacity:.8}
+}
+
+/* ---------- Battle card ---------- */
+.battle-card{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:10px;
+  cursor:pointer;
+  padding:16px 12px;
+  border-radius:20px;
+  border:2px solid transparent;
+  transition:transform .2s ease, border-color .2s ease, box-shadow .2s ease, background .2s ease;
+  user-select:none;
+  -webkit-tap-highlight-color:transparent;
+  width:100%;
+  max-width:200px;
+}
+.battle-card:hover,
+.battle-card:focus-visible{
+  border-color:var(--accent);
+  background:rgba(139,125,255,.08);
+  transform:scale(1.05);
+  box-shadow:0 4px 24px rgba(139,125,255,.2);
+  outline:none;
+}
+.battle-card:active{
+  transform:scale(0.97);
+}
+
+/* Entrance animations */
+.battle-card.enter-left{
+  animation:slideInLeft .35s ease-out;
+}
+.battle-card.enter-right{
+  animation:slideInRight .35s ease-out;
+}
+@keyframes slideInLeft{
+  from{transform:translateX(-60px) scale(.8);opacity:0}
+  to{transform:translateX(0) scale(1);opacity:1}
+}
+@keyframes slideInRight{
+  from{transform:translateX(60px) scale(.8);opacity:0}
+  to{transform:translateX(0) scale(1);opacity:1}
+}
+
+/* ---------- Battle circle (token display) ---------- */
+.battle-circle{
+  width:clamp(90px,22vw,140px);
+  height:clamp(90px,22vw,140px);
+  border-radius:50%;
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:var(--surface-raised);
+  border:3px solid var(--border);
+  box-shadow:0 4px 16px rgba(0,0,0,.25);
+  transition:border-color .2s ease, box-shadow .2s ease;
+  position:relative;
+}
+.battle-card:hover .battle-circle,
+.battle-card:focus-visible .battle-circle{
+  border-color:var(--accent);
+  box-shadow:0 0 20px rgba(139,125,255,.35);
+}
+.battle-circle img{
+  width:100%;height:100%;
+  object-fit:cover;
+  border-radius:50%;
+  pointer-events:none;
+}
+.battle-label{
+  font-family:'Bowlby One',sans-serif;
+  font-size:20px;
+  text-align:center;
+  word-break:break-word;
+  line-height:1.1;
+  padding:4px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:100%;height:100%;
+  position:absolute;
+  top:0;left:0;
+}
+
+/* ---------- Token name below circle ---------- */
+.battle-name{
+  font-weight:700;
+  font-size:clamp(12px,2vw,16px);
+  color:var(--text);
+  text-align:center;
+  max-width:140px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+/* ---------- Instructions ---------- */
+.battle-instructions{
+  text-align:center;
+  font-size:clamp(13px,2vw,16px);
+  color:var(--muted);
+  margin:8px 0 16px;
+  font-style:italic;
+}
+.battle-instructions.hidden{display:none}
+
+/* ---------- Actions ---------- */
+.battle-actions{
+  display:flex;
+  justify-content:center;
+  gap:10px;
+  margin-bottom:8px;
+}
+.battle-actions.hidden{display:none}
+
+.battle-btn{
+  font-size:13px!important;
+  padding:8px 18px!important;
+}
+.battle-btn--shuffle{
+  border-color:var(--accent)!important;
+  color:var(--accent)!important;
+}
+.battle-btn--shuffle:hover{
+  background:rgba(139,125,255,.12)!important;
+}
+
+/* ---------- Results ---------- */
+.battle-results.hidden{display:none}
+
+/* Champion banner */
+.battle-champion{
+  text-align:center;
+  padding:24px 16px 20px;
+  margin-bottom:20px;
+  background:linear-gradient(135deg, rgba(139,125,255,.1), rgba(216,255,63,.08));
+  border-radius:20px;
+  border:2px solid var(--accent);
+}
+.champion-crown{
+  font-size:48px;
+  line-height:1;
+  margin-bottom:4px;
+  animation:crownBounce 1s ease-out;
+}
+@keyframes crownBounce{
+  0%{transform:translateY(-30px) scale(0);opacity:0}
+  60%{transform:translateY(5px) scale(1.1);opacity:1}
+  100%{transform:translateY(0) scale(1)}
+}
+.champion-title{
+  font-family:'Bowlby One',sans-serif;
+  font-size:clamp(18px,4vw,28px);
+  letter-spacing:3px;
+  background:linear-gradient(135deg, var(--accent), var(--neon));
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  background-clip:text;
+  margin-bottom:16px;
+}
+.champion-token{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:8px;
+}
+.champion-circle{
+  width:clamp(100px,25vw,150px);
+  height:clamp(100px,25vw,150px);
+  border-radius:50%;
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border:4px solid var(--accent);
+  box-shadow:0 0 30px rgba(139,125,255,.4);
+  position:relative;
+}
+.champion-circle img{
+  width:100%;height:100%;
+  object-fit:cover;border-radius:50%;
+}
+.champion-name{
+  font-weight:800;
+  font-size:clamp(16px,3vw,22px);
+  color:var(--text);
+}
+
+/* ---------- Bracket grid ---------- */
+.bracket-grid{
+  margin-top:16px;
+}
+.bracket-title{
+  font-family:'Bowlby One',sans-serif;
+  font-size:clamp(14px,2.5vw,20px);
+  color:var(--muted);
+  letter-spacing:2px;
+  text-align:center;
+  margin-bottom:16px;
+}
+.bracket-round{
+  background:var(--surface-raised);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:12px 16px;
+  margin-bottom:10px;
+}
+.bracket-round-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:10px;
+  flex-wrap:wrap;
+  gap:4px;
+}
+.bracket-round-num{
+  font-family:'Bowlby One',sans-serif;
+  font-size:clamp(11px,1.5vw,14px);
+  color:var(--accent);
+  letter-spacing:1px;
+  text-transform:uppercase;
+}
+.bracket-round-cat{
+  font-size:clamp(11px,1.5vw,14px);
+  color:var(--muted);
+  font-style:italic;
+}
+
+/* ---------- Bracket matchup ---------- */
+.bracket-matchup{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:clamp(8px,2vw,20px);
+}
+.bracket-vs{
+  font-family:'Bowlby One',sans-serif;
+  font-size:clamp(12px,2vw,16px);
+  color:var(--muted);
+  flex-shrink:0;
+}
+.bracket-token{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:4px;
+  flex:1;
+  max-width:160px;
+  position:relative;
+  padding:8px;
+  border-radius:12px;
+  transition:opacity .2s;
+}
+.bracket-winner{
+  background:rgba(139,125,255,.1);
+  border:1px solid var(--accent);
+}
+.bracket-loser{
+  opacity:.45;
+}
+.bracket-circle{
+  width:clamp(48px,12vw,70px);
+  height:clamp(48px,12vw,70px);
+  border-radius:50%;
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border:2px solid var(--border);
+  position:relative;
+}
+.bracket-winner .bracket-circle{
+  border-color:var(--accent);
+  box-shadow:0 0 10px rgba(139,125,255,.3);
+}
+.bracket-circle img{
+  width:100%;height:100%;
+  object-fit:cover;border-radius:50%;
+}
+.bracket-token-name{
+  font-size:clamp(10px,1.5vw,13px);
+  font-weight:700;
+  color:var(--text);
+  text-align:center;
+  max-width:100%;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.bracket-loser .bracket-token-name{
+  color:var(--muted);
+}
+.bracket-crown{
+  position:absolute;
+  top:-4px;right:-2px;
+  font-size:16px;
+  filter:drop-shadow(0 1px 2px rgba(0,0,0,.3));
+}
+
+/* ---------- Result actions ---------- */
+.battle-result-actions{
+  display:flex;
+  justify-content:center;
+  gap:10px;
+  margin-top:20px;
+  padding-bottom:8px;
+  flex-wrap:wrap;
+}
+.battle-btn--save{
+  border-color:#818CF8!important;
+  color:#818CF8!important;
+}
+.battle-btn--save:hover{
+  background:rgba(129,140,248,.12)!important;
+}
+.battle-btn--new{
+  border-color:var(--neon)!important;
+  color:var(--neon)!important;
+}
+.battle-btn--new:hover{
+  background:rgba(216,255,63,.1)!important;
+}
+
+/* ---------- Controls adjustments for battle mode ---------- */
+body.battle-mode #addTierBtn,
+body.battle-mode #trashClear{
+  display:none;
+}
+
+/* ---------- Mobile optimizations ---------- */
+@media(max-width:480px){
+  .battle-versus{
+    gap:6px;
+  }
+  .battle-card{
+    padding:10px 6px;
+    border-radius:14px;
+    max-width:150px;
+  }
+  .battle-circle{
+    width:80px;height:80px;
+  }
+  .champion-circle{
+    width:90px;height:90px;
+  }
+  .bracket-round{
+    padding:10px 10px;
+  }
+  .bracket-circle{
+    width:44px;height:44px;
+  }
+  .battle-result-actions{
+    flex-direction:column;
+    align-items:stretch;
+  }
+  .battle-result-actions .btn{
+    width:100%;
+    justify-content:center;
+  }
+}
+
+@media(min-width:481px) and (max-width:768px){
+  .battle-circle{
+    width:110px;height:110px;
+  }
+}

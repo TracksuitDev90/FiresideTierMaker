@@ -1190,6 +1190,11 @@ function showConfirm(title, msg, onConfirm){
 /* ---------- Clear / Undo ---------- */
 on($('#trashClear'),'click', function(){
   replayGif(this);
+  // Battles mode: restart the battle
+  if(typeof window.isBattleMode === 'function' && window.isBattleMode()){
+    if(typeof window.startBattle === 'function') window.startBattle();
+    return;
+  }
   var isQ = (typeof window.currentChartMode === 'function' && window.currentChartMode() === 'quadrant');
   var title = isQ ? 'Clear the quadrants?' : 'Clear the board?';
   var msg = isQ
@@ -1208,12 +1213,21 @@ on($('#trashClear'),'click', function(){
     }
   });
 });
-on($('#undoBtn'),'click', function(){ animateBtn(this); undoLast(); });
+on($('#undoBtn'),'click', function(){
+  animateBtn(this);
+  if(typeof window.isBattleMode === 'function' && window.isBattleMode()){
+    if(typeof window.battleUndo === 'function') window.battleUndo();
+  } else {
+    undoLast();
+  }
+});
 
 /* ===== Save Tierlist (keeps on-screen circle size) ===== */
 on($('#saveBtn'),'click', function(){
   // In quadrant mode, let quadrant.js handle the export
   if(typeof window.currentChartMode === 'function' && window.currentChartMode() === 'quadrant') return;
+  // In battles mode, save is handled by the results view
+  if(typeof window.isBattleMode === 'function' && window.isBattleMode()) return;
   replayGif(this);
   $$('.token.selected').forEach(function(t){ t.classList.remove('selected'); });
   $$('.dropzone.drag-over').forEach(function(z){ z.classList.remove('drag-over'); });

@@ -1,0 +1,540 @@
+/* ========== Battles / Bracket Mode ========== */
+(function(){
+  'use strict';
+
+  /* ---------- 50+ Battle Categories ---------- */
+  var CATEGORIES = [
+    // Physical
+    'Fist Fight',
+    'Arm Wrestling',
+    'Running a Mile',
+    'Obstacle Course',
+    'Dance Battle',
+    'Swimming Race',
+    'Rock Climbing',
+    'Tug of War',
+    'Dodgeball',
+    'Parkour Course',
+    'Weightlifting Competition',
+    'Boxing Match',
+    'Yoga Flexibility Challenge',
+    'Marathon',
+
+    // Intellectual
+    'Jeopardy',
+    'Completing a Doctorate Program',
+    'Spelling Bee',
+    'Chess Match',
+    'Trivia Night',
+    'Debate Competition',
+    'Crossword Puzzle Race',
+    'Science Fair',
+    'Math Olympics',
+    'Rubik\'s Cube Speedrun',
+    'Escape Room Challenge',
+    'Hackathon',
+    'Strategy Board Game',
+
+    // Survival / Adventure
+    'Zombie Apocalypse',
+    'Survivor (the show)',
+    'Deserted Island Survival',
+    'Wilderness Camping',
+    'Bear Encounter',
+    'Hunger Games',
+    'Space Mission',
+    'Pirate Ship Takeover',
+    'Haunted House Last One Standing',
+    'Apocalypse Leader',
+
+    // Creative / Personality
+    'Cooking Competition',
+    'Stand-Up Comedy Show',
+    'Fashion Show',
+    'Karaoke Contest',
+    'Art Competition',
+    'Talent Show',
+    'Rap Battle',
+    'Movie Directing',
+    'Writing a Novel',
+    'YouTube Channel Growth',
+    'TikTok Viral Challenge',
+
+    // Social / Mental
+    'Job Interview',
+    'First Date Impression',
+    'Negotiating a Car Deal',
+    'Leading a Team Meeting',
+    'Babysitting a Toddler',
+    'Public Speaking',
+    'Lie Detector Test',
+    'Silent Treatment Contest',
+    'Persuasion Challenge',
+    'Keeping a Secret the Longest',
+    'Staying Awake the Longest',
+    'Who Cries First Watching a Sad Movie',
+
+    // Fun / Misc
+    'Hot Dog Eating Contest',
+    'Video Game Tournament',
+    'Rock Paper Scissors',
+    'Staring Contest',
+    'Hide and Seek',
+    'Who Gets More Followers',
+    'Best Meme Creator',
+    'Prank Wars',
+    'Road Trip DJ'
+  ];
+
+  var TOTAL_ROUNDS = 8;
+  var battleState = null; // { tokens:[], category:'', rounds:[], currentRound:0, left:null, right:null, winner:null }
+
+  /* ---------- Helpers ---------- */
+  function shuffle(arr){
+    var a = arr.slice();
+    for(var i=a.length-1;i>0;i--){
+      var j=Math.floor(Math.random()*(i+1));
+      var tmp=a[i]; a[i]=a[j]; a[j]=tmp;
+    }
+    return a;
+  }
+
+  function pickCategory(){
+    return CATEGORIES[Math.floor(Math.random()*CATEGORIES.length)];
+  }
+
+  function getTokensFromTray(){
+    var tray = document.getElementById('tray');
+    if(!tray) return [];
+    var tokens = [];
+    var els = tray.querySelectorAll('.token');
+    for(var i=0;i<els.length;i++){
+      var t = els[i];
+      var img = t.querySelector('img');
+      var lbl = t.querySelector('.label');
+      if(img){
+        tokens.push({ type:'image', src:img.src, alt:img.alt||'', bg:'' });
+      } else if(lbl){
+        var bg = t.style.background || t.style.backgroundColor || '#888';
+        tokens.push({ type:'name', name:lbl.textContent, bg:bg, textColor:lbl.style.color||'#fff' });
+      }
+    }
+    return tokens;
+  }
+
+  function renderTokenCard(tok, side){
+    var card = document.createElement('div');
+    card.className = 'battle-card battle-card--' + side;
+    card.setAttribute('role','button');
+    card.setAttribute('tabindex','0');
+    card.setAttribute('aria-label','Pick ' + (tok.name || tok.alt || 'this token'));
+
+    var circle = document.createElement('div');
+    circle.className = 'battle-circle';
+
+    if(tok.type === 'image'){
+      var img = document.createElement('img');
+      img.src = tok.src;
+      img.alt = tok.alt || '';
+      img.draggable = false;
+      circle.appendChild(img);
+    } else {
+      circle.style.background = tok.bg;
+      var lbl = document.createElement('div');
+      lbl.className = 'battle-label';
+      lbl.style.color = tok.textColor || '#fff';
+      lbl.textContent = tok.name;
+      circle.appendChild(lbl);
+      fitBattleLabel(lbl, circle);
+    }
+
+    var name = document.createElement('div');
+    name.className = 'battle-name';
+    name.textContent = tok.name || tok.alt || '';
+
+    card.appendChild(circle);
+    card.appendChild(name);
+    return card;
+  }
+
+  function fitBattleLabel(lbl, container){
+    if(!lbl || !container) return;
+    var text = lbl.textContent || '';
+    if(!text) return;
+    var max = 32, min = 8;
+    // Use a temp measurement approach
+    lbl.style.fontSize = max + 'px';
+    requestAnimationFrame(function(){
+      var cw = container.offsetWidth * 0.8;
+      if(cw <= 0) cw = 80;
+      for(var sz = max; sz >= min; sz--){
+        lbl.style.fontSize = sz + 'px';
+        if(lbl.scrollWidth <= cw) break;
+      }
+    });
+  }
+
+  /* ---------- Battle Board DOM ---------- */
+  var bBoard = null;
+
+  function buildBattleBoard(){
+    var wrap = document.createElement('div');
+    wrap.id = 'battleBoard';
+    wrap.innerHTML = [
+      '<div class="battle-arena">',
+      '  <div class="battle-header">',
+      '    <div class="battle-round-label">ROUND <span id="battleRoundNum">1</span> / ' + TOTAL_ROUNDS + '</div>',
+      '    <div class="battle-category" id="battleCategory">Loading...</div>',
+      '    <div class="battle-progress" id="battleProgress"></div>',
+      '  </div>',
+      '  <div class="battle-versus" id="battleVersus">',
+      '    <div class="battle-slot" id="battleLeft"></div>',
+      '    <div class="battle-vs-badge">VS</div>',
+      '    <div class="battle-slot" id="battleRight"></div>',
+      '  </div>',
+      '  <div class="battle-instructions" id="battleInstructions">Pick the winner!</div>',
+      '  <div class="battle-actions" id="battleActions">',
+      '    <button class="btn battle-btn battle-btn--shuffle" id="battleShuffle" type="button">',
+      '      <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 18H7.36424C8.96646 18 10.4587 17.1573 11.2717 15.7887L12.7283 13.2113C13.5413 11.8427 15.0335 11 16.6358 11H22M22 11L19 8M22 11L19 14"/><path d="M2 6H7.36424C8.96646 6 10.4587 6.84267 11.2717 8.21133L12.7283 10.7887C13.5413 12.1573 15.0335 13 16.6358 13H22M22 13L19 10M22 13L19 16"/></svg></span>',
+      '      <span>New Matchup</span>',
+      '    </button>',
+      '  </div>',
+      '</div>',
+      '<div class="battle-results hidden" id="battleResults"></div>'
+    ].join('\n');
+    return wrap;
+  }
+
+  /* ---------- Progress dots ---------- */
+  function renderProgress(){
+    var el = document.getElementById('battleProgress');
+    if(!el || !battleState) return;
+    var html = '';
+    for(var i = 0; i < TOTAL_ROUNDS; i++){
+      var cls = 'progress-dot';
+      if(i < battleState.currentRound) cls += ' done';
+      else if(i === battleState.currentRound) cls += ' active';
+      html += '<div class="' + cls + '"></div>';
+    }
+    el.innerHTML = html;
+  }
+
+  /* ---------- Start / Reset ---------- */
+  function startBattle(){
+    var tokens = getTokensFromTray();
+    if(tokens.length < 2){
+      if(typeof live === 'function') live('Need at least 2 tokens in the tray to battle!');
+      return;
+    }
+
+    var shuffled = shuffle(tokens);
+    // We need TOTAL_ROUNDS+1 unique tokens (1 initial + 8 opponents)
+    // If not enough, allow repeats for opponents
+    var pool = shuffled.slice();
+    while(pool.length < TOTAL_ROUNDS + 1){
+      pool = pool.concat(shuffle(tokens));
+    }
+
+    var category = pickCategory();
+    battleState = {
+      tokenPool: pool,
+      poolIndex: 2, // next unused token index
+      category: category,
+      rounds: [],
+      currentRound: 0,
+      left: pool[0],
+      right: pool[1],
+      winner: null
+    };
+
+    showMatchup();
+    document.getElementById('battleResults').classList.add('hidden');
+    document.getElementById('battleVersus').classList.remove('hidden');
+    document.getElementById('battleInstructions').classList.remove('hidden');
+    document.getElementById('battleActions').classList.remove('hidden');
+  }
+
+  function showMatchup(){
+    if(!battleState) return;
+    var roundNum = document.getElementById('battleRoundNum');
+    var catEl = document.getElementById('battleCategory');
+    var leftSlot = document.getElementById('battleLeft');
+    var rightSlot = document.getElementById('battleRight');
+    var instrEl = document.getElementById('battleInstructions');
+
+    if(roundNum) roundNum.textContent = battleState.currentRound + 1;
+    if(catEl) catEl.textContent = battleState.category;
+    if(instrEl) instrEl.textContent = 'Who would win at ' + battleState.category + '?';
+
+    // Render left card
+    leftSlot.innerHTML = '';
+    var leftCard = renderTokenCard(battleState.left, 'left');
+    leftSlot.appendChild(leftCard);
+
+    // Render right card
+    rightSlot.innerHTML = '';
+    var rightCard = renderTokenCard(battleState.right, 'right');
+    rightSlot.appendChild(rightCard);
+
+    // Animate entrance
+    leftCard.classList.add('enter-left');
+    rightCard.classList.add('enter-right');
+    setTimeout(function(){
+      leftCard.classList.remove('enter-left');
+      rightCard.classList.remove('enter-right');
+    }, 400);
+
+    // Wire click handlers
+    function pickWinner(chosen, loser){
+      return function(e){
+        e.preventDefault();
+        if(typeof vib === 'function') vib(10);
+
+        // Record round
+        battleState.rounds.push({
+          round: battleState.currentRound + 1,
+          left: battleState.left,
+          right: battleState.right,
+          winner: chosen,
+          loser: loser,
+          category: battleState.category
+        });
+
+        battleState.currentRound++;
+
+        if(battleState.currentRound >= TOTAL_ROUNDS){
+          // Battle complete
+          battleState.winner = chosen;
+          showResults();
+        } else {
+          // Next round: winner stays, new opponent, new category
+          battleState.left = chosen;
+          battleState.right = battleState.tokenPool[battleState.poolIndex];
+          battleState.poolIndex++;
+          // If pool exhausted, refill
+          if(battleState.poolIndex >= battleState.tokenPool.length){
+            var more = shuffle(getTokensFromTray());
+            battleState.tokenPool = battleState.tokenPool.concat(more);
+          }
+          battleState.category = pickCategory();
+          showMatchup();
+        }
+
+        renderProgress();
+      };
+    }
+
+    leftCard.addEventListener('click', pickWinner(battleState.left, battleState.right));
+    leftCard.addEventListener('keydown', function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); leftCard.click(); }});
+    rightCard.addEventListener('click', pickWinner(battleState.right, battleState.left));
+    rightCard.addEventListener('keydown', function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); rightCard.click(); }});
+
+    renderProgress();
+  }
+
+  /* ---------- Results ---------- */
+  function showResults(){
+    if(!battleState) return;
+    var versusEl = document.getElementById('battleVersus');
+    var instrEl = document.getElementById('battleInstructions');
+    var actionsEl = document.getElementById('battleActions');
+    var resultsEl = document.getElementById('battleResults');
+
+    versusEl.classList.add('hidden');
+    instrEl.classList.add('hidden');
+    actionsEl.classList.add('hidden');
+    resultsEl.classList.remove('hidden');
+
+    var w = battleState.winner;
+    var html = '';
+
+    // Champion banner
+    html += '<div class="battle-champion">';
+    html += '  <div class="champion-crown">&#128081;</div>';
+    html += '  <div class="champion-title">ULTIMATE CHAMPION</div>';
+    html += '  <div class="champion-token">';
+    if(w.type === 'image'){
+      html += '    <div class="champion-circle"><img src="' + w.src + '" alt="' + (w.alt||'') + '" draggable="false" /></div>';
+    } else {
+      html += '    <div class="champion-circle" style="background:' + w.bg + '"><div class="battle-label" style="color:' + (w.textColor||'#fff') + '">' + w.name + '</div></div>';
+    }
+    html += '    <div class="champion-name">' + (w.name || w.alt || '') + '</div>';
+    html += '  </div>';
+    html += '</div>';
+
+    // Bracket grid
+    html += '<div class="bracket-grid">';
+    html += '  <div class="bracket-title">BRACKET RESULTS</div>';
+    for(var i = 0; i < battleState.rounds.length; i++){
+      var r = battleState.rounds[i];
+      var isWinnerLeft = (r.winner === r.left);
+      html += '<div class="bracket-round">';
+      html += '  <div class="bracket-round-header">';
+      html += '    <span class="bracket-round-num">Round ' + r.round + '</span>';
+      html += '    <span class="bracket-round-cat">' + r.category + '</span>';
+      html += '  </div>';
+      html += '  <div class="bracket-matchup">';
+      html += renderBracketToken(r.left, isWinnerLeft);
+      html += '    <span class="bracket-vs">VS</span>';
+      html += renderBracketToken(r.right, !isWinnerLeft);
+      html += '  </div>';
+      html += '</div>';
+    }
+    html += '</div>';
+
+    // Actions
+    html += '<div class="battle-result-actions">';
+    html += '  <button class="btn battle-btn battle-btn--save" id="saveBracketBtn" type="button">';
+    html += '    <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8L12 16M12 16L15 13M12 16L9 13"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7"/></svg></span>';
+    html += '    <span>Save Bracket</span>';
+    html += '  </button>';
+    html += '  <button class="btn battle-btn battle-btn--new" id="newBracketBtn" type="button">';
+    html += '    <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 18H7.36424C8.96646 18 10.4587 17.1573 11.2717 15.7887L12.7283 13.2113C13.5413 11.8427 15.0335 11 16.6358 11H22M22 11L19 8M22 11L19 14"/><path d="M2 6H7.36424C8.96646 6 10.4587 6.84267 11.2717 8.21133L12.7283 10.7887C13.5413 12.1573 15.0335 13 16.6358 13H22M22 13L19 10M22 13L19 16"/></svg></span>';
+    html += '    <span>New Battle</span>';
+    html += '  </button>';
+    html += '</div>';
+
+    resultsEl.innerHTML = html;
+
+    // Wire result actions
+    var saveBtn = document.getElementById('saveBracketBtn');
+    if(saveBtn) saveBtn.addEventListener('click', saveBracket);
+    var newBtn = document.getElementById('newBracketBtn');
+    if(newBtn) newBtn.addEventListener('click', function(){ startBattle(); });
+
+    // Fit labels in results
+    requestAnimationFrame(function(){
+      var labels = resultsEl.querySelectorAll('.battle-label');
+      for(var j=0;j<labels.length;j++){
+        var parent = labels[j].parentElement;
+        fitBattleLabel(labels[j], parent);
+      }
+    });
+
+    if(typeof live === 'function') live((w.name||w.alt||'Champion') + ' is the Ultimate Champion!');
+  }
+
+  function renderBracketToken(tok, isWinner){
+    var cls = 'bracket-token' + (isWinner ? ' bracket-winner' : ' bracket-loser');
+    var html = '<div class="' + cls + '">';
+    if(tok.type === 'image'){
+      html += '<div class="bracket-circle"><img src="' + tok.src + '" alt="' + (tok.alt||'') + '" draggable="false" /></div>';
+    } else {
+      html += '<div class="bracket-circle" style="background:' + tok.bg + '"><div class="battle-label" style="color:' + (tok.textColor||'#fff') + '">' + tok.name + '</div></div>';
+    }
+    html += '<div class="bracket-token-name">' + (tok.name || tok.alt || '') + '</div>';
+    if(isWinner) html += '<div class="bracket-crown">&#128081;</div>';
+    html += '</div>';
+    return html;
+  }
+
+  /* ---------- Save Bracket as PNG ---------- */
+  function saveBracket(){
+    var resultsEl = document.getElementById('battleResults');
+    if(!resultsEl || typeof htmlToImage === 'undefined') return;
+
+    // Inject font face for export
+    var fontStyle = document.createElement('style');
+    if(typeof _bowlbyFontFaceCSS === 'string'){
+      fontStyle.textContent = _bowlbyFontFaceCSS;
+    }
+    resultsEl.prepend(fontStyle);
+
+    htmlToImage.toPng(resultsEl, {
+      backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--surface').trim() || '#0e0d1a',
+      pixelRatio: 2,
+      style: { padding: '24px' }
+    }).then(function(dataUrl){
+      fontStyle.remove();
+      var link = document.createElement('a');
+      link.download = 'bracket-results.png';
+      link.href = dataUrl;
+      link.click();
+      if(typeof live === 'function') live('Bracket saved!');
+    }).catch(function(err){
+      fontStyle.remove();
+      console.error('Bracket save failed:', err);
+      if(typeof live === 'function') live('Save failed. Try again.');
+    });
+  }
+
+  /* ---------- Undo (go back one round) ---------- */
+  function battleUndo(){
+    if(!battleState || battleState.currentRound <= 0) return;
+    if(battleState.winner){
+      // Was showing results, go back to last matchup
+      battleState.winner = null;
+      document.getElementById('battleResults').classList.add('hidden');
+      document.getElementById('battleVersus').classList.remove('hidden');
+      document.getElementById('battleInstructions').classList.remove('hidden');
+      document.getElementById('battleActions').classList.remove('hidden');
+    }
+
+    var lastRound = battleState.rounds.pop();
+    battleState.currentRound--;
+    battleState.poolIndex--;
+
+    // Restore previous matchup
+    battleState.left = lastRound.left;
+    battleState.right = lastRound.right;
+    battleState.category = lastRound.category;
+
+    showMatchup();
+    if(typeof live === 'function') live('Undid round ' + (battleState.currentRound + 1));
+  }
+
+  /* ---------- Mode Integration ---------- */
+  function initBattles(){
+    var boardPanel = document.getElementById('boardPanel');
+    var tierBoard = document.getElementById('tierBoard');
+    if(!boardPanel || !tierBoard) return;
+
+    // Build board
+    var container = buildBattleBoard();
+    tierBoard.parentNode.insertBefore(container, tierBoard.nextSibling);
+    bBoard = container;
+
+    // Wire shuffle button
+    var shuffleBtn = document.getElementById('battleShuffle');
+    if(shuffleBtn){
+      shuffleBtn.addEventListener('click', function(){
+        if(typeof animateBtn === 'function') animateBtn(this);
+        startBattle();
+      });
+    }
+  }
+
+  function showBattleMode(){
+    if(!bBoard) return;
+    bBoard.classList.add('active');
+    document.body.classList.add('battle-mode');
+    var tierBoard = document.getElementById('tierBoard');
+    if(tierBoard) tierBoard.classList.add('hidden-mode');
+    var qBoard = document.getElementById('quadrantBoard');
+    if(qBoard) qBoard.classList.remove('active');
+    if(typeof hidePromptStack === 'function') hidePromptStack();
+
+    // Start a battle if none active
+    if(!battleState || battleState.winner){
+      startBattle();
+    } else {
+      showMatchup();
+    }
+  }
+
+  function hideBattleMode(){
+    if(!bBoard) return;
+    bBoard.classList.remove('active');
+    document.body.classList.remove('battle-mode');
+  }
+
+  /* ---------- Expose globals ---------- */
+  window.initBattles = initBattles;
+  window.showBattleMode = showBattleMode;
+  window.hideBattleMode = hideBattleMode;
+  window.battleUndo = battleUndo;
+  window.startBattle = startBattle;
+  window.isBattleMode = function(){ return document.body.classList.contains('battle-mode'); };
+  window.battleState = function(){ return battleState; };
+
+})();
