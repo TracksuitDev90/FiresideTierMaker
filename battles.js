@@ -86,7 +86,7 @@
     'Road Trip DJ'
   ];
 
-  var TOTAL_ROUNDS = 8;
+  var TOTAL_ROUNDS = 10;
   var battleState = null; // { tokens:[], category:'', rounds:[], currentRound:0, left:null, right:null, winner:null }
 
   /* ---------- Helpers ---------- */
@@ -101,6 +101,13 @@
 
   function pickCategory(){
     return CATEGORIES[Math.floor(Math.random()*CATEGORIES.length)];
+  }
+
+  function tokenMatch(a, b){
+    if(!a || !b) return false;
+    if(a.type === 'image' && b.type === 'image') return a.src === b.src;
+    if(a.type === 'name' && b.type === 'name') return a.name === b.name;
+    return false;
   }
 
   function getTokensFromTray(){
@@ -228,11 +235,16 @@
     }
 
     var shuffled = shuffle(tokens);
-    // We need TOTAL_ROUNDS+1 unique tokens (1 initial + 8 opponents)
-    // If not enough, allow repeats for opponents
+    // We need TOTAL_ROUNDS+1 unique tokens (1 initial + 10 opponents)
+    // Build pool that avoids back-to-back repeats when possible
     var pool = shuffled.slice();
     while(pool.length < TOTAL_ROUNDS + 1){
-      pool = pool.concat(shuffle(tokens));
+      var batch = shuffle(tokens);
+      // Avoid last token of pool being same as first of new batch
+      if(pool.length > 0 && batch.length > 1 && tokenMatch(pool[pool.length-1], batch[0])){
+        var tmp = batch[0]; batch[0] = batch[1]; batch[1] = tmp;
+      }
+      pool = pool.concat(batch);
     }
 
     var category = pickCategory();
@@ -265,7 +277,11 @@
     var shuffled = shuffle(tokens);
     var pool = shuffled.slice();
     while(pool.length < TOTAL_ROUNDS + 1){
-      pool = pool.concat(shuffle(tokens));
+      var batch = shuffle(tokens);
+      if(pool.length > 0 && batch.length > 1 && tokenMatch(pool[pool.length-1], batch[0])){
+        var tmp = batch[0]; batch[0] = batch[1]; batch[1] = tmp;
+      }
+      pool = pool.concat(batch);
     }
     battleState.tokenPool = pool;
     battleState.poolIndex = 2;
@@ -411,6 +427,15 @@
 
     resultsEl.innerHTML = html;
 
+    // Fit text labels inside bracket circles
+    var bracketLabels = resultsEl.querySelectorAll('.bracket-circle .battle-label');
+    for(var j = 0; j < bracketLabels.length; j++){
+      fitBattleLabel(bracketLabels[j], bracketLabels[j].parentElement);
+    }
+    // Also fit champion label if text-only
+    var champLabel = resultsEl.querySelector('.champion-circle .battle-label');
+    if(champLabel) fitBattleLabel(champLabel, champLabel.parentElement);
+
     if(typeof live === 'function') live((w.name||w.alt||'Champion') + ' is the Ultimate Champion!');
   }
 
@@ -454,8 +479,8 @@
     var exportCSS = [
       '.battle-champion{ box-shadow:none !important; }',
       '.bracket-round{ box-shadow:none !important; }',
-      '.bracket-circle{ width:70px !important; height:70px !important; box-shadow:none !important; }',
-      '.bracket-circle .battle-label{ font-size:14px !important; }',
+      '.bracket-circle{ width:90px !important; height:90px !important; box-shadow:none !important; }',
+      '.bracket-circle .battle-label{ font-size:20px !important; }',
       '.bracket-token-name{ font-size:13px !important; }',
       '.champion-circle{ box-shadow:none !important; border:4px solid #8b7dff !important; }',
       '.bracket-winner .bracket-circle{ box-shadow:none !important; }',
