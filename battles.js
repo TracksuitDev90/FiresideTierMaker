@@ -168,7 +168,8 @@
     if(!lbl || !container) return;
     var text = lbl.textContent || '';
     if(!text) return;
-    var max = 32, min = 8;
+    var isBracket = container.classList.contains('bracket-circle');
+    var max = 32, min = isBracket ? 11 : 8;
     // Use a temp measurement approach
     lbl.style.fontSize = max + 'px';
     requestAnimationFrame(function(){
