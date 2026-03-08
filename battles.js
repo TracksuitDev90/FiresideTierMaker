@@ -168,17 +168,20 @@
     if(!lbl || !container) return;
     var text = lbl.textContent || '';
     if(!text) return;
-    var isBracket = container.classList.contains('bracket-circle');
-    var max = 32, min = isBracket ? 11 : 8;
-    // Use a temp measurement approach
-    lbl.style.fontSize = max + 'px';
+    var max = 28, min = 10;
     requestAnimationFrame(function(){
-      var cw = container.offsetWidth * 0.8;
+      var cw = container.offsetWidth * 0.75;
       if(cw <= 0) cw = 80;
+      // Temporarily set width:auto so scrollWidth reflects actual text width
+      lbl.style.width = 'auto';
+      lbl.style.position = 'static';
       for(var sz = max; sz >= min; sz--){
         lbl.style.fontSize = sz + 'px';
         if(lbl.scrollWidth <= cw) break;
       }
+      // Restore absolute positioning
+      lbl.style.width = '';
+      lbl.style.position = '';
     });
   }
 
