@@ -419,21 +419,31 @@
     var tierBoard = $('#tierBoard');
     if(!qBoard) return;
 
+    // Always hide battles when switching away
+    if(typeof hideBattleMode === 'function') hideBattleMode();
+
     if(mode === 'quadrant'){
       document.body.classList.add('quadrant-mode');
       if(tierBoard) tierBoard.classList.add('hidden-mode');
       qBoard.classList.add('active');
-      // Hide prompt stack (tier-specific suggestions)
       if(typeof hidePromptStack === 'function') hidePromptStack();
-      // Load quadrant-specific token clones (independent from tier tokens)
       loadQuadrantData();
+    } else if(mode === 'battles'){
+      document.body.classList.remove('quadrant-mode');
+      if(tierBoard) tierBoard.classList.add('hidden-mode');
+      qBoard.classList.remove('active');
+      // Save quadrant data then destroy clones
+      saveQuadrantData();
+      qZones.forEach(function(z){
+        $$('.token',z).forEach(function(tok){ tok.remove(); });
+      });
+      if(typeof hidePromptStack === 'function') hidePromptStack();
+      if(typeof showBattleMode === 'function') showBattleMode();
     } else {
       document.body.classList.remove('quadrant-mode');
       if(tierBoard) tierBoard.classList.remove('hidden-mode');
       qBoard.classList.remove('active');
-      // Restore prompt stack for tier mode
       if(typeof showPromptStack === 'function') showPromptStack();
-      // Save quadrant data then destroy clones (they live only in quadrant mode)
       saveQuadrantData();
       qZones.forEach(function(z){
         $$('.token',z).forEach(function(tok){ tok.remove(); });
@@ -445,15 +455,22 @@
     });
     // Update control button labels for the active mode
     var isQ = (mode === 'quadrant');
+    var isB = (mode === 'battles');
     var saveBtn = $('#saveBtn');
     if(saveBtn){
       var saveTxt = saveBtn.querySelector('span:last-child');
-      if(saveTxt) saveTxt.textContent = isQ ? 'Save Quadrant' : 'Save Tierlist';
+      if(saveTxt) saveTxt.textContent = isQ ? 'Save Quadrant' : isB ? 'Save Bracket' : 'Save Tierlist';
     }
     var clearBtn = $('#trashClear');
     if(clearBtn){
       var clearTxt = clearBtn.querySelector('span:last-child');
       if(clearTxt) clearTxt.textContent = isQ ? 'Clear Quadrants' : 'Clear Board';
+    }
+    // Update undo button behavior text for battles
+    var undoBtn = $('#undoBtn');
+    if(undoBtn){
+      var undoTxt = undoBtn.querySelector('span:last-child');
+      if(undoTxt) undoTxt.textContent = 'Undo';
     }
     try{localStorage.setItem('tm_mode', mode);}catch(e){}
     if(typeof updateTrayCount === 'function') updateTrayCount();
@@ -954,6 +971,10 @@
         '<button class="mode-toggle-btn" data-mode="quadrant" type="button">',
         '  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2.55078 4.5C2.61472 3.84994 2.75923 3.41238 3.08582 3.08579C3.67161 2.5 4.61442 2.5 6.50004 2.5C8.38565 2.5 9.32846 2.5 9.91425 3.08579C10.5 3.67157 10.5 4.61438 10.5 6.5C10.5 8.38562 10.5 9.32843 9.91425 9.91421C9.32846 10.5 8.38565 10.5 6.50004 10.5C4.61442 10.5 3.67161 10.5 3.08582 9.91421C2.77645 9.60484 2.63047 9.19589 2.56158 8.60106"/><path d="M21.4493 15.5C21.3853 14.8499 21.2408 14.4124 20.9142 14.0858C20.3284 13.5 19.3856 13.5 17.5 13.5C15.6144 13.5 14.6716 13.5 14.0858 14.0858C13.5 14.6716 13.5 15.6144 13.5 17.5C13.5 19.3856 13.5 20.3284 14.0858 20.9142C14.6716 21.5 15.6144 21.5 17.5 21.5C19.3856 21.5 20.3284 21.5 20.9142 20.9142C21.2408 20.5876 21.3853 20.1501 21.4493 19.5"/><path d="M2.5 17.5C2.5 15.6144 2.5 14.6716 3.08579 14.0858C3.67157 13.5 4.61438 13.5 6.5 13.5C8.38562 13.5 9.32843 13.5 9.91421 14.0858C10.5 14.6716 10.5 15.6144 10.5 17.5C10.5 19.3856 10.5 20.3284 9.91421 20.9142C9.32843 21.5 8.38562 21.5 6.5 21.5C4.61438 21.5 3.67157 21.5 3.08579 20.9142C2.5 20.3284 2.5 19.3856 2.5 17.5Z"/><path d="M13.5 6.5C13.5 4.61438 13.5 3.67157 14.0858 3.08579C14.6716 2.5 15.6144 2.5 17.5 2.5C19.3856 2.5 20.3284 2.5 20.9142 3.08579C21.5 3.67157 21.5 4.61438 21.5 6.5C21.5 8.38562 21.5 9.32843 20.9142 9.91421C20.3284 10.5 19.3856 10.5 17.5 10.5C15.6144 10.5 14.6716 10.5 14.0858 9.91421C13.5 9.32843 13.5 8.38562 13.5 6.5Z"/></svg>',
         '  <span>Quadrant</span>',
+        '</button>',
+        '<button class="mode-toggle-btn" data-mode="battles" type="button">',
+        '  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4L6 20M18 4V20M6 12H18M6 4L2 8M6 4L10 8M18 4L14 8M18 4L22 8M6 20L2 16M6 20L10 16M18 20L14 16M18 20L22 16"/></svg>',
+        '  <span>Battles</span>',
         '</button>'
       ].join('');
 
@@ -974,6 +995,9 @@
         });
       });
 
+      // Initialize battles mode
+      if(typeof initBattles === 'function') initBattles();
+
       // Start auto-save for quadrant data
       startQuadrantAutoSave();
 
@@ -982,6 +1006,8 @@
       try{ savedMode = localStorage.getItem('tm_mode'); }catch(e){}
       if(savedMode === 'quadrant'){
         setMode('quadrant');
+      } else if(savedMode === 'battles'){
+        setMode('battles');
       }
 
       // Enable click-to-place on tray for quadrant mode
