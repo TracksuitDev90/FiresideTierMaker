@@ -351,9 +351,9 @@ var tierIdx = 0;
 function nextTierColor(){ var c=NEW_TIER_COLORS[tierIdx%NEW_TIER_COLORS.length]; tierIdx++; return c; }
 
 var communityCast = [
-  "Anette","Andruw","Authority","B7","Camryn","Cindy","Clamy","Clay","Cody","Cookies",
-  "Denver","Devon","Dexy","Domo","Gavin","Harry","Katie","Kiev","Kikki",
-  "Meegan","Mew's","Neil","NJ","Paper","Ray","Raymond","Safoof","Sky","Tubawk","Versse","Zwjk"
+  "Abby","Anette","Andruw","Authority","B7","Camryn","Cindy","Clamy","Clay","Cody","Cookies",
+  "Denver","Devon","Dexy","Dior","Domo","Gavin","Harry","Katie","Kiev","Kikki",
+  "Meegan","Mew's","Moop","Neil","NJ","Paper","Ray","Raymond","Safoof","Sky","Smitty","Tubawk","Versse","Vyken","Zwjk"
 ];
 
 /* ---------- PRE-RENDERED CIRCLE PALETTE ---------- */
