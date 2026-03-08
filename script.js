@@ -187,7 +187,7 @@ function rowLabel(row){ var chip=row?row.querySelector('.label-chip'):null; retu
 
 /* ---------- Chip label auto-sizer ---------- */
 /* Canvas-based measurement with word-wrap simulation.
-   Binary-searches for the largest font (14-32 px) where the label
+   Binary-searches for the largest font (10-48 px) where the label
    text fits inside the chip, allowing word-wrap across multiple lines
    but never breaking a word. */
 function fitChipLabel(chip){
@@ -206,7 +206,7 @@ function fitChipLabel(chip){
   var upper = text.toUpperCase();
 
   // Binary search: largest px in [minPx..maxPx] that fits
-  var maxPx = 32, minPx = 10;
+  var maxPx = 48, minPx = 10;
   var lo = minPx, hi = maxPx;
   while (lo < hi) {
     var mid = Math.ceil((lo + hi) / 2);
@@ -375,6 +375,12 @@ function nextPreset(){ var c = presetPalette[pIndex % presetPalette.length]; pIn
 
 /* ---------- Canvas text measurement (avoids scrollWidth bugs) ---------- */
 var _measureCtx = null;
+var _bowlbyReady = false;
+/* Ensure Bowlby One is loaded before first measurement; once loaded
+   re-fit every tier label so sizes are accurate. */
+if (document.fonts && document.fonts.ready) {
+  document.fonts.ready.then(function(){ _bowlbyReady = true; uniformizeTierLabels(); });
+} else { _bowlbyReady = true; } // fallback for very old browsers
 function measureText(text, fontWeight, px){
   if(!_measureCtx) _measureCtx = document.createElement('canvas').getContext('2d');
   _measureCtx.font = fontWeight + ' ' + px + 'px "Bowlby One",ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial';
