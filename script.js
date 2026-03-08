@@ -334,7 +334,7 @@ function createRow(cfg){
 /* ---------- Defaults ---------- */
 var defaultTiers = [
   { label:'S', color:'#ff6b6b' },
-  { label:'A', color:'#e8780a' },
+  { label:'A', color:'#F2D04E' },
   { label:'B', color:'#22c55e' },
   { label:'C', color:'#3b82f6' },
   { label:'D', color:'#a78bfa' },
@@ -389,6 +389,27 @@ var _bowlbyReady = false;
 if (document.fonts && document.fonts.ready) {
   document.fonts.ready.then(function(){ _bowlbyReady = true; uniformizeTierLabels(); });
 } else { _bowlbyReady = true; } // fallback for very old browsers
+
+/* Pre-fetch Bowlby One as base64 so html-to-image can embed it in SVG exports.
+   Google Fonts <link> stylesheets are cross-origin and invisible to the library. */
+var _bowlbyFontFaceCSS = '';
+(function preloadBowlbyBase64(){
+  fetch('https://fonts.googleapis.com/css2?family=Bowlby+One&display=swap')
+    .then(function(r){ return r.text(); })
+    .then(function(css){
+      var m = css.match(/url\((https:\/\/fonts\.gstatic\.com[^)]+\.woff2)\)/);
+      if(!m) return;
+      return fetch(m[1]).then(function(r){ return r.blob(); }).then(function(blob){
+        return new Promise(function(resolve){
+          var reader = new FileReader();
+          reader.onloadend = function(){ resolve(reader.result); };
+          reader.readAsDataURL(blob);
+        });
+      }).then(function(dataUrl){
+        _bowlbyFontFaceCSS = "@font-face{font-family:'Bowlby One';font-style:normal;font-weight:400;src:url(" + dataUrl + ") format('woff2');}";
+      });
+    }).catch(function(){}); // silent fail — export will use fallback font
+})();
 function measureText(text, fontWeight, px){
   if(!_measureCtx) _measureCtx = document.createElement('canvas').getContext('2d');
   _measureCtx.font = fontWeight + ' ' + px + 'px "Bowlby One",ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial';
@@ -1333,13 +1354,15 @@ on($('#saveBtn'),'click', function(){
   }
   // html-to-image uses the browser's own SVG renderer — text, flex, and grid all
   // render pixel-perfectly. Returns a data URL directly (no intermediate canvas).
-  htmlToImage.toPng(clone, {
+  var exportOpts = {
     pixelRatio: 2,
     width: 1200,
     backgroundColor: cssVar('--surface') || '#ffffff',
     fetchRequestInit: { mode: 'cors', cache: 'no-cache' },
     cacheBust: true
-  }).then(function(dataUrl){
+  };
+  if (_bowlbyFontFaceCSS) exportOpts.fontEmbedCSS = _bowlbyFontFaceCSS;
+  htmlToImage.toPng(clone, exportOpts).then(function(dataUrl){
     var boardTitle = ($('.board-title') || {}).textContent || '';
     var slug = boardTitle.trim().replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase();
     var a=document.createElement('a'); a.href=dataUrl; a.download=(slug || 'tier-list')+'.png';
