@@ -206,7 +206,7 @@ function fitChipLabel(chip){
   var upper = text.toUpperCase();
 
   // Binary search: largest px in [minPx..maxPx] that fits
-  var maxPx = 48, minPx = 10;
+  var maxPx = 48, minPx = 6;
   var lo = minPx, hi = maxPx;
   while (lo < hi) {
     var mid = Math.ceil((lo + hi) / 2);
@@ -230,7 +230,8 @@ function labelFitsAt(text, px, w, h) {
   var lines = 1, lineW = 0;
 
   for (var i = 0; i < words.length; i++) {
-    var ww = measureText(words[i], '400', px) + words[i].length * 0.5;
+    // 1.1× safety margin: canvas measurement can under-report Bowlby One width
+    var ww = (measureText(words[i], '400', px) + words[i].length * 0.5) * 1.1;
     if (ww > w) return false;            // single word too wide
     if (lineW > 0 && lineW + spaceW + ww > w) {
       lines++;                           // wrap to next line
