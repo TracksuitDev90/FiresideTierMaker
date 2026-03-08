@@ -195,7 +195,7 @@
       '  <div class="battle-instructions" id="battleInstructions">Pick the winner!</div>',
       '  <div class="battle-actions" id="battleActions">',
       '    <button class="btn battle-btn battle-btn--shuffle" id="battleShuffle" type="button">',
-      '      <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 18H7.36424C8.96646 18 10.4587 17.1573 11.2717 15.7887L12.7283 13.2113C13.5413 11.8427 15.0335 11 16.6358 11H22M22 11L19 8M22 11L19 14"/><path d="M2 6H7.36424C8.96646 6 10.4587 6.84267 11.2717 8.21133L12.7283 10.7887C13.5413 12.1573 15.0335 13 16.6358 13H22M22 13L19 10M22 13L19 16"/></svg></span>',
+      '      <span class="ico"><img class="btn-icon" src="icons/tournament-bracket-svgrepo-com.svg" alt="" width="18" height="18" /></span>',
       '      <span>New Matchup</span>',
       '    </button>',
       '  </div>',
@@ -378,7 +378,7 @@
 
     // Champion banner
     html += '<div class="battle-champion">';
-    html += '  <div class="champion-title">ULTIMATE CHAMPION</div>';
+    html += '  <div class="champion-title">' + battleState.category + '</div>';
     html += '  <div class="champion-token">';
     if(w.type === 'image'){
       html += '    <div class="champion-circle"><img src="' + w.src + '" alt="' + (w.alt||'') + '" draggable="false" /></div>';
@@ -386,6 +386,7 @@
       html += '    <div class="champion-circle" style="background:' + w.bg + '"><div class="battle-label" style="color:' + (w.textColor||'#fff') + '">' + w.name + '</div></div>';
     }
     html += '    <div class="champion-name">' + (w.name || w.alt || '') + '</div>';
+    html += '    <div class="champion-subtitle">ULTIMATE WINNER</div>';
     html += '  </div>';
     html += '</div>';
 
@@ -398,7 +399,6 @@
       html += '<div class="bracket-round">';
       html += '  <div class="bracket-round-header">';
       html += '    <span class="bracket-round-num">Round ' + r.round + '</span>';
-      html += '    <span class="bracket-round-cat">' + r.category + '</span>';
       html += '  </div>';
       html += '  <div class="bracket-matchup">';
       html += renderBracketToken(r.left, isWinnerLeft);
@@ -463,7 +463,8 @@
       '.champion-title{ font-family:"Bowlby One",sans-serif !important; }',
       '.bracket-title{ font-family:"Bowlby One",sans-serif !important; }',
       '.bracket-round-num{ font-family:"Bowlby One",sans-serif !important; }',
-      '.bracket-vs{ font-family:"Bowlby One",sans-serif !important; }'
+      '.bracket-vs{ font-family:"Bowlby One",sans-serif !important; }',
+      '.champion-subtitle{ font-family:"Bowlby One",sans-serif !important; }'
     ];
     if(typeof _bowlbyFontFaceCSS === 'string'){
       exportCSS.unshift(_bowlbyFontFaceCSS);
