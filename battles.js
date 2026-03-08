@@ -254,6 +254,35 @@
     document.getElementById('battleActions').classList.remove('hidden');
   }
 
+  /* Restart same category from round 1 with reshuffled tokens */
+  function restartBattle(){
+    if(!battleState) { startBattle(); return; }
+    var tokens = getTokensFromTray();
+    if(tokens.length < 2){
+      if(typeof live === 'function') live('Need at least 2 tokens in the tray to battle!');
+      return;
+    }
+    var shuffled = shuffle(tokens);
+    var pool = shuffled.slice();
+    while(pool.length < TOTAL_ROUNDS + 1){
+      pool = pool.concat(shuffle(tokens));
+    }
+    battleState.tokenPool = pool;
+    battleState.poolIndex = 2;
+    battleState.rounds = [];
+    battleState.currentRound = 0;
+    battleState.left = pool[0];
+    battleState.right = pool[1];
+    battleState.winner = null;
+
+    showMatchup();
+    document.getElementById('battleResults').classList.add('hidden');
+    document.getElementById('battleVersus').classList.remove('hidden');
+    document.getElementById('battleInstructions').classList.remove('hidden');
+    document.getElementById('battleActions').classList.remove('hidden');
+    if(typeof live === 'function') live('Bracket restarted — ' + battleState.category);
+  }
+
   function showMatchup(){
     if(!battleState) return;
     var roundNum = document.getElementById('battleRoundNum');
@@ -382,15 +411,6 @@
 
     resultsEl.innerHTML = html;
 
-    // Fit labels in results
-    requestAnimationFrame(function(){
-      var labels = resultsEl.querySelectorAll('.battle-label');
-      for(var j=0;j<labels.length;j++){
-        var parent = labels[j].parentElement;
-        fitBattleLabel(labels[j], parent);
-      }
-    });
-
     if(typeof live === 'function') live((w.name||w.alt||'Champion') + ' is the Ultimate Champion!');
   }
 
@@ -412,26 +432,60 @@
     var resultsEl = document.getElementById('battleResults');
     if(!resultsEl || typeof htmlToImage === 'undefined') return;
 
-    // Inject font face for export
-    var fontStyle = document.createElement('style');
-    if(typeof _bowlbyFontFaceCSS === 'string'){
-      fontStyle.textContent = _bowlbyFontFaceCSS;
-    }
-    resultsEl.prepend(fontStyle);
+    var bgColor = getComputedStyle(document.documentElement).getPropertyValue('--surface').trim() || '#0e0d1a';
 
-    htmlToImage.toPng(resultsEl, {
-      backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--surface').trim() || '#0e0d1a',
-      pixelRatio: 2,
-      style: { padding: '24px' }
+    // Clone into an offscreen container for clean capture
+    var cloneWrap = document.createElement('div');
+    cloneWrap.style.position = 'fixed';
+    cloneWrap.style.left = '-99999px';
+    cloneWrap.style.top = '0';
+
+    var clone = resultsEl.cloneNode(true);
+    clone.classList.remove('hidden');
+    clone.style.width = '800px';
+    clone.style.maxWidth = '800px';
+    clone.style.padding = '32px';
+    clone.style.backgroundColor = bgColor;
+    clone.style.boxShadow = 'none';
+    clone.style.border = 'none';
+
+    // Inject export styles to ensure consistent rendering
+    var style = document.createElement('style');
+    var exportCSS = [
+      '.battle-champion{ box-shadow:none !important; }',
+      '.bracket-round{ box-shadow:none !important; }',
+      '.bracket-circle{ width:70px !important; height:70px !important; box-shadow:none !important; }',
+      '.bracket-circle .battle-label{ font-size:14px !important; }',
+      '.bracket-token-name{ font-size:13px !important; }',
+      '.champion-circle{ box-shadow:none !important; border:4px solid #8b7dff !important; }',
+      '.bracket-winner .bracket-circle{ box-shadow:none !important; }',
+      '.battle-label{ font-family:"Bowlby One",sans-serif !important; }',
+      '.champion-title{ font-family:"Bowlby One",sans-serif !important; }',
+      '.bracket-title{ font-family:"Bowlby One",sans-serif !important; }',
+      '.bracket-round-num{ font-family:"Bowlby One",sans-serif !important; }',
+      '.bracket-vs{ font-family:"Bowlby One",sans-serif !important; }'
+    ];
+    if(typeof _bowlbyFontFaceCSS === 'string'){
+      exportCSS.unshift(_bowlbyFontFaceCSS);
+    }
+    style.textContent = exportCSS.join('\n');
+    clone.prepend(style);
+
+    cloneWrap.appendChild(clone);
+    document.body.appendChild(cloneWrap);
+
+    htmlToImage.toPng(clone, {
+      backgroundColor: bgColor,
+      pixelRatio: 2
     }).then(function(dataUrl){
-      fontStyle.remove();
+      cloneWrap.remove();
       var link = document.createElement('a');
       link.download = 'bracket-results.png';
       link.href = dataUrl;
       link.click();
       if(typeof live === 'function') live('Bracket saved!');
     }).catch(function(err){
-      fontStyle.remove();
+      cloneWrap.remove();
       console.error('Bracket save failed:', err);
       if(typeof live === 'function') live('Save failed. Try again.');
     });
@@ -481,6 +535,15 @@
         startBattle();
       });
     }
+
+    // Wire New Bracket button (in main controls area)
+    var newBracketBtn = document.getElementById('newBracketBtn');
+    if(newBracketBtn){
+      newBracketBtn.addEventListener('click', function(){
+        if(typeof animateBtn === 'function') animateBtn(this);
+        startBattle();
+      });
+    }
   }
 
   function showBattleMode(){
@@ -513,6 +576,7 @@
   window.hideBattleMode = hideBattleMode;
   window.battleUndo = battleUndo;
   window.startBattle = startBattle;
+  window.restartBattle = restartBattle;
   window.isBattleMode = function(){ return document.body.classList.contains('battle-mode'); };
   window.battleState = function(){ return battleState; };
   window.saveBracket = saveBracket;

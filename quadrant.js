@@ -464,7 +464,7 @@
     var clearBtn = $('#trashClear');
     if(clearBtn){
       var clearTxt = clearBtn.querySelector('span:last-child');
-      if(clearTxt) clearTxt.textContent = isQ ? 'Clear Quadrants' : isB ? 'New Battle' : 'Clear Board';
+      if(clearTxt) clearTxt.textContent = isQ ? 'Clear Quadrants' : isB ? 'Clear Bracket' : 'Clear Board';
     }
     // Update undo button behavior text for battles
     var undoBtn = $('#undoBtn');
