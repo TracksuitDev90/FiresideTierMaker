@@ -307,7 +307,7 @@
           battleState.winner = chosen;
           showResults();
         } else {
-          // Next round: winner stays, new opponent, new category
+          // Next round: winner stays, new opponent, same category
           battleState.left = chosen;
           battleState.right = battleState.tokenPool[battleState.poolIndex];
           battleState.poolIndex++;
@@ -316,7 +316,6 @@
             var more = shuffle(getTokensFromTray());
             battleState.tokenPool = battleState.tokenPool.concat(more);
           }
-          battleState.category = pickCategory();
           showMatchup();
         }
 
@@ -350,7 +349,6 @@
 
     // Champion banner
     html += '<div class="battle-champion">';
-    html += '  <div class="champion-crown">&#128081;</div>';
     html += '  <div class="champion-title">ULTIMATE CHAMPION</div>';
     html += '  <div class="champion-token">';
     if(w.type === 'image'){
@@ -382,25 +380,7 @@
     }
     html += '</div>';
 
-    // Actions
-    html += '<div class="battle-result-actions">';
-    html += '  <button class="btn battle-btn battle-btn--save" id="saveBracketBtn" type="button">';
-    html += '    <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8L12 16M12 16L15 13M12 16L9 13"/><path d="M7 3.33782C8.47087 2.48697 10.1786 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C6.47715 22 2 17.5228 2 12C2 10.1786 2.48697 8.47087 3.33782 7"/></svg></span>';
-    html += '    <span>Save Bracket</span>';
-    html += '  </button>';
-    html += '  <button class="btn battle-btn battle-btn--new" id="newBracketBtn" type="button">';
-    html += '    <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 18H7.36424C8.96646 18 10.4587 17.1573 11.2717 15.7887L12.7283 13.2113C13.5413 11.8427 15.0335 11 16.6358 11H22M22 11L19 8M22 11L19 14"/><path d="M2 6H7.36424C8.96646 6 10.4587 6.84267 11.2717 8.21133L12.7283 10.7887C13.5413 12.1573 15.0335 13 16.6358 13H22M22 13L19 10M22 13L19 16"/></svg></span>';
-    html += '    <span>New Battle</span>';
-    html += '  </button>';
-    html += '</div>';
-
     resultsEl.innerHTML = html;
-
-    // Wire result actions
-    var saveBtn = document.getElementById('saveBracketBtn');
-    if(saveBtn) saveBtn.addEventListener('click', saveBracket);
-    var newBtn = document.getElementById('newBracketBtn');
-    if(newBtn) newBtn.addEventListener('click', function(){ startBattle(); });
 
     // Fit labels in results
     requestAnimationFrame(function(){
@@ -423,7 +403,6 @@
       html += '<div class="bracket-circle" style="background:' + tok.bg + '"><div class="battle-label" style="color:' + (tok.textColor||'#fff') + '">' + tok.name + '</div></div>';
     }
     html += '<div class="bracket-token-name">' + (tok.name || tok.alt || '') + '</div>';
-    if(isWinner) html += '<div class="bracket-crown">&#128081;</div>';
     html += '</div>';
     return html;
   }
@@ -536,5 +515,6 @@
   window.startBattle = startBattle;
   window.isBattleMode = function(){ return document.body.classList.contains('battle-mode'); };
   window.battleState = function(){ return battleState; };
+  window.saveBracket = saveBracket;
 
 })();

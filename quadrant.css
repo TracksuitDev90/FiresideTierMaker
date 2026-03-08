@@ -3,18 +3,18 @@
 /* ---------- Mode toggle ---------- */
 .mode-toggle-wrap{
   display:flex;align-items:center;justify-content:center;
-  gap:0;margin:0 auto 14px;
+  gap:4px;margin:0 auto 14px;
   background:var(--card);
   border:1px solid var(--border);
   border-radius:14px;
   padding:4px;
-  max-width:440px;
+  max-width:480px;
   width:100%;
 }
 .mode-toggle-btn{
   flex:1;
   display:flex;align-items:center;justify-content:center;gap:6px;
-  height:40px;padding:0 14px;
+  height:40px;padding:0 16px;
   border-radius:10px;
   font-weight:700;font-size:13px;letter-spacing:.3px;
   color:var(--muted);
@@ -226,8 +226,8 @@ body.quadrant-mode .controls{grid-template-columns:repeat(4,minmax(0,1fr))}
   .q-zone .token .label{font-size:11px;font-weight:900;padding:3px}
   .q-axis-label{font-size:11px;padding:3px 4px}
   .q-labels-col,.q-labels-col-right{min-width:24px}
-  .mode-toggle-wrap{max-width:280px}
-  .mode-toggle-btn{height:36px;font-size:12px}
+  .mode-toggle-wrap{max-width:420px}
+  .mode-toggle-btn{height:36px;font-size:12px;padding:0 10px;gap:4px}
 }
 @media (max-width:480px){
   .q-grid-wrap{min-height:370px}
@@ -236,7 +236,9 @@ body.quadrant-mode .controls{grid-template-columns:repeat(4,minmax(0,1fr))}
   .q-zone .token .label{font-size:10px;font-weight:900;padding:2px}
   .q-axis-label{font-size:10px;padding:2px 3px}
   .q-labels-col,.q-labels-col-right{min-width:20px}
-  .mode-toggle-wrap{max-width:260px}
+  .mode-toggle-wrap{max-width:100%;gap:3px;padding:3px}
+  .mode-toggle-btn{height:34px;font-size:11px;padding:0 8px;gap:3px}
+  .mode-toggle-btn svg{width:14px;height:14px}
 }
 
 /* ---------- Export overrides (for save-as-PNG) ---------- */
