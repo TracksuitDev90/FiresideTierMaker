@@ -602,8 +602,9 @@
     var text = lbl.textContent;
     var px = 13;
     for(;px >= 8; px--){
-      if(measureText(text,'900',px) <= maxW) break;
+      if(measureTokenText(text,'900',px) <= maxW) break;
     }
+    lbl.style.fontFamily = "'Montserrat',ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
     lbl.style.fontSize = Math.max(px,8)+'px';
     lbl.style.fontWeight = '900';
     lbl.style.padding = pad+'px';
@@ -674,7 +675,7 @@
       '.mode-toggle-wrap{display:none !important}',
       // Force token sizing and layout for clean export — strip box-shadow to prevent 3D bubble artifact
       '.q-zone .token{width:65px !important;height:65px !important;position:absolute !important;box-shadow:none !important}',
-      '.q-zone .token .label{font-weight:900 !important;text-align:center !important;display:flex !important;align-items:center !important;justify-content:center !important;position:absolute !important;top:0 !important;left:0 !important;width:65px !important;height:65px !important;padding:4px !important;white-space:nowrap !important;box-sizing:border-box !important}',
+      ".q-zone .token .label{font-family:'Montserrat',ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif !important;font-weight:900 !important;text-align:center !important;display:flex !important;align-items:center !important;justify-content:center !important;position:absolute !important;top:0 !important;left:0 !important;width:65px !important;height:65px !important;padding:4px !important;white-space:nowrap !important;box-sizing:border-box !important}",
       '.q-zone .token img{width:100% !important;height:100% !important;object-fit:cover !important;border-radius:999px !important}',
       // Ensure quadrant grid renders properly at export width
       '.q-grid-wrap{min-height:500px !important}',
@@ -702,8 +703,10 @@
       var maxW = 65 - 8; // token width minus padding
       var px = 13;
       for(; px >= 8; px--){
-        if(measureText(text,'900',px) <= maxW) break;
+        if(measureTokenText(text,'900',px) <= maxW) break;
       }
+      lbl.style.fontFamily = "'Montserrat',ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
+      lbl.style.fontWeight = '900';
       lbl.style.fontSize = Math.max(px,8)+'px';
     }
 
@@ -713,13 +716,16 @@
       return;
     }
 
-    htmlToImage.toPng(clone, {
+    var _qExportFontCSS = (typeof _bowlbyFontFaceCSS === 'string' ? _bowlbyFontFaceCSS : '') + (typeof _montserratFontFaceCSS === 'string' ? _montserratFontFaceCSS : '');
+    var _qExportOpts = {
       pixelRatio: 2,
       width: 1200,
       backgroundColor: cssVar('--surface') || '#ffffff',
       fetchRequestInit: {mode:'cors',cache:'no-cache'},
       cacheBust:true
-    }).then(function(dataUrl){
+    };
+    if(_qExportFontCSS) _qExportOpts.fontEmbedCSS = _qExportFontCSS;
+    htmlToImage.toPng(clone, _qExportOpts).then(function(dataUrl){
       var boardTitle = ($('.board-title') || {}).textContent || '';
       var slug = boardTitle.trim().replace(/[^a-z0-9]+/gi,'-').replace(/^-|-$/g,'').toLowerCase();
       var a = document.createElement('a');

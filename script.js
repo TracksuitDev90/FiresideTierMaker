@@ -365,11 +365,11 @@ var BASE_PALETTE = [
   '#D7CCC8','#BCAAA4','#A1887F','#B0BEC5','#90A4AE'
 ];
 
-/* Token text: 50% darker than base, lightened for very dark backgrounds */
+/* Token text: 40% darker than base, lightened for very dark backgrounds */
 function pickTextColor(bgHex){
   var lum = relativeLuminance(hexToRgb(bgHex));
   if(lum < 0.12) return lighten(bgHex, 0.40);
-  return darken(bgHex, 0.50);
+  return darken(bgHex, 0.40);
 }
 
 /* Fisher-Yates shuffle so tokens get different colors each page load */
@@ -387,14 +387,15 @@ var _bowlbyReady = false;
 /* Ensure Bowlby One is loaded before first measurement; once loaded
    re-fit every tier label so sizes are accurate. */
 if (document.fonts && document.fonts.ready) {
-  document.fonts.ready.then(function(){ _bowlbyReady = true; uniformizeTierLabels(); });
+  document.fonts.ready.then(function(){ _bowlbyReady = true; uniformizeTierLabels(); refitAllLabels(); });
 } else { _bowlbyReady = true; } // fallback for very old browsers
 
-/* Pre-fetch Bowlby One as base64 so html-to-image can embed it in SVG exports.
+/* Pre-fetch Bowlby One & Montserrat as base64 so html-to-image can embed them in SVG exports.
    Google Fonts <link> stylesheets are cross-origin and invisible to the library. */
 var _bowlbyFontFaceCSS = '';
-(function preloadBowlbyBase64(){
-  fetch('https://fonts.googleapis.com/css2?family=Bowlby+One&display=swap')
+var _montserratFontFaceCSS = '';
+function _preloadGoogleFont(url, familyName, weight, cb){
+  fetch(url)
     .then(function(r){ return r.text(); })
     .then(function(css){
       var m = css.match(/url\((https:\/\/fonts\.gstatic\.com[^)]+\.woff2)\)/);
@@ -406,13 +407,20 @@ var _bowlbyFontFaceCSS = '';
           reader.readAsDataURL(blob);
         });
       }).then(function(dataUrl){
-        _bowlbyFontFaceCSS = "@font-face{font-family:'Bowlby One';font-style:normal;font-weight:400;src:url(" + dataUrl + ") format('woff2');}";
+        cb("@font-face{font-family:'" + familyName + "';font-style:normal;font-weight:" + weight + ";src:url(" + dataUrl + ") format('woff2');}");
       });
     }).catch(function(){}); // silent fail — export will use fallback font
-})();
+}
+_preloadGoogleFont('https://fonts.googleapis.com/css2?family=Bowlby+One&display=swap', 'Bowlby One', '400', function(css){ _bowlbyFontFaceCSS = css; });
+_preloadGoogleFont('https://fonts.googleapis.com/css2?family=Montserrat:wght@900&display=swap', 'Montserrat', '900', function(css){ _montserratFontFaceCSS = css; });
 function measureText(text, fontWeight, px){
   if(!_measureCtx) _measureCtx = document.createElement('canvas').getContext('2d');
   _measureCtx.font = fontWeight + ' ' + px + 'px "Bowlby One",ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial';
+  return _measureCtx.measureText(text).width;
+}
+function measureTokenText(text, fontWeight, px){
+  if(!_measureCtx) _measureCtx = document.createElement('canvas').getContext('2d');
+  _measureCtx.font = fontWeight + ' ' + px + 'px "Montserrat",ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial';
   return _measureCtx.measureText(text).width;
 }
 
@@ -428,10 +436,12 @@ function fitLiveLabel(lbl){
 
   var px = 20;
   for (; px >= 10; px--) {
-    if (measureText(text, '900', px) <= maxW) break;
+    if (measureTokenText(text, '900', px) <= maxW) break;
   }
 
   var s = lbl.style;
+  s.fontFamily = "'Montserrat',ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
+  s.fontWeight = '900';
   s.fontSize = px + 'px';
   s.whiteSpace = 'nowrap';
   s.lineHeight = '1.1';
@@ -1359,8 +1369,10 @@ on($('#saveBtn'),'click', function(){
     var maxW = 89; // token width with small margin
     var px = 22; // start at 22px for bold readable export
     for (; px >= 10; px--) {
-      if (measureText(text, '900', px) <= maxW) break;
+      if (measureTokenText(text, '900', px) <= maxW) break;
     }
+    lbl.style.fontFamily = "'Montserrat',ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
+    lbl.style.fontWeight = '900';
     lbl.style.fontSize = px + 'px';
   });
 
@@ -1378,7 +1390,8 @@ on($('#saveBtn'),'click', function(){
     fetchRequestInit: { mode: 'cors', cache: 'no-cache' },
     cacheBust: true
   };
-  if (_bowlbyFontFaceCSS) exportOpts.fontEmbedCSS = _bowlbyFontFaceCSS;
+  var _exportFontCSS = (_bowlbyFontFaceCSS || '') + (_montserratFontFaceCSS || '');
+  if (_exportFontCSS) exportOpts.fontEmbedCSS = _exportFontCSS;
   htmlToImage.toPng(clone, exportOpts).then(function(dataUrl){
     var boardTitle = ($('.board-title') || {}).textContent || '';
     var slug = boardTitle.trim().replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase();
