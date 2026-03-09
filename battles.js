@@ -494,6 +494,9 @@
     if(typeof _bowlbyFontFaceCSS === 'string'){
       exportCSS.unshift(_bowlbyFontFaceCSS);
     }
+    if(typeof _montserratFontFaceCSS === 'string' && _montserratFontFaceCSS){
+      exportCSS.unshift(_montserratFontFaceCSS);
+    }
     style.textContent = exportCSS.join('\n');
     clone.prepend(style);
 
