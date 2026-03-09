@@ -980,7 +980,7 @@
         '</button>',
         '<button class="mode-toggle-btn" data-mode="battles" type="button">',
         '  <img class="mode-toggle-icon" src="icons/tournament-bracket-svgrepo-com.svg" alt="" width="20" height="20" />',
-        '  <span>Battles</span>',
+        '  <span>Versus</span>',
         '</button>'
       ].join('');
 

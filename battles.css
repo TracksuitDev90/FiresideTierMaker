@@ -26,8 +26,8 @@
   margin-bottom:4px;
 }
 .battle-category{
-  font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
-  font-weight:800;
+  font-family:'Bowlby One',sans-serif;
+  font-weight:400;
   font-size:clamp(22px,5vw,38px);
   color:var(--text);
   line-height:1.15;
@@ -80,8 +80,8 @@
 }
 
 .battle-vs-badge{
-  font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
-  font-weight:900;
+  font-family:'Bowlby One',sans-serif;
+  font-weight:400;
   font-size:clamp(20px,4vw,36px);
   color:var(--accent);
   text-shadow:0 0 20px rgba(139,125,255,.5);
@@ -193,16 +193,6 @@
   white-space:nowrap;
 }
 
-/* ---------- Instructions ---------- */
-.battle-instructions{
-  text-align:center;
-  font-size:clamp(13px,2vw,16px);
-  color:var(--muted);
-  margin:8px 0 16px;
-  font-style:italic;
-}
-.battle-instructions.hidden{display:none}
-
 /* ---------- Actions ---------- */
 .battle-actions{
   display:flex;
@@ -216,16 +206,6 @@
   font-size:13px!important;
   padding:8px 18px!important;
 }
-.battle-btn--shuffle{
-  border-color:var(--accent)!important;
-  color:var(--accent)!important;
-}
-.battle-btn--shuffle .ico .btn-icon{filter:invert(1);opacity:.7}
-:root[data-theme="light"] .battle-btn--shuffle .ico .btn-icon{filter:none;opacity:.7}
-.battle-btn--shuffle:hover{
-  background:rgba(139,125,255,.12)!important;
-}
-
 /* ---------- Results ---------- */
 .battle-results.hidden{display:none}
 
