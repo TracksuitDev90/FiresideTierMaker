@@ -8,30 +8,30 @@
 .battle-arena{
   max-width:700px;
   margin:0 auto;
-  padding:8px 0 0;
+  padding:4px 0 0;
 }
 
 /* ---------- Header ---------- */
 .battle-header{
   text-align:center;
-  margin-bottom:20px;
+  margin-bottom:8px;
 }
 .battle-round-label{
-  font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
-  font-weight:700;
-  font-size:clamp(13px,2vw,16px);
+  font-family:'Bowlby One',sans-serif;
+  font-weight:400;
+  font-size:clamp(15px,2.5vw,20px);
   color:var(--muted);
   letter-spacing:2px;
   text-transform:uppercase;
-  margin-bottom:4px;
+  margin-bottom:2px;
 }
 .battle-category{
   font-family:'Bowlby One',sans-serif;
   font-weight:400;
-  font-size:clamp(22px,5vw,38px);
+  font-size:clamp(26px,6vw,46px);
   color:var(--text);
-  line-height:1.15;
-  margin-bottom:12px;
+  line-height:1.1;
+  margin-bottom:6px;
   text-transform:uppercase;
 }
 
@@ -41,7 +41,7 @@
   align-items:center;
   justify-content:center;
   gap:8px;
-  margin-bottom:6px;
+  margin-bottom:4px;
 }
 .progress-dot{
   width:10px;height:10px;
@@ -67,8 +67,8 @@
   display:flex;
   align-items:center;
   justify-content:center;
-  gap:clamp(12px,3vw,32px);
-  margin:16px 0 12px;
+  gap:clamp(8px,2vw,24px);
+  margin:6px 0 8px;
 }
 .battle-versus.hidden{display:none}
 
@@ -76,13 +76,13 @@
   flex:1;
   display:flex;
   justify-content:center;
-  max-width:240px;
+  max-width:260px;
 }
 
 .battle-vs-badge{
   font-family:'Bowlby One',sans-serif;
   font-weight:400;
-  font-size:clamp(20px,4vw,36px);
+  font-size:clamp(28px,5vw,48px);
   color:var(--accent);
   text-shadow:0 0 20px rgba(139,125,255,.5);
   flex-shrink:0;
@@ -100,16 +100,16 @@
   display:flex;
   flex-direction:column;
   align-items:center;
-  gap:10px;
+  gap:8px;
   cursor:pointer;
-  padding:16px 12px;
+  padding:12px 8px;
   border-radius:20px;
   border:2px solid transparent;
   transition:transform .2s ease, border-color .2s ease, box-shadow .2s ease, background .2s ease;
   user-select:none;
   -webkit-tap-highlight-color:transparent;
   width:100%;
-  max-width:200px;
+  max-width:220px;
 }
 .battle-card:hover,
 .battle-card:focus-visible{
@@ -141,8 +141,8 @@
 
 /* ---------- Battle circle (token display) ---------- */
 .battle-circle{
-  width:clamp(90px,22vw,140px);
-  height:clamp(90px,22vw,140px);
+  width:clamp(110px,26vw,170px);
+  height:clamp(110px,26vw,170px);
   border-radius:50%;
   overflow:hidden;
   display:flex;
@@ -170,7 +170,9 @@
   font-weight:800;
   font-size:20px;
   text-align:center;
-  word-break:break-word;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
   line-height:1.1;
   padding:4px;
   display:flex;
@@ -184,10 +186,10 @@
 /* ---------- Token name below circle ---------- */
 .battle-name{
   font-weight:700;
-  font-size:clamp(12px,2vw,16px);
+  font-size:clamp(13px,2.2vw,17px);
   color:var(--text);
   text-align:center;
-  max-width:140px;
+  max-width:170px;
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap;
@@ -198,7 +200,7 @@
   display:flex;
   justify-content:center;
   gap:10px;
-  margin-bottom:8px;
+  margin-bottom:4px;
 }
 .battle-actions.hidden{display:none}
 
@@ -212,8 +214,8 @@
 /* Champion banner */
 .battle-champion{
   text-align:center;
-  padding:24px 16px 20px;
-  margin-bottom:20px;
+  padding:20px 16px 16px;
+  margin-bottom:16px;
   background:linear-gradient(135deg, rgba(139,125,255,.1), rgba(216,255,63,.08));
   border-radius:20px;
   border:2px solid var(--accent);
@@ -227,7 +229,7 @@
   -webkit-background-clip:text;
   -webkit-text-fill-color:transparent;
   background-clip:text;
-  margin-bottom:16px;
+  margin-bottom:12px;
 }
 .champion-token{
   display:flex;
@@ -236,8 +238,8 @@
   gap:8px;
 }
 .champion-circle{
-  width:clamp(100px,25vw,150px);
-  height:clamp(100px,25vw,150px);
+  width:clamp(110px,28vw,160px);
+  height:clamp(110px,28vw,160px);
   border-radius:50%;
   overflow:hidden;
   display:flex;
@@ -268,7 +270,7 @@
 
 /* ---------- Bracket grid ---------- */
 .bracket-grid{
-  margin-top:16px;
+  margin-top:12px;
 }
 .bracket-title{
   font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
@@ -277,7 +279,7 @@
   color:var(--muted);
   letter-spacing:2px;
   text-align:center;
-  margin-bottom:10px;
+  margin-bottom:8px;
 }
 .bracket-round{
   background:var(--surface-raised);
@@ -394,18 +396,18 @@ body.battle-mode #newBracketBtn{display:flex}
 /* ---------- Mobile optimizations ---------- */
 @media(max-width:480px){
   .battle-versus{
-    gap:6px;
+    gap:4px;
   }
   .battle-card{
-    padding:10px 6px;
+    padding:8px 4px;
     border-radius:14px;
-    max-width:150px;
+    max-width:160px;
   }
   .battle-circle{
-    width:80px;height:80px;
+    width:100px;height:100px;
   }
   .champion-circle{
-    width:90px;height:90px;
+    width:100px;height:100px;
   }
   .bracket-round{
     padding:6px 8px;
@@ -417,6 +419,6 @@ body.battle-mode #newBracketBtn{display:flex}
 
 @media(min-width:481px) and (max-width:768px){
   .battle-circle{
-    width:110px;height:110px;
+    width:130px;height:130px;
   }
 }

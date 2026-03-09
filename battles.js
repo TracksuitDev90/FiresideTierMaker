@@ -174,7 +174,7 @@
     if(!lbl || !container) return;
     var text = lbl.textContent || '';
     if(!text) return;
-    var max = 28, min = 10;
+    var max = 34, min = 10;
     requestAnimationFrame(function(){
       var cw = container.offsetWidth * 0.75;
       if(cw <= 0) cw = 80;
