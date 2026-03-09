@@ -434,8 +434,8 @@ function fitLiveLabel(lbl){
   var maxW = D - pad * 2;
   var text = lbl.textContent;
 
-  var px = 20;
-  for (; px >= 10; px--) {
+  var px = 22;
+  for (; px >= 11; px--) {
     if (measureTokenText(text, '900', px) <= maxW) break;
   }
 
