@@ -103,6 +103,12 @@
     return CATEGORIES[Math.floor(Math.random()*CATEGORIES.length)];
   }
 
+  function updateBattleUndoBtn(){
+    var u = document.getElementById('undoBtn');
+    if(!u) return;
+    u.disabled = !battleState || battleState.currentRound <= 0;
+  }
+
   function tokenMatch(a, b){
     if(!a || !b) return false;
     if(a.type === 'image' && b.type === 'image') return a.src === b.src;
@@ -203,12 +209,7 @@
       '    <div class="battle-vs-badge">VS</div>',
       '    <div class="battle-slot" id="battleRight"></div>',
       '  </div>',
-      '  <div class="battle-instructions" id="battleInstructions">Pick the winner!</div>',
       '  <div class="battle-actions" id="battleActions">',
-      '    <button class="btn battle-btn battle-btn--shuffle" id="battleShuffle" type="button">',
-      '      <span class="ico"><img class="btn-icon" src="icons/tournament-bracket-svgrepo-com.svg" alt="" width="18" height="18" /></span>',
-      '      <span>New Matchup</span>',
-      '    </button>',
       '  </div>',
       '</div>',
       '<div class="battle-results hidden" id="battleResults"></div>'
@@ -266,8 +267,8 @@
     showMatchup();
     document.getElementById('battleResults').classList.add('hidden');
     document.getElementById('battleVersus').classList.remove('hidden');
-    document.getElementById('battleInstructions').classList.remove('hidden');
     document.getElementById('battleActions').classList.remove('hidden');
+    updateBattleUndoBtn();
   }
 
   /* Restart same category from round 1 with reshuffled tokens */
@@ -298,7 +299,6 @@
     showMatchup();
     document.getElementById('battleResults').classList.add('hidden');
     document.getElementById('battleVersus').classList.remove('hidden');
-    document.getElementById('battleInstructions').classList.remove('hidden');
     document.getElementById('battleActions').classList.remove('hidden');
     if(typeof live === 'function') live('Bracket restarted — ' + battleState.category);
   }
@@ -309,11 +309,9 @@
     var catEl = document.getElementById('battleCategory');
     var leftSlot = document.getElementById('battleLeft');
     var rightSlot = document.getElementById('battleRight');
-    var instrEl = document.getElementById('battleInstructions');
 
     if(roundNum) roundNum.textContent = battleState.currentRound + 1;
     if(catEl) catEl.textContent = battleState.category;
-    if(instrEl) instrEl.textContent = 'Who would win at ' + battleState.category + '?';
 
     // Render left card
     leftSlot.innerHTML = '';
@@ -369,6 +367,7 @@
         }
 
         renderProgress();
+        updateBattleUndoBtn();
       };
     }
 
@@ -384,12 +383,10 @@
   function showResults(){
     if(!battleState) return;
     var versusEl = document.getElementById('battleVersus');
-    var instrEl = document.getElementById('battleInstructions');
     var actionsEl = document.getElementById('battleActions');
     var resultsEl = document.getElementById('battleResults');
 
     versusEl.classList.add('hidden');
-    instrEl.classList.add('hidden');
     actionsEl.classList.add('hidden');
     resultsEl.classList.remove('hidden');
 
@@ -528,7 +525,6 @@
       battleState.winner = null;
       document.getElementById('battleResults').classList.add('hidden');
       document.getElementById('battleVersus').classList.remove('hidden');
-      document.getElementById('battleInstructions').classList.remove('hidden');
       document.getElementById('battleActions').classList.remove('hidden');
     }
 
@@ -542,6 +538,7 @@
     battleState.category = lastRound.category;
 
     showMatchup();
+    updateBattleUndoBtn();
     if(typeof live === 'function') live('Undid round ' + (battleState.currentRound + 1));
   }
 
@@ -556,16 +553,7 @@
     tierBoard.parentNode.insertBefore(container, tierBoard.nextSibling);
     bBoard = container;
 
-    // Wire shuffle button
-    var shuffleBtn = document.getElementById('battleShuffle');
-    if(shuffleBtn){
-      shuffleBtn.addEventListener('click', function(){
-        if(typeof animateBtn === 'function') animateBtn(this);
-        startBattle();
-      });
-    }
-
-    // Wire New Bracket button (in main controls area)
+    // Wire New Matchup button (in main controls area)
     var newBracketBtn = document.getElementById('newBracketBtn');
     if(newBracketBtn){
       newBracketBtn.addEventListener('click', function(){
@@ -591,6 +579,7 @@
     } else {
       showMatchup();
     }
+    updateBattleUndoBtn();
   }
 
   function hideBattleMode(){
