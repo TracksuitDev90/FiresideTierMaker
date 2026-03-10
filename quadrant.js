@@ -682,6 +682,9 @@
       '.q-zone{min-height:240px !important;overflow:visible !important}',
       '.q-axis-label{font-size:16px !important}'
     ].join('\n');
+    // Inject font @font-face CSS directly into the clone so the SVG renderer can resolve them
+    if (typeof _bowlbyFontFaceCSS === 'string' && _bowlbyFontFaceCSS) style.textContent = _bowlbyFontFaceCSS + '\n' + style.textContent;
+    if (typeof _montserratFontFaceCSS === 'string' && _montserratFontFaceCSS) style.textContent = _montserratFontFaceCSS + '\n' + style.textContent;
     clone.appendChild(style);
 
     // Handle title
