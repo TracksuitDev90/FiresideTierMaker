@@ -391,23 +391,35 @@ if (document.fonts && document.fonts.ready) {
 } else { _bowlbyReady = true; } // fallback for very old browsers
 
 /* Pre-fetch Bowlby One & Montserrat as base64 so html-to-image can embed them in SVG exports.
-   Google Fonts <link> stylesheets are cross-origin and invisible to the library. */
+   Google Fonts <link> stylesheets are cross-origin and invisible to the library.
+   We replace ALL woff2 URLs in the CSS (covering every unicode-range block)
+   so that basic Latin characters render correctly in screenshots. */
 var _bowlbyFontFaceCSS = '';
 var _montserratFontFaceCSS = '';
 function _preloadGoogleFont(url, familyName, weight, cb){
   fetch(url)
     .then(function(r){ return r.text(); })
     .then(function(css){
-      var m = css.match(/url\((https:\/\/fonts\.gstatic\.com[^)]+\.woff2)\)/);
-      if(!m) return;
-      return fetch(m[1]).then(function(r){ return r.blob(); }).then(function(blob){
-        return new Promise(function(resolve){
-          var reader = new FileReader();
-          reader.onloadend = function(){ resolve(reader.result); };
-          reader.readAsDataURL(blob);
+      // Collect every woff2 URL in the stylesheet (one per unicode-range block)
+      var re = /url\((https:\/\/fonts\.gstatic\.com[^)]+\.woff2)\)/g;
+      var urls = []; var m;
+      while ((m = re.exec(css)) !== null) urls.push(m[1]);
+      if (!urls.length) return;
+      // Fetch each font subset and convert to base64, then replace URLs in the original CSS
+      return Promise.all(urls.map(function(fontUrl){
+        return fetch(fontUrl).then(function(r){ return r.blob(); }).then(function(blob){
+          return new Promise(function(resolve){
+            var reader = new FileReader();
+            reader.onloadend = function(){ resolve({ url: fontUrl, dataUrl: reader.result }); };
+            reader.readAsDataURL(blob);
+          });
         });
-      }).then(function(dataUrl){
-        cb("@font-face{font-family:'" + familyName + "';font-style:normal;font-weight:" + weight + ";src:url(" + dataUrl + ") format('woff2');}");
+      })).then(function(results){
+        var embeddedCSS = css;
+        results.forEach(function(r){
+          embeddedCSS = embeddedCSS.split(r.url).join(r.dataUrl);
+        });
+        cb(embeddedCSS);
       });
     }).catch(function(){}); // silent fail — export will use fallback font
 }
@@ -1338,6 +1350,9 @@ on($('#saveBtn'),'click', function(){
     '.mode-toggle-wrap{ display:none !important; }',
     '#quadrantBoard{ display:none !important; }'
   ].join('\n');
+  // Inject font @font-face CSS directly into the clone so the SVG renderer can resolve them
+  if (_bowlbyFontFaceCSS) style.textContent = _bowlbyFontFaceCSS + '\n' + style.textContent;
+  if (_montserratFontFaceCSS) style.textContent = _montserratFontFaceCSS + '\n' + style.textContent;
   clone.appendChild(style);
 
   // Handle title for export: if empty, strip the title area entirely
