@@ -1827,6 +1827,18 @@ var TIER_PROMPTS = [
     { label: 'COWBOY', color: '#92400e' },
     { label: 'SAMURAI', color: '#be123c' }
   ]},
+  { text: "What's their role on the pirate ship? (One Piece)", tiers: [
+    { label: 'CAPTAIN', color: '#e74c3c' },
+    { label: 'NAVIGATOR', color: '#e67e22' },
+    { label: 'COMBATANT', color: '#27ae60' },
+    { label: 'COOK', color: '#3498db' },
+    { label: 'SNIPER / GUNNER', color: '#f1c40f' },
+    { label: 'DOCTOR', color: '#e91e63' },
+    { label: 'ARCHEOLOGIST', color: '#9b59b6' },
+    { label: 'SHIPWRIGHT', color: '#00bcd4' },
+    { label: 'MUSICIAN', color: '#1a1a1a' },
+    { label: 'HELMSMAN', color: '#cd853f' }
+  ]},
   { text: "Most to Least Likely to Stab You in the Back", tiers: [
     { label: 'NEVER', color: '#22c55e' },
     { label: 'PROBABLY NOT', color: '#84cc16' },
