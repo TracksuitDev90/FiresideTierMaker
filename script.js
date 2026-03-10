@@ -1819,6 +1819,55 @@ var TIER_PROMPTS = [
     { label: 'NOTICEABLE', color: '#eab308' },
     { label: "THEY'D MANAGE", color: '#f97316' },
     { label: 'BARELY A BLIP', color: '#ef4444' }
+  ]},
+  { text: "What role would these people best fit in?", tiers: [
+    { label: 'KNIGHT', color: '#6366f1' },
+    { label: 'PIRATE', color: '#dc2626' },
+    { label: 'NINJA', color: '#1f2937' },
+    { label: 'COWBOY', color: '#92400e' },
+    { label: 'SAMURAI', color: '#be123c' }
+  ]},
+  { text: "Most to Least Likely to Stab You in the Back", tiers: [
+    { label: 'NEVER', color: '#22c55e' },
+    { label: 'PROBABLY NOT', color: '#84cc16' },
+    { label: 'DEPENDS', color: '#eab308' },
+    { label: 'IF IT BENEFITS THEM', color: '#f97316' },
+    { label: 'ALREADY HAS', color: '#ef4444' }
+  ]},
+  { text: "How would they handle being publicly called out?", tiers: [
+    { label: 'OWN IT', color: '#22c55e' },
+    { label: 'DEFLECT', color: '#3b82f6' },
+    { label: 'SPIRAL', color: '#a855f7' },
+    { label: 'GASLIGHT', color: '#f97316' },
+    { label: 'DENY EVERYTHING', color: '#ef4444' }
+  ]},
+  { text: "Who would you ACTUALLY want as a roommate?", tiers: [
+    { label: 'DREAM ROOMIE', color: '#22c55e' },
+    { label: 'SOLID PICK', color: '#3b82f6' },
+    { label: 'TOLERABLE', color: '#eab308' },
+    { label: 'TOUGH SELL', color: '#f97316' },
+    { label: 'NIGHTMARE', color: '#ef4444' }
+  ]},
+  { text: "Rate their main character energy", tiers: [
+    { label: 'MAIN CHARACTER', color: '#f59e0b' },
+    { label: 'DEUTERAGONIST', color: '#6366f1' },
+    { label: 'SUPPORTING CAST', color: '#3b82f6' },
+    { label: 'BACKGROUND NPC', color: '#6b7280' },
+    { label: 'THE VILLAIN', color: '#ef4444' }
+  ]},
+  { text: "Most to Least Likely to Gatekeep Something", tiers: [
+    { label: 'SHARES EVERYTHING', color: '#22c55e' },
+    { label: 'USUALLY OPEN', color: '#3b82f6' },
+    { label: 'SELECTIVE', color: '#eab308' },
+    { label: 'HOARDER VIBES', color: '#f97316' },
+    { label: 'GATEKEEP QUEEN', color: '#ef4444' }
+  ]},
+  { text: "Who's most overrated vs underrated in Fireside?", tiers: [
+    { label: 'CRIMINALLY UNDERRATED', color: '#22c55e' },
+    { label: 'UNDERRATED', color: '#3b82f6' },
+    { label: 'RATED ACCURATELY', color: '#6b7280' },
+    { label: 'SLIGHTLY OVERRATED', color: '#f97316' },
+    { label: 'EXTREMELY OVERRATED', color: '#ef4444' }
   ]}
 ];
 shuffleArray(TIER_PROMPTS);
