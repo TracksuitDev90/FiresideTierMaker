@@ -495,7 +495,7 @@ body.dragging-item{cursor:grabbing;user-select:none;-webkit-user-select:none}
   padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(105px,1fr));gap:12px;
 }
 @media (max-width:480px){
-  #tray{grid-template-columns:repeat(3,1fr);gap:10px;padding:10px}
+  #tray{grid-template-columns:repeat(2,1fr);gap:10px;padding:10px}
   #tray .token{width:100%;height:auto;aspect-ratio:1}
 }
 
