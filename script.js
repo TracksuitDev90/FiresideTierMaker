@@ -356,6 +356,15 @@ var communityCast = [
   "Meegan","Mew's","Neil","NJ","Paper","Ray","Raymond","Safoof","Sky","Smitty","Tubawk","Versse","Vyken","Zwjk"
 ];
 
+/* Fixed signature colors for specific cast members — never rotate */
+var DEFAULT_TOKEN_COLORS = {
+  'Clay':   '#C61937',
+  'Cody':   '#8F949E',
+  'Camryn': '#99748f',
+  'Sky':    '#76a071',
+  'Devon':  '#9457eb'
+};
+
 /* ---------- PRE-RENDERED CIRCLE PALETTE ---------- */
 var BASE_PALETTE = [
   '#E57373','#F06292','#FF8A65','#FFB74D','#FFD54F',
@@ -2168,7 +2177,10 @@ document.addEventListener('DOMContentLoaded', function start(){
     defaultTiers.forEach(function(t){ board.appendChild(createRow(t)); });
     uniformizeTierLabels();
     // tray defaults (pre-rendered with flat bg + random contrasting text, not custom)
-    communityCast.forEach(function(n){ tray.appendChild(buildNameToken(n, nextPreset(), false)); });
+    communityCast.forEach(function(n){
+      var bg = DEFAULT_TOKEN_COLORS.hasOwnProperty(n) ? DEFAULT_TOKEN_COLORS[n] : nextPreset();
+      tray.appendChild(buildNameToken(n, bg, false));
+    });
   }
 
   // Start auto-save after initial load
