@@ -353,7 +353,7 @@ function nextTierColor(){ var c=NEW_TIER_COLORS[tierIdx%NEW_TIER_COLORS.length];
 var communityCast = [
   "Abby","Anette","Andruw","Authority","B7","Camryn","Cindy","Clamy","Clay","Cody","Cookies",
   "Denver","Devon","Dexy","Dior","Domo","Gavin","Harry","Katie","Kiev","Kikki",
-  "Meegan","Mew's","Moop","Neil","NJ","Paper","Ray","Raymond","Safoof","Sky","Smitty","Tubawk","Versse","Vyken","Zwjk"
+  "Meegan","Mew's","Neil","NJ","Paper","Ray","Raymond","Safoof","Sky","Smitty","Tubawk","Versse","Vyken","Zwjk"
 ];
 
 /* ---------- PRE-RENDERED CIRCLE PALETTE ---------- */
