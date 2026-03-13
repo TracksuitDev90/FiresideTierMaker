@@ -362,7 +362,9 @@ var DEFAULT_TOKEN_COLORS = {
   'Cody':   '#8F949E',
   'Camryn': '#99748f',
   'Sky':    '#76a071',
-  'Devon':  '#9457eb'
+  'Devon':  '#9457eb',
+  'Versse': '#19852d',
+  'Haven':  '#FFBC00'
 };
 
 /* ---------- PRE-RENDERED CIRCLE PALETTE ---------- */
