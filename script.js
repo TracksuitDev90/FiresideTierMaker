@@ -364,7 +364,8 @@ var DEFAULT_TOKEN_COLORS = {
   'Sky':    '#76a071',
   'Devon':  '#9457eb',
   'Versse': '#19852d',
-  'Haven':  '#FFBC00'
+  'Haven':  '#FFBC00',
+  'Abby':   '#FFAEE6'
 };
 
 /* ---------- PRE-RENDERED CIRCLE PALETTE ---------- */
