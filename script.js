@@ -1954,7 +1954,11 @@ var TIER_PROMPTS = [
     { label: 'LINKEDIN', color: '#0a66c2' }
   ]}
 ];
-TIER_PROMPTS.reverse();
+// Pin the newest prompts first, shuffle the rest
+var _newestCount = 5;
+var _newest = TIER_PROMPTS.splice(TIER_PROMPTS.length - _newestCount, _newestCount).reverse();
+shuffleArray(TIER_PROMPTS);
+TIER_PROMPTS = _newest.concat(TIER_PROMPTS);
 var _deckIndex = 0;
 var _promptUserSet = false;
 var _maxVisibleCards = 3;
