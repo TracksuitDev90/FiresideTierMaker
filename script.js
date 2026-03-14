@@ -1954,7 +1954,7 @@ var TIER_PROMPTS = [
     { label: 'LINKEDIN', color: '#0a66c2' }
   ]}
 ];
-shuffleArray(TIER_PROMPTS);
+TIER_PROMPTS.reverse();
 var _deckIndex = 0;
 var _promptUserSet = false;
 var _maxVisibleCards = 3;
