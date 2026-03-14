@@ -310,7 +310,7 @@ a{color:inherit;text-decoration:none}
 }
 
 /* ---------- Board ---------- */
-.board-title-wrap{display:flex;align-items:center;gap:8px;margin:0 0 16px}
+.board-title-wrap{display:flex;align-items:center;gap:8px;margin:0 0 20px}
 .pen-icon{width:18px;height:18px;object-fit:contain;opacity:.55;transition:filter .2s ease;filter:invert(1)}
 :root[data-theme="light"] .pen-icon{filter:none}
 .board-title{font-size:clamp(20px,2.2vw,28px);font-weight:900;margin:0}
@@ -324,8 +324,8 @@ a{color:inherit;text-decoration:none}
 /* Prompt card stack */
 .prompt-stack-wrap{
   display:flex;justify-content:center;
-  margin:0 0 18px;
-  padding-bottom:18px;
+  margin:0 0 14px;
+  padding-bottom:14px;
 }
 .prompt-stack-wrap.hidden{display:none}
 .prompt-cards{
@@ -403,7 +403,7 @@ a{color:inherit;text-decoration:none}
 
 .prompt-card-text{
   position:relative;z-index:2;
-  font-size:15px;font-weight:700;color:var(--text);
+  font-size:17px;font-weight:700;color:var(--text);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   text-align:center;flex:1;min-width:0;
 }
@@ -422,7 +422,7 @@ a{color:inherit;text-decoration:none}
 @media(max-width:480px){
   .prompt-cards{width:96%;height:58px}
   .prompt-card{padding:0 14px;border-radius:var(--md-sys-shape-corner-medium)}
-  .prompt-card-text{font-size:14px}
+  .prompt-card-text{font-size:16px}
 }
 
 /* ---------- Scrollable prompt list overlay (long-press) ---------- */

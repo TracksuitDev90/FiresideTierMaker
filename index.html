@@ -83,15 +83,15 @@
 
     <!-- Tier board -->
     <section class="panel" id="boardPanel" aria-label="Tier board">
+      <!-- Swipe prompt cards -->
+      <div class="prompt-stack-wrap" id="promptStack" role="group" aria-label="Prompt card suggestions — swipe right or press Enter to apply, swipe left or press ArrowLeft to skip">
+        <div class="prompt-cards" id="promptCards" role="list" aria-label="Prompt cards"></div>
+      </div>
       <div class="board-title-wrap">
         <span class="title-pen" aria-hidden="true">
           <img class="pen-icon" src="icons/pen-2-svgrepo-com.svg" alt="" width="18" height="18" />
         </span>
         <h2 class="board-title" contenteditable="true" spellcheck="false"></h2>
-      </div>
-      <!-- Swipe prompt cards -->
-      <div class="prompt-stack-wrap" id="promptStack" role="group" aria-label="Prompt card suggestions — swipe right or press Enter to apply, swipe left or press ArrowLeft to skip">
-        <div class="prompt-cards" id="promptCards" role="list" aria-label="Prompt cards"></div>
       </div>
 
       <div id="tierBoard" aria-live="off"></div>

@@ -987,10 +987,10 @@
         '</button>'
       ].join('');
 
-      // Insert toggle before the board title
-      var titleWrap = boardPanel.querySelector('.board-title-wrap');
-      if(titleWrap){
-        boardPanel.insertBefore(toggleWrap, titleWrap);
+      // Insert toggle before the prompt stack (top of board)
+      var promptStack = boardPanel.querySelector('.prompt-stack-wrap');
+      if(promptStack){
+        boardPanel.insertBefore(toggleWrap, promptStack);
       } else {
         boardPanel.insertBefore(toggleWrap, boardPanel.firstChild);
       }
