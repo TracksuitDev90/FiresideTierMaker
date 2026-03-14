@@ -3,7 +3,7 @@
 /* ---------- Mode toggle ---------- */
 .mode-toggle-wrap{
   display:flex;align-items:center;justify-content:center;
-  gap:4px;margin:0 auto 14px;
+  gap:4px;margin:0 auto 16px;
   background:var(--card);
   border:1px solid var(--border);
   border-radius:14px;
