@@ -388,7 +388,7 @@ body.battle-mode .panel:has(#tray){display:none}
 body.battle-mode #trashClear span:last-child{/* label set by JS */}
 #newBracketBtn{display:none}
 body.battle-mode #newBracketBtn{display:flex}
-#newBracketBtn{background:#1b3d2a;color:#4ADE80;border-color:rgba(74,222,128,.3);box-shadow:var(--shadow),inset 0 0 0 1px rgba(74,222,128,.08)}
+#newBracketBtn{background:#2f6b47;color:#4ADE80;border-color:rgba(74,222,128,.3);box-shadow:var(--shadow),inset 0 0 0 1px rgba(74,222,128,.08)}
 :root[data-theme="light"] #newBracketBtn{background:#dcfce7;color:#15803d;border-color:rgba(21,128,61,.2);box-shadow:var(--shadow),inset 0 0 0 1px rgba(21,128,61,.06)}
 #newBracketBtn .ico img{width:22px;height:22px;filter:invert(73%) sepia(58%) saturate(432%) hue-rotate(93deg) brightness(97%) contrast(92%)}
 :root[data-theme="light"] #newBracketBtn .ico img{filter:invert(33%) sepia(92%) saturate(527%) hue-rotate(113deg) brightness(92%) contrast(91%)}
