@@ -172,7 +172,7 @@ function buildRowDom(){
 }
 
 function tintFrom(color){
-  var surface = cssVar('--surface') || '#111219';
+  var surface = cssVar('--surface') || '#121212';
   var a=hexToRgb(surface), b=hexToRgb(color);
   var dark = document.documentElement.getAttribute('data-theme')!=='light';
   var amt = dark?0.14:0.09;

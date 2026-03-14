@@ -150,7 +150,6 @@
   justify-content:center;
   background:var(--surface-raised);
   border:3px solid var(--border);
-  box-shadow:0 4px 16px rgba(0,0,0,.25);
   transition:border-color .2s ease, box-shadow .2s ease;
   position:relative;
 }
@@ -246,7 +245,6 @@
   align-items:center;
   justify-content:center;
   border:4px solid var(--accent);
-  box-shadow:0 0 30px rgba(139,125,255,.4);
   position:relative;
 }
 .champion-circle img{

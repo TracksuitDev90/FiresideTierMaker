@@ -454,7 +454,7 @@
     var resultsEl = document.getElementById('battleResults');
     if(!resultsEl || typeof htmlToImage === 'undefined') return;
 
-    var bgColor = getComputedStyle(document.documentElement).getPropertyValue('--surface').trim() || '#0e0d1a';
+    var bgColor = getComputedStyle(document.documentElement).getPropertyValue('--surface').trim() || '#121212';
 
     // Clone into an offscreen container for clean capture
     var cloneWrap = document.createElement('div');
