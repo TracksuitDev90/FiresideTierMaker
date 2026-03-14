@@ -1953,7 +1953,13 @@ function buildPromptCard(promptIndex){
   card.className = 'prompt-card';
   card.dataset.promptIndex = promptIndex % TIER_PROMPTS.length;
   card.style.background = colors.bg;
-  card.style.boxShadow = 'inset 0 0 0 1.5px ' + cardBorderColor(colors.bg);
+  card.style.color = colors.fg;
+
+  /* #10 Accessibility — ARIA attributes */
+  card.setAttribute('role', 'button');
+  card.setAttribute('tabindex', '0');
+  card.setAttribute('aria-roledescription', 'swipeable card');
+  card.setAttribute('aria-label', prompt.text + (prompt.tiers ? ' (includes custom tiers)' : ''));
 
   var text = document.createElement('span');
   text.className = 'prompt-card-text';
@@ -1976,10 +1982,12 @@ function buildPromptCard(promptIndex){
 
 function setCardStackPos(card, pos, animate){
   if(animate){
-    card.style.transition = 'transform .35s cubic-bezier(.4,.0,.2,1), z-index 0s';
+    card.style.transition = 'transform .35s cubic-bezier(.2,0,0,1), box-shadow .35s cubic-bezier(.2,0,0,1), z-index 0s';
   } else {
     card.style.transition = 'none';
   }
+  /* #1 data-stack-pos drives CSS elevation per stack depth */
+  card.dataset.stackPos = pos;
   card.style.zIndex = 10 - pos;
   card.style.opacity = '1';
   if(pos===0){ card.style.transform='scale(1) translateY(0)'; }
@@ -2048,12 +2056,28 @@ function advanceCardStack(){
 }
 
 function enableCardSwipe(card){
+  /* #5 Spawn a Material ripple at pointer coordinates */
+  function spawnRipple(card, ex, ey){
+    var rect = card.getBoundingClientRect();
+    var size = Math.max(rect.width, rect.height) * 2;
+    var ripple = document.createElement('span');
+    ripple.className = 'prompt-card-ripple';
+    ripple.style.width = ripple.style.height = size + 'px';
+    ripple.style.left = (ex - rect.left - size / 2) + 'px';
+    ripple.style.top  = (ey - rect.top  - size / 2) + 'px';
+    card.appendChild(ripple);
+    ripple.addEventListener('animationend', function(){ ripple.remove(); });
+  }
+
   on(card, 'pointerdown', function(e){
     if(e.button && e.button!==0) return;
     e.preventDefault();
     card.setPointerCapture(e.pointerId);
     clearTimeout(_hintTimer);
     card.classList.remove('hint');
+
+    /* #5 Ripple on press */
+    spawnRipple(card, e.clientX, e.clientY);
 
     var startX = e.clientX, dx = 0, dragging = false;
     var cardW = card.offsetWidth || 300;
@@ -2062,7 +2086,11 @@ function enableCardSwipe(card){
 
     function onMove(ev){
       dx = ev.clientX - startX;
-      if(!dragging && Math.abs(dx) > 4) dragging = true;
+      if(!dragging && Math.abs(dx) > 4){
+        dragging = true;
+        /* #1 Raise elevation on drag */
+        card.classList.add('md-dragging');
+      }
       if(!dragging) return;
       var rotate = dx * 0.06;
       var opacity = Math.max(0.5, 1 - Math.abs(dx) / cardW);
@@ -2073,10 +2101,12 @@ function enableCardSwipe(card){
       try{ card.releasePointerCapture(e.pointerId); }catch(_){}
       document.removeEventListener('pointermove', onMove);
       document.removeEventListener('pointerup', onUp);
+      /* #1 Remove drag elevation */
+      card.classList.remove('md-dragging');
 
       if(!dragging){
         // Tap = use prompt (right-swipe shortcut)
-        card.style.transition = 'transform .35s cubic-bezier(.4,.0,.2,1), opacity .3s ease';
+        card.style.transition = 'transform .5s cubic-bezier(.2,0,0,1), opacity .3s ease';
         card.style.transform = 'translateX(120%) rotate(10deg)';
         card.style.opacity = '0';
         var pIdx = parseInt(card.dataset.promptIndex, 10);
@@ -2090,7 +2120,7 @@ function enableCardSwipe(card){
         var dir = dx > 0 ? 1 : -1;
         var flyX = dir * (cardW + 100);
         var flyRotate = dir * 16;
-        card.style.transition = 'transform .35s cubic-bezier(.4,.0,.2,1), opacity .3s ease';
+        card.style.transition = 'transform .5s cubic-bezier(.2,0,0,1), opacity .3s ease';
         card.style.transform = 'translateX('+flyX+'px) rotate('+flyRotate+'deg)';
         card.style.opacity = '0';
         vib(6);
@@ -2104,8 +2134,8 @@ function enableCardSwipe(card){
           advanceCardStack();
         }
       } else {
-        // Spring back
-        card.style.transition = 'transform .4s cubic-bezier(.34,1.56,.64,1), opacity .25s ease';
+        // Spring back — Material standard decelerate
+        card.style.transition = 'transform .3s cubic-bezier(.2,0,0,1), opacity .25s ease';
         card.style.transform = 'scale(1) translateY(0)';
         card.style.opacity = '1';
         scheduleHint();
@@ -2113,6 +2143,35 @@ function enableCardSwipe(card){
     }
     document.addEventListener('pointermove', onMove);
     document.addEventListener('pointerup', onUp);
+  });
+
+  /* #10 Keyboard support — Enter/Space to apply, ArrowLeft to skip */
+  on(card, 'keydown', function(e){
+    if(e.key === 'Enter' || e.key === ' '){
+      e.preventDefault();
+      var pIdx = parseInt(card.dataset.promptIndex, 10);
+      card.style.transition = 'transform .5s cubic-bezier(.2,0,0,1), opacity .3s ease';
+      card.style.transform = 'translateX(120%) rotate(10deg)';
+      card.style.opacity = '0';
+      vib(6);
+      setTimeout(function(){ applyPrompt(TIER_PROMPTS[pIdx]); }, 250);
+    } else if(e.key === 'ArrowLeft'){
+      e.preventDefault();
+      var cardW2 = card.offsetWidth || 300;
+      card.style.transition = 'transform .5s cubic-bezier(.2,0,0,1), opacity .3s ease';
+      card.style.transform = 'translateX('+(-(cardW2 + 100))+'px) rotate(-16deg)';
+      card.style.opacity = '0';
+      vib(6);
+      advanceCardStack();
+    } else if(e.key === 'ArrowRight'){
+      e.preventDefault();
+      var pIdx3 = parseInt(card.dataset.promptIndex, 10);
+      card.style.transition = 'transform .5s cubic-bezier(.2,0,0,1), opacity .3s ease';
+      card.style.transform = 'translateX(120%) rotate(10deg)';
+      card.style.opacity = '0';
+      vib(6);
+      setTimeout(function(){ applyPrompt(TIER_PROMPTS[pIdx3]); }, 250);
+    }
   });
 }
 

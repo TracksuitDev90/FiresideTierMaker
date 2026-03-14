@@ -302,6 +302,11 @@ a{color:inherit;text-decoration:none}
 .board-title{font-size:clamp(20px,2.2vw,28px);font-weight:900;margin:0}
 .board-title[contenteditable]:empty::before{content:'Add a title...';color:var(--muted)}
 
+/* ---------- Material Design shape token ---------- */
+:root{
+  --md-sys-shape-corner-medium:12px;
+}
+
 /* Prompt card stack */
 .prompt-stack-wrap{
   display:flex;justify-content:center;
@@ -316,20 +321,80 @@ a{color:inherit;text-decoration:none}
 .prompt-card{
   position:absolute;top:0;left:0;width:100%;height:100%;
   border:none;
-  border-radius:14px;
+  border-radius:var(--md-sys-shape-corner-medium);
   display:flex;align-items:center;justify-content:center;gap:8px;
   padding:0 20px;
   cursor:grab;user-select:none;-webkit-user-select:none;
   touch-action:none;
   will-change:transform,opacity;
+  /* #1 Material elevation — layered outward shadows (resting: level 1) */
+  box-shadow:
+    0 1px 3px rgba(0,0,0,.12),
+    0 1px 2px rgba(0,0,0,.24);
+  /* #5 State layer overlay for hover/press */
+  overflow:hidden;
 }
+/* #1 Stacked cards get lower elevation */
+.prompt-card[data-stack-pos="1"]{
+  box-shadow:
+    0 1px 2px rgba(0,0,0,.10),
+    0 1px 1px rgba(0,0,0,.18);
+}
+.prompt-card[data-stack-pos="2"]{
+  box-shadow:0 0 1px rgba(0,0,0,.12);
+}
+/* #1 Drag elevation — raised to level 3 with lift */
+.prompt-card.md-dragging{
+  box-shadow:
+    0 8px 10px rgba(0,0,0,.20),
+    0 3px 14px rgba(0,0,0,.12),
+    0 4px 5px rgba(0,0,0,.14);
+  transform:scale(1.02);
+}
+
+/* #5 State layer (pseudo-element overlay) */
+.prompt-card::before{
+  content:'';position:absolute;inset:0;
+  border-radius:inherit;
+  background:currentColor;
+  opacity:0;
+  transition:opacity .2s ease;
+  pointer-events:none;z-index:1;
+}
+/* #5 Hover — 8% state layer */
+.prompt-card:hover::before{opacity:.08}
+/* #5 Press / active — 12% state layer */
+.prompt-card:active::before{opacity:.12}
 .prompt-card:active{cursor:grabbing}
+/* #5 Focus-visible — visible focus ring */
+.prompt-card:focus-visible{
+  outline:none;
+  box-shadow:
+    0 1px 3px rgba(0,0,0,.12),
+    0 1px 2px rgba(0,0,0,.24),
+    0 0 0 3px rgba(139,125,255,.55);
+}
+
+/* #5 Ripple effect */
+.prompt-card-ripple{
+  position:absolute;border-radius:50%;
+  background:currentColor;opacity:.16;
+  transform:scale(0);
+  animation:md-ripple .45s ease-out forwards;
+  pointer-events:none;z-index:1;
+}
+@keyframes md-ripple{
+  to{transform:scale(2.5);opacity:0}
+}
+
 .prompt-card-text{
+  position:relative;z-index:2;
   font-size:15px;font-weight:700;color:var(--text);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   text-align:center;flex:1;min-width:0;
 }
 .prompt-card-badge{
+  position:relative;z-index:2;
   font-size:17px;color:var(--neon);flex:0 0 auto;opacity:.7;
   line-height:1;
 }
@@ -342,7 +407,7 @@ a{color:inherit;text-decoration:none}
 .prompt-card.hint{animation:card-hint .8s ease-in-out}
 @media(max-width:480px){
   .prompt-cards{width:96%;height:58px}
-  .prompt-card{padding:0 14px;border-radius:12px}
+  .prompt-card{padding:0 14px;border-radius:var(--md-sys-shape-corner-medium)}
   .prompt-card-text{font-size:14px}
 }
 
