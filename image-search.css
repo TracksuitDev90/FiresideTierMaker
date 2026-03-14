@@ -17,8 +17,8 @@
 .img-search-modal{
   width:min(96vw, 720px);max-height:min(92vh, 800px);
   display:flex;flex-direction:column;
-  background:var(--surface-raised);border:1px solid var(--border);
-  border-radius:18px;box-shadow:0 24px 64px rgba(0,0,0,.45);
+  background:var(--surface-high);border:1px solid var(--border);
+  border-radius:18px;
   overflow:hidden;
   animation:imgSearchIn .25s ease;
 }
