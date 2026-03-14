@@ -95,11 +95,19 @@ a{color:inherit;text-decoration:none}
 #themeToggle:active{opacity:.78}
 .btn .ico{width:22px;height:22px;flex-shrink:0;display:grid;place-items:center}
 .btn .ico svg{width:22px;height:22px;fill:currentColor;transition:transform .25s ease,fill 0s}
-/* Lock SVG icons on colored buttons to match button text color */
+/* Colored-button icons: dark mode uses dark saturated hue, light mode inherits text color */
 #addTierBtn .ico svg,
 #undoBtn .ico svg,
 #trashClear .ico svg,
 #saveBtn .ico svg{fill:none;stroke:currentColor}
+#addTierBtn .ico svg{stroke:#15613a}
+#undoBtn .ico svg{stroke:#7c4a03}
+#trashClear .ico svg{stroke:#b91c1c}
+#saveBtn .ico svg{stroke:#4338ca}
+:root[data-theme="light"] #addTierBtn .ico svg,
+:root[data-theme="light"] #undoBtn .ico svg,
+:root[data-theme="light"] #trashClear .ico svg,
+:root[data-theme="light"] #saveBtn .ico svg{stroke:currentColor}
 /* Theme toggle icon: match button text color explicitly */
 #themeToggle .ico svg{fill:#111}
 :root[data-theme="light"] #themeToggle .ico svg{fill:#f0f2f5}
@@ -136,11 +144,11 @@ a{color:inherit;text-decoration:none}
 #undoBtn.animate .ico svg{transform:rotate(-360deg);transition:transform .4s ease}
 #addTierBtn.animate .ico svg{transform:scale(1.2)}
 
-/* Unique tool-button colors — tone-on-tone: saturated text on muted colored bg */
-#addTierBtn{background:#2f6b47;color:#4ADE80;border-color:rgba(74,222,128,.3);box-shadow:var(--shadow),inset 0 0 0 1px rgba(74,222,128,.08);padding:0 22px 0 14px}
-#undoBtn{background:#6b5520;color:#FBBF24;border-color:rgba(251,191,36,.3);box-shadow:var(--shadow),inset 0 0 0 1px rgba(251,191,36,.08)}
-#trashClear{background:#6b3333;color:#F87171;border-color:rgba(248,113,113,.3);box-shadow:var(--shadow),inset 0 0 0 1px rgba(248,113,113,.08)}
-#saveBtn{background:#3b3d6b;color:#818CF8;border-color:rgba(129,140,248,.3);box-shadow:var(--shadow),inset 0 0 0 1px rgba(129,140,248,.08)}
+/* Unique tool-button colors — dark mode: original bright bg + dark text; icons get dark colored strokes above */
+#addTierBtn{background:#4ADE80;color:#111;border-color:rgba(0,0,0,.12);box-shadow:var(--shadow),inset 0 0 0 1px rgba(255,255,255,.18);padding:0 22px 0 14px}
+#undoBtn{background:#FBBF24;color:#111;border-color:rgba(0,0,0,.12);box-shadow:var(--shadow),inset 0 0 0 1px rgba(255,255,255,.18)}
+#trashClear{background:#F87171;color:#111;border-color:rgba(0,0,0,.12);box-shadow:var(--shadow),inset 0 0 0 1px rgba(255,255,255,.18)}
+#saveBtn{background:#818CF8;color:#111;border-color:rgba(0,0,0,.12);box-shadow:var(--shadow),inset 0 0 0 1px rgba(255,255,255,.18)}
 
 /* Light mode tone-on-tone overrides — deeper text, pastel bg */
 :root[data-theme="light"] #addTierBtn{background:#dcfce7;color:#15803d;border-color:rgba(21,128,61,.2);box-shadow:var(--shadow),inset 0 0 0 1px rgba(21,128,61,.06)}
