@@ -1907,6 +1907,51 @@ var TIER_PROMPTS = [
     { label: 'RATED ACCURATELY', color: '#6b7280' },
     { label: 'SLIGHTLY OVERRATED', color: '#f97316' },
     { label: 'EXTREMELY OVERRATED', color: '#ef4444' }
+  ]},
+  { text: 'Which The Office Character Would They Be?', tiers: [
+    { label: 'MICHAEL', color: '#2563eb' },
+    { label: 'DWIGHT', color: '#92400e' },
+    { label: 'JIM', color: '#16a34a' },
+    { label: 'PAM', color: '#ec4899' },
+    { label: 'KEVIN', color: '#f59e0b' },
+    { label: 'STANLEY', color: '#6b7280' },
+    { label: 'ANGELA', color: '#a855f7' },
+    { label: 'CREED', color: '#dc2626' },
+    { label: 'RYAN', color: '#06b6d4' }
+  ]},
+  { text: 'Most to Least Likely to Accidentally Start a Fire' },
+  { text: 'Who Would Last the Longest on a Reality TV Show' },
+  { text: 'Most to Least Likely to Have a Secret Talent Nobody Knows About' },
+  { text: 'Who Would Win in a Dance Battle' },
+  { text: 'Most to Least Likely to Respond to a Text at 3 AM' },
+  { text: 'Who Would Survive the Longest in a Horror Movie' },
+  { text: 'Most to Least Likely to Become Famous One Day' },
+  { text: 'Who Would You Want on Your Team for an Escape Room' },
+  { text: 'Most to Least Chaotic Group Chat Energy' },
+  { text: 'Who Gives the Best Advice vs the Worst Advice' },
+  { text: "What type of drunk are they?", tiers: [
+    { label: 'HAPPY DRUNK', color: '#f59e0b' },
+    { label: 'SLEEPY DRUNK', color: '#6366f1' },
+    { label: 'EMOTIONAL DRUNK', color: '#ec4899' },
+    { label: 'PARTY ANIMAL', color: '#ef4444' },
+    { label: 'PHILOSOPHICAL', color: '#3b82f6' },
+    { label: 'DOESN\'T DRINK', color: '#6b7280' }
+  ]},
+  { text: "What fast food chain are they?", tiers: [
+    { label: 'CHICK-FIL-A', color: '#dc2626' },
+    { label: 'MCDONALD\'S', color: '#f59e0b' },
+    { label: 'TACO BELL', color: '#7c3aed' },
+    { label: 'WENDY\'S', color: '#ef4444' },
+    { label: 'IN-N-OUT', color: '#dc2626' },
+    { label: 'CHIPOTLE', color: '#92400e' }
+  ]},
+  { text: "What social media platform are they?", tiers: [
+    { label: 'TIKTOK', color: '#000000' },
+    { label: 'INSTAGRAM', color: '#e1306c' },
+    { label: 'TWITTER/X', color: '#1d9bf0' },
+    { label: 'REDDIT', color: '#ff4500' },
+    { label: 'YOUTUBE', color: '#ff0000' },
+    { label: 'LINKEDIN', color: '#0a66c2' }
   ]}
 ];
 shuffleArray(TIER_PROMPTS);
@@ -2080,14 +2125,34 @@ function enableCardSwipe(card){
     spawnRipple(card, e.clientX, e.clientY);
 
     var startX = e.clientX, dx = 0, dragging = false;
+    var longPressed = false;
     var cardW = card.offsetWidth || 300;
     var threshold = cardW * 0.25;
     card.style.transition = 'none';
+
+    /* Long-press detection — opens scrollable prompt list */
+    clearTimeout(_longPressTimer);
+    _longPressTimer = setTimeout(function(){
+      if(!dragging){
+        longPressed = true;
+        vib(12);
+        try{ card.releasePointerCapture(e.pointerId); }catch(_){}
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerup', onUp);
+        card.classList.remove('md-dragging');
+        // Spring back the card
+        card.style.transition = 'transform .3s cubic-bezier(.2,0,0,1), opacity .25s ease';
+        card.style.transform = 'scale(1) translateY(0)';
+        card.style.opacity = '1';
+        openPromptList();
+      }
+    }, LONG_PRESS_MS);
 
     function onMove(ev){
       dx = ev.clientX - startX;
       if(!dragging && Math.abs(dx) > 4){
         dragging = true;
+        clearTimeout(_longPressTimer);
         /* #1 Raise elevation on drag */
         card.classList.add('md-dragging');
       }
@@ -2098,6 +2163,8 @@ function enableCardSwipe(card){
       card.style.opacity = opacity;
     }
     function onUp(){
+      clearTimeout(_longPressTimer);
+      if(longPressed) return;
       try{ card.releasePointerCapture(e.pointerId); }catch(_){}
       document.removeEventListener('pointermove', onMove);
       document.removeEventListener('pointerup', onUp);
@@ -2194,6 +2261,96 @@ function hidePromptStack(){
   var wrap = $('#promptStack');
   if(wrap) wrap.classList.add('hidden');
   clearTimeout(_hintTimer);
+}
+
+/* ---------- Scrollable prompt list (long-press overlay) ---------- */
+var _longPressTimer = null;
+var LONG_PRESS_MS = 500;
+
+function openPromptList(){
+  if($('#promptListOverlay')) return; // already open
+
+  var overlay = document.createElement('div');
+  overlay.id = 'promptListOverlay';
+  overlay.className = 'prompt-list-overlay';
+
+  var sheet = document.createElement('div');
+  sheet.className = 'prompt-list-sheet';
+
+  // Header
+  var header = document.createElement('div');
+  header.className = 'prompt-list-header';
+  var title = document.createElement('span');
+  title.className = 'prompt-list-title';
+  title.textContent = 'All Prompts';
+  var closeBtn = document.createElement('button');
+  closeBtn.className = 'prompt-list-close';
+  closeBtn.innerHTML = '&times;';
+  closeBtn.setAttribute('aria-label', 'Close prompt list');
+  closeBtn.addEventListener('click', closePromptList);
+  header.appendChild(title);
+  header.appendChild(closeBtn);
+  sheet.appendChild(header);
+
+  // Scrollable list
+  var list = document.createElement('div');
+  list.className = 'prompt-list-scroll';
+
+  for(var i = 0; i < TIER_PROMPTS.length; i++){
+    (function(idx){
+      var prompt = TIER_PROMPTS[idx];
+      var colors = getCardColors(idx);
+      var item = document.createElement('button');
+      item.className = 'prompt-list-item';
+      item.style.background = colors.bg;
+      item.style.color = colors.fg;
+
+      var text = document.createElement('span');
+      text.className = 'prompt-list-item-text';
+      text.textContent = prompt.text;
+      item.appendChild(text);
+
+      if(prompt.tiers){
+        var badge = document.createElement('span');
+        badge.className = 'prompt-card-badge';
+        badge.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" width="16" height="16"><path d="M10.5026 5.01692L9.96661 3.65785C9.62068 2.78072 8.37933 2.78072 8.03339 3.65784L6.96137 6.37599C6.85576 6.64378 6.64378 6.85575 6.37599 6.96137L3.65785 8.03339C2.78072 8.37932 2.78072 9.62067 3.65784 9.96661L6.37599 11.0386C6.64378 11.1442 6.85575 11.3562 6.96137 11.624L8.03339 14.3422C8.37932 15.2193 9.62067 15.2193 9.96661 14.3422L11.0386 11.624C11.1442 11.3562 11.3562 11.1442 11.624 11.0386L14.3422 9.96661C15.2193 9.62068 15.2193 8.37933 14.3422 8.03339L12.9831 7.49738"/><path d="M16.4885 13.3481C16.6715 12.884 17.3285 12.884 17.5115 13.3481L18.3121 15.3781C18.368 15.5198 18.4802 15.632 18.6219 15.6879L20.6519 16.4885C21.116 16.6715 21.116 17.3285 20.6519 17.5115L18.6219 18.3121C18.4802 18.368 18.368 18.4802 18.3121 18.6219L17.5115 20.6519C17.3285 21.116 16.6715 21.116 16.4885 20.6519L15.6879 18.6219C15.632 18.4802 15.5198 18.368 15.3781 18.3121L13.3481 17.5115C12.884 17.3285 12.884 16.6715 13.3481 16.4885L15.3781 15.6879C15.5198 15.632 15.632 15.5198 15.6879 15.3781L16.4885 13.3481Z"/></svg>';
+        badge.style.color = colors.fg;
+        badge.style.opacity = '1';
+        badge.style.display = 'flex';
+        badge.style.alignItems = 'center';
+        item.appendChild(badge);
+      }
+
+      item.addEventListener('click', function(){
+        closePromptList();
+        applyPrompt(prompt);
+      });
+      list.appendChild(item);
+    })(i);
+  }
+
+  sheet.appendChild(list);
+  overlay.appendChild(sheet);
+  document.body.appendChild(overlay);
+
+  // Tap backdrop to close
+  overlay.addEventListener('click', function(e){
+    if(e.target === overlay) closePromptList();
+  });
+
+  // Animate in
+  requestAnimationFrame(function(){
+    overlay.classList.add('open');
+  });
+}
+
+function closePromptList(){
+  var overlay = $('#promptListOverlay');
+  if(!overlay) return;
+  overlay.classList.remove('open');
+  overlay.addEventListener('transitionend', function(){ overlay.remove(); }, { once: true });
+  // Fallback removal in case transitionend doesn't fire
+  setTimeout(function(){ if(overlay.parentNode) overlay.remove(); }, 400);
 }
 
 /* Apply a prompt: set title, optionally reconfigure tiers */
