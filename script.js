@@ -1927,12 +1927,12 @@ var TIER_PROMPTS = [
   { text: 'Who Would Survive the Longest in a Horror Movie' },
   { text: 'Most to Least Likely to Become Famous One Day' },
   { text: 'Who Would You Want on Your Team for an Escape Room' },
-  { text: 'Most to Least Chaotic Group Chat Energy' },
   { text: 'Who Gives the Best Advice vs the Worst Advice' },
   { text: "What type of drunk are they?", tiers: [
     { label: 'HAPPY DRUNK', color: '#f59e0b' },
     { label: 'SLEEPY DRUNK', color: '#6366f1' },
     { label: 'EMOTIONAL DRUNK', color: '#ec4899' },
+    { label: 'ANGRY DRUNK', color: '#dc2626' },
     { label: 'PARTY ANIMAL', color: '#ef4444' },
     { label: 'PHILOSOPHICAL', color: '#3b82f6' },
     { label: 'DOESN\'T DRINK', color: '#6b7280' }
@@ -1943,7 +1943,9 @@ var TIER_PROMPTS = [
     { label: 'TACO BELL', color: '#7c3aed' },
     { label: 'WENDY\'S', color: '#ef4444' },
     { label: 'IN-N-OUT', color: '#dc2626' },
-    { label: 'CHIPOTLE', color: '#92400e' }
+    { label: 'CHIPOTLE', color: '#92400e' },
+    { label: 'SUBWAY', color: '#00a650' },
+    { label: 'ARBY\'S', color: '#c8102e' }
   ]},
   { text: "What social media platform are they?", tiers: [
     { label: 'TIKTOK', color: '#000000' },
