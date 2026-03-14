@@ -136,11 +136,11 @@ a{color:inherit;text-decoration:none}
 #undoBtn.animate .ico svg{transform:rotate(-360deg);transition:transform .4s ease}
 #addTierBtn.animate .ico svg{transform:scale(1.2)}
 
-/* Unique tool-button colors — tone-on-tone: saturated text on tinted bg */
-#addTierBtn{background:rgba(74,222,128,.12);color:#4ADE80;border-color:rgba(74,222,128,.25);box-shadow:var(--shadow),inset 0 0 0 1px rgba(74,222,128,.08)}
-#undoBtn{background:rgba(251,191,36,.12);color:#FBBF24;border-color:rgba(251,191,36,.25);box-shadow:var(--shadow),inset 0 0 0 1px rgba(251,191,36,.08)}
-#trashClear{background:rgba(248,113,113,.12);color:#F87171;border-color:rgba(248,113,113,.25);box-shadow:var(--shadow),inset 0 0 0 1px rgba(248,113,113,.08)}
-#saveBtn{background:rgba(129,140,248,.12);color:#818CF8;border-color:rgba(129,140,248,.25);box-shadow:var(--shadow),inset 0 0 0 1px rgba(129,140,248,.08)}
+/* Unique tool-button colors — tone-on-tone: saturated text on dark tinted bg */
+#addTierBtn{background:#1b3d2a;color:#4ADE80;border-color:rgba(74,222,128,.3);box-shadow:var(--shadow),inset 0 0 0 1px rgba(74,222,128,.08);padding:0 20px 0 16px}
+#undoBtn{background:#392d11;color:#FBBF24;border-color:rgba(251,191,36,.3);box-shadow:var(--shadow),inset 0 0 0 1px rgba(251,191,36,.08)}
+#trashClear{background:#3b2424;color:#F87171;border-color:rgba(248,113,113,.3);box-shadow:var(--shadow),inset 0 0 0 1px rgba(248,113,113,.08)}
+#saveBtn{background:#282940;color:#818CF8;border-color:rgba(129,140,248,.3);box-shadow:var(--shadow),inset 0 0 0 1px rgba(129,140,248,.08)}
 
 /* Light mode tone-on-tone overrides — deeper text, pastel bg */
 :root[data-theme="light"] #addTierBtn{background:#dcfce7;color:#15803d;border-color:rgba(21,128,61,.2);box-shadow:var(--shadow),inset 0 0 0 1px rgba(21,128,61,.06)}
@@ -148,9 +148,9 @@ a{color:inherit;text-decoration:none}
 :root[data-theme="light"] #trashClear{background:#fee2e2;color:#dc2626;border-color:rgba(220,38,38,.2);box-shadow:var(--shadow),inset 0 0 0 1px rgba(220,38,38,.06)}
 :root[data-theme="light"] #saveBtn{background:#e0e7ff;color:#4f46e5;border-color:rgba(79,70,229,.2);box-shadow:var(--shadow),inset 0 0 0 1px rgba(79,70,229,.06)}
 
-/* Theme toggle: shows TARGET mode appearance */
-#themeToggle{background:#f0f2f5;color:#111;border-color:rgba(0,0,0,.12);font-weight:700;box-shadow:var(--shadow),inset 0 0 0 1px rgba(255,255,255,.18)}
-:root[data-theme="light"] #themeToggle{background:#1e1b3a;color:#f0f2f5;border-color:rgba(255,255,255,.1);box-shadow:var(--shadow),inset 0 0 0 1px rgba(255,255,255,.1)}
+/* Theme toggle — tone-on-tone neutral slate; icon styling preserved separately */
+#themeToggle{background:#1e2530;color:#94a3b8;border-color:rgba(148,163,184,.25);font-weight:700;box-shadow:var(--shadow),inset 0 0 0 1px rgba(148,163,184,.08)}
+:root[data-theme="light"] #themeToggle{background:#e2e8f0;color:#475569;border-color:rgba(71,85,105,.15);box-shadow:var(--shadow),inset 0 0 0 1px rgba(71,85,105,.06)}
 #themeToggle.animate .ico svg{transform:rotate(180deg)}
 
 .btn.small{height:42px;padding:0 12px;border-radius:12px;font-weight:700}
