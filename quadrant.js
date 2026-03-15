@@ -19,6 +19,7 @@
   var qBoard = null;        // #quadrantBoard element
   var qZones = [];          // the four .q-zone elements [tl, tr, bl, br]
   var qAxisLabels = {};     // {top, bottom, left, right} contenteditable elements
+  var _qPlacedTokenIds = {}; // track which tray tokens are placed in quadrant (by token id)
 
   /* Default quadrant colors */
   var Q_DEFAULTS = {
@@ -43,23 +44,28 @@
     right: 'HIGH'
   };
 
+  /* ---------- Dot+name pin dimensions ---------- */
+  var Q_DOT_SIZE = 12; // diameter of the color dot
+  var Q_PIN_HEIGHT = 20; // total pin height (dot + name sit inline)
+
   /* ---------- Token size for quadrant (matches CSS) ---------- */
   function qTokenSize(){
-    if(window.matchMedia && window.matchMedia('(max-width:480px)').matches) return 48;
-    if(isSmall()) return 55;
-    return 65;
+    // Returns the hit-area height for a dot-name pin
+    return Q_PIN_HEIGHT;
   }
 
   /* ---------- Clamp token position allowing overflow toward center axes ---------- */
   function clampQPosition(x, y, w, h, sz, zone){
     var pos = zone && zone.id ? zone.id.replace('qzone-','') : '';
-    var minX = 0, maxX = w - sz;
-    var minY = 0, maxY = h - sz;
-    // Allow tokens to extend half their size past the axis-side edges
-    if(pos === 'tl' || pos === 'bl') maxX = w - sz/2;   // right edge is axis
-    if(pos === 'tr' || pos === 'br') minX = -sz/2;       // left edge is axis
-    if(pos === 'tl' || pos === 'tr') maxY = h - sz/2;    // bottom edge is axis
-    if(pos === 'bl' || pos === 'br') minY = -sz/2;       // top edge is axis
+    var pinH = Q_PIN_HEIGHT;
+    var pinW = 80; // approximate max pin width
+    var minX = 0, maxX = w - pinW;
+    var minY = 0, maxY = h - pinH;
+    // Allow pins to extend past the axis-side edges slightly
+    if(pos === 'tl' || pos === 'bl') maxX = w - 10;
+    if(pos === 'tr' || pos === 'br') minX = -10;
+    if(pos === 'tl' || pos === 'tr') maxY = h - 6;
+    if(pos === 'bl' || pos === 'br') minY = -6;
     return { x: Math.max(minX, Math.min(x, maxX)), y: Math.max(minY, Math.min(y, maxY)) };
   }
 
@@ -165,42 +171,160 @@
     zone.dataset.customColor = hexColor;
   }
 
-  /* ---------- Clone a tray token for independent quadrant use ---------- */
+  /* ---------- Build a compact dot+name pin for quadrant use ---------- */
+  function buildQuadrantPin(name, bgColor, isImage, imgSrc, imgAlt){
+    var pin = document.createElement('div');
+    pin.className = 'q-pin';
+    pin.id = uid();
+    pin.setAttribute('tabindex','0');
+    pin.style.touchAction = 'none';
+
+    var dot = document.createElement('span');
+    dot.className = 'q-pin-dot';
+    if(isImage && imgSrc){
+      dot.style.backgroundImage = 'url(' + imgSrc + ')';
+      dot.style.backgroundSize = 'cover';
+      dot.style.backgroundPosition = 'center';
+    } else {
+      dot.style.background = bgColor || '#7da7ff';
+    }
+    pin.appendChild(dot);
+
+    var label = document.createElement('span');
+    label.className = 'q-pin-label';
+    label.textContent = name || imgAlt || '';
+    pin.appendChild(label);
+
+    // Store source data for persistence
+    if(isImage){
+      pin.dataset.pinType = 'image';
+      pin.dataset.pinSrc = imgSrc || '';
+      pin.dataset.pinAlt = imgAlt || '';
+    } else {
+      pin.dataset.pinType = 'name';
+      pin.dataset.pinColor = bgColor || '#7da7ff';
+    }
+    pin.dataset.pinName = name || imgAlt || '';
+
+    // Click to select/deselect
+    on(pin,'click',function(e){
+      if(e.target.closest('.q-pin-del')) return;
+      var already = pin.classList.contains('selected');
+      // Deselect all tokens and pins
+      $$('.token.selected').forEach(function(t){ t.classList.remove('selected'); });
+      $$('.q-pin.selected').forEach(function(p){ p.classList.remove('selected'); });
+      if(!already) pin.classList.add('selected');
+    });
+
+    // Delete button
+    var del = document.createElement('button');
+    del.className = 'q-pin-del';
+    del.type = 'button';
+    del.innerHTML = '&times;';
+    del.setAttribute('aria-label','Remove');
+    on(del,'click',function(e){
+      e.stopPropagation();
+      var srcId = pin.dataset.sourceTokenId;
+      pin.remove();
+      if(srcId) unhideTrayToken(srcId);
+      scheduleQuadrantSave();
+    });
+    pin.appendChild(del);
+
+    enableQuadrantTokenDrag(pin);
+    return pin;
+  }
+
+  /* ---------- Clone a tray token as a compact pin for quadrant ---------- */
   function cloneTokenForQuadrant(original){
     var lbl = original.querySelector('.label');
     var img = original.querySelector('img');
-    var clone;
+    var pin;
     if(lbl){
-      clone = buildNameToken(lbl.textContent, original.style.background || '#7da7ff', !!original.dataset.custom, lbl.style.color);
+      pin = buildQuadrantPin(lbl.textContent, original.style.background || '#7da7ff', false);
     } else if(img){
-      clone = buildImageToken(img.src, img.alt);
+      pin = buildQuadrantPin(img.alt, null, true, img.src, img.alt);
     } else {
       return null;
     }
-    enableQuadrantTokenDrag(clone);
-    return clone;
+    // Track source token for tray hiding
+    pin.dataset.sourceTokenId = original.id || '';
+    return pin;
+  }
+
+  /* ---------- Tray token hiding/showing ---------- */
+  function hideTrayToken(tokenId){
+    if(!tokenId) return;
+    _qPlacedTokenIds[tokenId] = true;
+    var tok = document.getElementById(tokenId);
+    if(tok && tok.closest('#tray')){
+      tok.classList.add('q-placed-hidden');
+    }
+    if(typeof updateTrayCount === 'function') updateTrayCount();
+  }
+
+  function unhideTrayToken(tokenId){
+    if(!tokenId) return;
+    delete _qPlacedTokenIds[tokenId];
+    var tok = document.getElementById(tokenId);
+    if(tok){
+      tok.classList.remove('q-placed-hidden');
+    }
+    if(typeof updateTrayCount === 'function') updateTrayCount();
+  }
+
+  function syncTrayVisibility(){
+    // Rebuild _qPlacedTokenIds from current quadrant pins
+    _qPlacedTokenIds = {};
+    qZones.forEach(function(z){
+      $$('.q-pin',z).forEach(function(pin){
+        var srcId = pin.dataset.sourceTokenId;
+        if(srcId) _qPlacedTokenIds[srcId] = true;
+      });
+    });
+    // Apply visibility
+    if(tray){
+      $$('.token',tray).forEach(function(tok){
+        if(_qPlacedTokenIds[tok.id]){
+          tok.classList.add('q-placed-hidden');
+        } else {
+          tok.classList.remove('q-placed-hidden');
+        }
+      });
+    }
+  }
+
+  function clearAllTrayHiding(){
+    _qPlacedTokenIds = {};
+    if(tray){
+      $$('.token.q-placed-hidden',tray).forEach(function(tok){
+        tok.classList.remove('q-placed-hidden');
+      });
+    }
   }
 
   /* ---------- Free-placement drag within quadrant zones ---------- */
   function enableQuadrantDrop(zone){
-    // Click-to-place: if a token is selected, place it at click position
+    // Click-to-place: if a token/pin is selected, place it at click position
     on(zone,'click',function(e){
-      if(e.target.closest('.token')) return;
-      var selected = $('.token.selected');
+      if(e.target.closest('.q-pin') || e.target.closest('.token')) return;
+      // Check for selected pin first, then selected token
+      var selected = $('.q-pin.selected') || $('.token.selected');
       if(!selected) return;
 
-      // If token is already in a q-zone, update its position
-      if(selected.closest('.q-zone') === zone){
+      var isPin = selected.classList.contains('q-pin');
+
+      // If pin is already in a q-zone, update its position
+      if(isPin && selected.closest('.q-zone') === zone){
         var rect = zone.getBoundingClientRect();
-        var sz = qTokenSize();
-        var x = e.clientX - rect.left - sz/2;
+        var sz = Q_PIN_HEIGHT;
+        var x = e.clientX - rect.left - 6;
         var y = e.clientY - rect.top - sz/2;
         var clamped = clampQPosition(x, y, rect.width, rect.height, sz, zone);
         x = clamped.x; y = clamped.y;
         selected.style.left = (x/rect.width*100)+'%';
         selected.style.top = (y/rect.height*100)+'%';
         selected.classList.remove('selected');
-        refitQToken(selected);
         bringToFront(selected);
         scheduleQuadrantSave();
         return;
@@ -208,24 +332,26 @@
 
       var origin = selected.parentElement;
       var fromTray = (origin.id === 'tray');
-      var fromOtherZone = !fromTray && origin.classList.contains('q-zone');
 
       var rect2 = zone.getBoundingClientRect();
-      var sz2 = qTokenSize();
-      var nx = e.clientX - rect2.left - sz2/2;
+      var sz2 = Q_PIN_HEIGHT;
+      var nx = e.clientX - rect2.left - 6;
       var ny = e.clientY - rect2.top - sz2/2;
       var clamped2 = clampQPosition(nx, ny, rect2.width, rect2.height, sz2, zone);
       nx = clamped2.x; ny = clamped2.y;
 
       var placed;
       if(fromTray){
-        // Clone from tray — original stays in tray
         placed = cloneTokenForQuadrant(selected);
         if(!placed) return;
         selected.classList.remove('selected');
         zone.appendChild(placed);
+        hideTrayToken(selected.id);
+      } else if(isPin){
+        // Moving pin between quadrant zones
+        placed = selected;
+        zone.appendChild(placed);
       } else {
-        // Moving between quadrant zones
         placed = selected;
         zone.appendChild(placed);
       }
@@ -233,86 +359,91 @@
       placed.style.left = (nx/rect2.width*100)+'%';
       placed.style.top = (ny/rect2.height*100)+'%';
       placed.classList.remove('selected');
-      refitQToken(placed);
       bringToFront(placed);
 
-      live('Placed "'+(placed.innerText||'item')+'" on quadrant chart');
+      live('Placed "'+(placed.textContent||'item').trim()+'" on quadrant chart');
       vib(6);
       scheduleQuadrantSave();
     });
   }
 
-  /* ---------- Pointer drag for tokens within quadrant ---------- */
-  function enableQuadrantTokenDrag(token){
-    // Guard: only attach one handler per token
-    if(token._qDragAttached) return;
-    token._qDragAttached = true;
+  /* ---------- Pointer drag for pins within quadrant ---------- */
+  function enableQuadrantTokenDrag(pin){
+    // Guard: only attach one handler per pin
+    if(pin._qDragAttached) return;
+    pin._qDragAttached = true;
 
-    // This is called in addition to the tier drag handlers.
-    // We intercept when in quadrant mode.
-    on(token,'pointerdown',function(e){
+    on(pin,'pointerdown',function(e){
       if(currentMode !== 'quadrant') return;
       if(e.button !== 0) return;
-      if(!token.closest('.q-zone')) return;
+      if(!pin.closest('.q-zone')) return;
+      // Ignore clicks on the delete button
+      if(e.target.closest('.q-pin-del')) return;
 
       e.preventDefault();
       e.stopPropagation();
-      token.setPointerCapture(e.pointerId);
-      bringToFront(token);
+      pin.setPointerCapture(e.pointerId);
+      bringToFront(pin);
 
-      // Lock viewport: prevent overflow, scroll, zoom, text selection, callout
+      // Lock viewport
       document.body.classList.add('dragging-item','q-dragging');
       document.documentElement.classList.add('q-dragging-lock');
 
-      var zone = token.closest('.q-zone');
+      var zone = pin.closest('.q-zone');
       var originZone = zone;
-      var originLeft = token.style.left;
-      var originTop = token.style.top;
-      var savedBg = token.style.background || token.style.backgroundColor || '';
-      var savedZIndex = token.style.zIndex || '';
-      var sz = qTokenSize();
+      var originLeft = pin.style.left;
+      var originTop = pin.style.top;
+      var savedZIndex = pin.style.zIndex || '';
 
-      // Snapshot the token's screen position before we start
-      var tokRect = token.getBoundingClientRect();
-      var anchorX = tokRect.left;
-      var anchorY = tokRect.top;
+      // Snapshot pin's screen position
+      var pinRect = pin.getBoundingClientRect();
+      var anchorX = pinRect.left;
+      var anchorY = pinRect.top;
       var fingerOffX = e.clientX - anchorX;
       var fingerOffY = e.clientY - anchorY;
 
-      // Reparent to body with fixed positioning at the exact same spot,
-      // then use transform:translate3d for all movement (GPU, zero layout thrash)
-      token.classList.add('q-dragging-token');
-      token.style.cssText =
-        'position:fixed !important;' +
-        'left:' + anchorX + 'px !important;' +
-        'top:' + anchorY + 'px !important;' +
-        'width:' + sz + 'px !important;' +
-        'height:' + sz + 'px !important;' +
-        'z-index:9999 !important;' +
-        'margin:0 !important;' +
-        'transform:translate3d(0,0,0) scale(1.06) !important;' +
-        'transition:none !important;' +
-        'touch-action:none !important;' +
-        'user-select:none !important;' +
-        '-webkit-user-select:none !important;' +
-        'pointer-events:auto !important;' +
-        (savedBg ? 'background:' + savedBg + ' !important;' : '');
-      document.body.appendChild(token);
+      // Reparent to body for smooth dragging
+      pin.classList.add('q-dragging-token');
+      pin.style.position = 'fixed';
+      pin.style.left = anchorX + 'px';
+      pin.style.top = anchorY + 'px';
+      pin.style.zIndex = '9999';
+      pin.style.margin = '0';
+      pin.style.transition = 'none';
+      pin.style.touchAction = 'none';
+      pin.style.userSelect = 'none';
+      pin.style.webkitUserSelect = 'none';
+      pin.style.pointerEvents = 'auto';
+      pin.style.transform = 'translate3d(0,0,0) scale(1.08)';
+      pin.style.willChange = 'transform';
+      document.body.appendChild(pin);
 
       var lastDZ = null;
-      var dx = 0, dy = 0;
+      var _curX = 0, _curY = 0;
+      var _targetX = 0, _targetY = 0;
+      var _rafId = 0;
+      var _dragging = true;
+
+      // RAF loop for buttery-smooth movement
+      function rafLoop(){
+        if(!_dragging) return;
+        // Lerp for extra smoothness (0.65 = responsive but smooth)
+        _curX += (_targetX - _curX) * 0.65;
+        _curY += (_targetY - _curY) * 0.65;
+        pin.style.transform = 'translate3d('+_curX+'px,'+_curY+'px,0) scale(1.08)';
+        _rafId = requestAnimationFrame(rafLoop);
+      }
+      _rafId = requestAnimationFrame(rafLoop);
 
       function move(ev){
-        ev.preventDefault(); // block scroll / zoom / callout
-        dx = ev.clientX - e.clientX;
-        dy = ev.clientY - e.clientY;
-        // GPU-only: transform is composited, no layout/paint
-        token.style.transform = 'translate3d('+dx+'px,'+dy+'px,0) scale(1.06)';
+        ev.preventDefault();
+        _targetX = ev.clientX - e.clientX;
+        _targetY = ev.clientY - e.clientY;
 
         // Hit-test under finger
-        token.style.pointerEvents = 'none';
+        pin.style.pointerEvents = 'none';
         var el = document.elementFromPoint(ev.clientX, ev.clientY);
-        token.style.pointerEvents = 'auto';
+        pin.style.pointerEvents = 'auto';
         var dz = el ? (el.closest('.q-zone') || el.closest('#tray')) : null;
 
         if(lastDZ && lastDZ !== dz) lastDZ.classList.remove('drag-over');
@@ -321,7 +452,9 @@
       }
 
       function up(ev){
-        try{token.releasePointerCapture(e.pointerId);}catch(_){}
+        _dragging = false;
+        cancelAnimationFrame(_rafId);
+        try{pin.releasePointerCapture(e.pointerId);}catch(_){}
         document.removeEventListener('pointermove',move,false);
         document.removeEventListener('pointerup',up,false);
         document.removeEventListener('pointercancel',up,false);
@@ -335,51 +468,52 @@
         if(tray) tray.classList.remove('drag-over');
 
         // Determine drop target
-        token.style.pointerEvents = 'none';
+        pin.style.pointerEvents = 'none';
         var dropX = ev.clientX, dropY = ev.clientY;
         var el = document.elementFromPoint(dropX, dropY);
-        token.style.pointerEvents = '';
+        pin.style.pointerEvents = '';
         var dropZone = el ? el.closest('.q-zone') : null;
         var dropTray = el ? el.closest('#tray') : null;
 
-        // Strip all inline overrides and restore preserved styles
-        token.classList.remove('q-dragging-token');
-        token.style.cssText = '';
-        if(savedBg) token.style.background = savedBg;
+        // Strip all inline overrides
+        pin.classList.remove('q-dragging-token');
+        pin.style.cssText = '';
 
         if(dropTray){
-          // Destroy quadrant clone — original is still in tray
-          token.remove();
+          // Destroy pin and unhide the source tray token
+          var srcId = pin.dataset.sourceTokenId;
+          pin.remove();
+          if(srcId) unhideTrayToken(srcId);
           live('Removed from quadrant chart');
           vib(6);
           scheduleQuadrantSave();
         } else if(dropZone){
           // Place in quadrant zone at finger position
           var rect = dropZone.getBoundingClientRect();
-          var nx = dropX - rect.left - sz/2;
-          var ny = dropY - rect.top - sz/2;
-          var clampedDrop = clampQPosition(nx, ny, rect.width, rect.height, sz, dropZone);
+          var pinH = Q_PIN_HEIGHT;
+          var nx = dropX - rect.left - 6;
+          var ny = dropY - rect.top - pinH/2;
+          var clampedDrop = clampQPosition(nx, ny, rect.width, rect.height, pinH, dropZone);
           nx = clampedDrop.x; ny = clampedDrop.y;
 
           if(dropZone !== originZone){
             var fromId2 = ensureId(originZone,'zone');
-            recordPlacement(token.id, fromId2, dropZone.id, '');
+            recordPlacement(pin.id, fromId2, dropZone.id, '');
           }
-          dropZone.appendChild(token);
-          token.style.position = 'absolute';
-          token.style.left = (nx/rect.width*100)+'%';
-          token.style.top = (ny/rect.height*100)+'%';
-          refitQToken(token);
-          bringToFront(token);
+          dropZone.appendChild(pin);
+          pin.style.position = 'absolute';
+          pin.style.left = (nx/rect.width*100)+'%';
+          pin.style.top = (ny/rect.height*100)+'%';
+          bringToFront(pin);
           vib(6);
           scheduleQuadrantSave();
         } else {
           // Snap back to original zone
-          originZone.appendChild(token);
-          token.style.position = 'absolute';
-          token.style.left = originLeft;
-          token.style.top = originTop;
-          token.style.zIndex = savedZIndex;
+          originZone.appendChild(pin);
+          pin.style.position = 'absolute';
+          pin.style.left = originLeft;
+          pin.style.top = originTop;
+          pin.style.zIndex = savedZIndex;
         }
       }
 
@@ -432,11 +566,13 @@
       document.body.classList.remove('quadrant-mode');
       if(tierBoard) tierBoard.classList.add('hidden-mode');
       qBoard.classList.remove('active');
-      // Save quadrant data then destroy clones
+      // Save quadrant data then destroy pins
       saveQuadrantData();
       qZones.forEach(function(z){
+        $$('.q-pin',z).forEach(function(pin){ pin.remove(); });
         $$('.token',z).forEach(function(tok){ tok.remove(); });
       });
+      clearAllTrayHiding();
       if(typeof hidePromptStack === 'function') hidePromptStack();
       if(typeof showBattleMode === 'function') showBattleMode();
     } else {
@@ -446,8 +582,10 @@
       if(typeof showPromptStack === 'function') showPromptStack();
       saveQuadrantData();
       qZones.forEach(function(z){
+        $$('.q-pin',z).forEach(function(pin){ pin.remove(); });
         $$('.token',z).forEach(function(tok){ tok.remove(); });
       });
+      clearAllTrayHiding();
     }
     // Update toggle buttons
     $$('.mode-toggle-btn').forEach(function(btn){
@@ -491,30 +629,25 @@
     Q_POSITIONS.forEach(function(pos,i){
       var z = qZones[i];
       if(!z) return;
-      var tokens = [];
-      $$('.token',z).forEach(function(tok){
-        var lbl = tok.querySelector('.label');
-        var img = tok.querySelector('img');
-        var isCustom = tok.dataset.custom === 'true';
+      var pins = [];
+      $$('.q-pin',z).forEach(function(pin){
         var entry = {
-          left: tok.style.left || '10%',
-          top: tok.style.top || '10%'
+          left: pin.style.left || '10%',
+          top: pin.style.top || '10%',
+          name: pin.dataset.pinName || '',
+          sourceTokenId: pin.dataset.sourceTokenId || ''
         };
-        if(lbl){
-          entry.type = 'name';
-          entry.name = lbl.textContent;
-          entry.color = tok.style.background;
-          entry.textColor = lbl.style.color;
-          entry.custom = isCustom;
-        } else if(img){
+        if(pin.dataset.pinType === 'image'){
           entry.type = 'image';
-          entry.src = img.src;
-          entry.alt = img.alt;
-          entry.custom = true;
+          entry.src = pin.dataset.pinSrc || '';
+          entry.alt = pin.dataset.pinAlt || '';
+        } else {
+          entry.type = 'name';
+          entry.color = pin.dataset.pinColor || '#7da7ff';
         }
-        tokens.push(entry);
+        pins.push(entry);
       });
-      data.zones[pos] = tokens;
+      data.zones[pos] = pins;
       if(z.dataset.customColor) data.colors[pos] = z.dataset.customColor;
     });
     try{localStorage.setItem(QUADRANT_STORAGE_KEY, JSON.stringify(data));}catch(e){}
@@ -545,39 +678,45 @@
         });
       }
 
-      // Restore tokens in zones as independent clones
+      // Restore pins in zones
       if(data.zones){
         Q_POSITIONS.forEach(function(pos,i){
-          var zoneTokens = data.zones[pos];
-          if(!zoneTokens || !qZones[i]) return;
-          zoneTokens.forEach(function(td){
-            var tok = null;
-            if(td.type === 'name'){
-              tok = buildNameToken(td.name, td.color || '#7da7ff', !!td.custom, td.textColor);
-            } else if(td.type === 'image'){
-              tok = buildImageToken(td.src, td.alt);
+          var zonePins = data.zones[pos];
+          if(!zonePins || !qZones[i]) return;
+          zonePins.forEach(function(td){
+            var pin = null;
+            if(td.type === 'image'){
+              pin = buildQuadrantPin(td.alt || td.name, null, true, td.src, td.alt);
+            } else {
+              pin = buildQuadrantPin(td.name, td.color || '#7da7ff', false);
             }
-            if(tok){
-              tok.style.position = 'absolute';
-              tok.style.left = td.left || '10%';
-              tok.style.top = td.top || '10%';
-              qZones[i].appendChild(tok);
-              enableQuadrantTokenDrag(tok);
-              refitQToken(tok);
-              bringToFront(tok);
+            if(pin){
+              pin.style.position = 'absolute';
+              pin.style.left = td.left || '10%';
+              pin.style.top = td.top || '10%';
+              if(td.sourceTokenId) pin.dataset.sourceTokenId = td.sourceTokenId;
+              qZones[i].appendChild(pin);
+              bringToFront(pin);
             }
           });
         });
       }
+
+      // Sync tray visibility based on loaded pins
+      syncTrayVisibility();
     }catch(e){}
   }
 
   /* ---------- Clear quadrant zones in-place (no reload) ---------- */
   function clearQuadrants(){
-    // Remove all quadrant token clones
+    // Remove all quadrant pins
     qZones.forEach(function(z){
+      $$('.q-pin',z).forEach(function(pin){ pin.remove(); });
+      // Also remove any legacy tokens
       $$('.token',z).forEach(function(tok){ tok.remove(); });
     });
+    // Unhide all tray tokens
+    clearAllTrayHiding();
     // Reset axis labels to defaults
     ['top','bottom','left','right'].forEach(function(dir){
       if(qAxisLabels[dir]) qAxisLabels[dir].textContent = DEFAULT_LABELS[dir];
@@ -592,23 +731,8 @@
     if(typeof showSaveToast === 'function') showSaveToast('Quadrants cleared');
   }
 
-  /* Refit token label for smaller size in quadrant */
-  function refitQToken(tok){
-    var lbl = tok.querySelector('.label');
-    if(!lbl) return;
-    var sz = qTokenSize();
-    var pad = 4;
-    var maxW = sz - pad*2;
-    var text = lbl.textContent;
-    var px = 13;
-    for(;px >= 8; px--){
-      if(measureTokenText(text,'900',px) <= maxW) break;
-    }
-    lbl.style.fontFamily = "'Montserrat',ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
-    lbl.style.fontSize = Math.max(px,8)+'px';
-    lbl.style.fontWeight = '900';
-    lbl.style.padding = pad+'px';
-  }
+  /* refitQToken is a no-op now — pins auto-size via CSS */
+  function refitQToken(tok){ /* no-op for pins */ }
 
   var _qSaveTimeout = null;
   function scheduleQuadrantSave(){
@@ -621,7 +745,7 @@
 
   /* ---------- Observe quadrant zone mutations for auto-save ---------- */
   function startQuadrantAutoSave(){
-    var onMutate = function(){ scheduleQuadrantSave(); };
+    var onMutate = function(){ scheduleQuadrantSave(); syncTrayVisibility(); };
     qZones.forEach(function(z){
       var obs = new MutationObserver(onMutate);
       obs.observe(z, {childList:true, subtree:true});
@@ -672,11 +796,12 @@
       '.board-title-wrap{display:block !important;text-align:center !important;margin-bottom:20px !important}',
       '.board-title{display:block !important;text-align:center !important;font-size:28px !important;white-space:normal !important;word-wrap:break-word !important;overflow-wrap:break-word !important}',
       '.token-del{display:none !important}',
+      '.q-pin-del{display:none !important}',
       '.mode-toggle-wrap{display:none !important}',
-      // Force token sizing and layout for clean export — strip box-shadow to prevent 3D bubble artifact
-      '.q-zone .token{width:65px !important;height:65px !important;position:absolute !important;box-shadow:none !important}',
-      ".q-zone .token .label{font-family:'Montserrat',ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif !important;font-weight:900 !important;text-align:center !important;display:flex !important;align-items:center !important;justify-content:center !important;position:absolute !important;top:0 !important;left:0 !important;width:65px !important;height:65px !important;padding:4px !important;white-space:nowrap !important;box-sizing:border-box !important}",
-      '.q-zone .token img{width:100% !important;height:100% !important;object-fit:cover !important;border-radius:999px !important}',
+      // Pin styling for export
+      '.q-pin{position:absolute !important}',
+      ".q-pin-label{font-family:'Montserrat',ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif !important;font-weight:700 !important;font-size:11px !important}",
+      '.q-pin-dot{width:12px !important;height:12px !important;border-radius:50% !important;flex-shrink:0 !important}',
       // Ensure quadrant grid renders properly at export width
       '.q-grid-wrap{min-height:500px !important}',
       '.q-zone{min-height:240px !important;overflow:visible !important}',
@@ -697,21 +822,6 @@
 
     cloneWrap.appendChild(clone);
     document.body.appendChild(cloneWrap);
-
-    // Refit token labels in clone for crisp export rendering
-    var cloneTokenLabels = clone.querySelectorAll ? clone.querySelectorAll('.q-zone .token .label') : [];
-    for(var li=0; li<cloneTokenLabels.length; li++){
-      var lbl = cloneTokenLabels[li];
-      var text = lbl.textContent;
-      var maxW = 65 - 8; // token width minus padding
-      var px = 13;
-      for(; px >= 8; px--){
-        if(measureTokenText(text,'900',px) <= maxW) break;
-      }
-      lbl.style.fontFamily = "'Montserrat',ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
-      lbl.style.fontWeight = '900';
-      lbl.style.fontSize = Math.max(px,8)+'px';
-    }
 
     if(typeof htmlToImage === 'undefined' || typeof htmlToImage.toPng !== 'function'){
       cloneWrap.remove();
@@ -746,25 +856,23 @@
     });
   }
 
-  /* ---------- Arrow-key nudge for precise token positioning ---------- */
+  /* ---------- Arrow-key nudge for precise pin positioning ---------- */
   on(document,'keydown',function(e){
     if(currentMode !== 'quadrant') return;
     var arrows = {ArrowUp:1,ArrowDown:1,ArrowLeft:1,ArrowRight:1};
     if(!arrows[e.key]) return;
-    var tok = $('.token.selected');
-    if(!tok || !tok.closest('.q-zone')) return;
+    var pin = $('.q-pin.selected');
+    if(!pin || !pin.closest('.q-zone')) return;
     e.preventDefault();
 
-    var zone = tok.closest('.q-zone');
+    var zone = pin.closest('.q-zone');
     var rect = zone.getBoundingClientRect();
-    var sz = qTokenSize();
+    var sz = Q_PIN_HEIGHT;
     // Shift = 1px micro-nudge, normal = 5px
     var step = e.shiftKey ? 1 : 5;
-    var pxPerPctW = rect.width / 100;
-    var pxPerPctH = rect.height / 100;
 
-    var curLeft = parseFloat(tok.style.left) || 0;
-    var curTop = parseFloat(tok.style.top) || 0;
+    var curLeft = parseFloat(pin.style.left) || 0;
+    var curTop = parseFloat(pin.style.top) || 0;
     var curX = curLeft / 100 * rect.width;
     var curY = curTop / 100 * rect.height;
 
@@ -774,8 +882,8 @@
     if(e.key === 'ArrowDown')  curY += step;
 
     var clamped = clampQPosition(curX, curY, rect.width, rect.height, sz, zone);
-    tok.style.left = (clamped.x / rect.width * 100) + '%';
-    tok.style.top = (clamped.y / rect.height * 100) + '%';
+    pin.style.left = (clamped.x / rect.width * 100) + '%';
+    pin.style.top = (clamped.y / rect.height * 100) + '%';
     scheduleQuadrantSave();
   });
 
@@ -857,18 +965,16 @@
           var fromTray = (origin.id === 'tray');
 
           var rect = zone.getBoundingClientRect();
-          var sz = qTokenSize();
+          var pinH = Q_PIN_HEIGHT;
           var cx2, cy2;
           if(j === 2){
-            // Center: place at intersection of axes (bottom-right corner of tl zone)
-            cx2 = rect.width - sz/2 + (Math.random()-0.5)*20;
-            cy2 = rect.height - sz/2 + (Math.random()-0.5)*20;
+            cx2 = rect.width - 40 + (Math.random()-0.5)*20;
+            cy2 = rect.height - pinH + (Math.random()-0.5)*20;
           } else {
-            // Place at center of zone with small random offset
-            cx2 = (rect.width/2 - sz/2) + (Math.random()-0.5)*40;
-            cy2 = (rect.height/2 - sz/2) + (Math.random()-0.5)*40;
+            cx2 = (rect.width/2 - 20) + (Math.random()-0.5)*40;
+            cy2 = (rect.height/2 - pinH/2) + (Math.random()-0.5)*40;
           }
-          var clampedR = clampQPosition(cx2, cy2, rect.width, rect.height, sz, zone);
+          var clampedR = clampQPosition(cx2, cy2, rect.width, rect.height, pinH, zone);
           cx2 = clampedR.x; cy2 = clampedR.y;
 
           var placed;
@@ -877,6 +983,7 @@
             if(!placed) return;
             token.classList.remove('selected');
             zone.appendChild(placed);
+            hideTrayToken(token.id);
           } else {
             placed = token;
             zone.appendChild(placed);

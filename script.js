@@ -645,6 +645,8 @@ function insertBeforeForPoint(zone,x,y,except){
 function enableClickToPlace(zone){
   ensureId(zone,'zone');
   on(zone,'click', function(e){
+    // In quadrant mode, let the quadrant-specific handler manage placement
+    if(typeof window.currentChartMode === 'function' && window.currentChartMode() === 'quadrant' && zone.classList.contains('q-zone')) return;
     var picker=$('#radialPicker'); if(picker && !picker.classList.contains('hidden')) return;
     var selected = $('.token.selected'); if (!selected) return;
     if(isSmall() && !selected.closest('#tray')) return;
@@ -728,27 +730,28 @@ function enablePointerDrag(node){
         var originBeforeId = originNext ? ensureId(originNext,'tok') : '';
         var isQZone = zone.classList.contains('q-zone');
         if(isQZone){
-          // Quadrant zone: clone token, place clone, leave original in tray
+          // Quadrant zone: clone token as pin, hide original in tray
           var qClone = typeof window.cloneTokenForQuadrant === 'function' ? window.cloneTokenForQuadrant(node) : null;
           var placed = qClone || node;
           var rect = zone.getBoundingClientRect();
-          var sz = placed.offsetWidth || 65;
-          var nx = x - rect.left - sz/2;
-          var ny = y - rect.top - sz/2;
-          nx = Math.max(0, Math.min(nx, rect.width - sz));
-          ny = Math.max(0, Math.min(ny, rect.height - sz));
+          var pinH = 20;
+          var nx = x - rect.left - 6;
+          var ny = y - rect.top - pinH/2;
+          if(typeof window.clampQPosition==='function'){
+            var cl=window.clampQPosition(nx,ny,rect.width,rect.height,pinH,zone);nx=cl.x;ny=cl.y;
+          } else { nx=Math.max(0,Math.min(nx,rect.width-60));ny=Math.max(0,Math.min(ny,rect.height-pinH)); }
           zone.appendChild(placed);
           placed.style.position = 'absolute';
           placed.style.left = (nx/rect.width*100)+'%';
           placed.style.top = (ny/rect.height*100)+'%';
-          if(typeof window.refitQToken==='function') window.refitQToken(placed);
           if(typeof window.bringQTokenToFront==='function') window.bringQTokenToFront(placed);
-          // Original stays in tray — restore its position
+          // Hide original in tray
           if(qClone){
             flipZones([originParent], function(){
               if(originNext && originNext.parentElement===originParent) originParent.insertBefore(node, originNext);
               else originParent.appendChild(node);
             });
+            node.classList.add('q-placed-hidden');
           }
         } else {
           var beforeTok = insertBeforeForPoint(zone,x,y,node);
@@ -825,22 +828,23 @@ function enableMouseTouchDragFallback(node){
         var qClone2 = typeof window.cloneTokenForQuadrant === 'function' ? window.cloneTokenForQuadrant(node) : null;
         var placed2 = qClone2 || node;
         var rect = zone.getBoundingClientRect();
-        var sz = placed2.offsetWidth || 65;
-        var nx = x - rect.left - sz/2;
-        var ny = y - rect.top - sz/2;
-        nx = Math.max(0, Math.min(nx, rect.width - sz));
-        ny = Math.max(0, Math.min(ny, rect.height - sz));
+        var pinH = 20;
+        var nx = x - rect.left - 6;
+        var ny = y - rect.top - pinH/2;
+        if(typeof window.clampQPosition==='function'){
+          var cl2=window.clampQPosition(nx,ny,rect.width,rect.height,pinH,zone);nx=cl2.x;ny=cl2.y;
+        } else { nx=Math.max(0,Math.min(nx,rect.width-60));ny=Math.max(0,Math.min(ny,rect.height-pinH)); }
         zone.appendChild(placed2);
         placed2.style.position = 'absolute';
         placed2.style.left = (nx/rect.width*100)+'%';
         placed2.style.top = (ny/rect.height*100)+'%';
-        if(typeof window.refitQToken==='function') window.refitQToken(placed2);
         if(typeof window.bringQTokenToFront==='function') window.bringQTokenToFront(placed2);
         if(qClone2){
           flipZones([originParent], function(){
             if(originNext && originNext.parentElement===originParent) originParent.insertBefore(node, originNext);
             else originParent.appendChild(node);
           });
+          node.classList.add('q-placed-hidden');
         }
       } else {
         var beforeTok=insertBeforeForPoint(zone,x,y,node);
@@ -1466,19 +1470,20 @@ on(document,'keydown',function(e){
     var origin=selected.parentElement;
     var fromTray=(origin.id==='tray');
     var rect=qz.getBoundingClientRect();
-    var sz=selected.offsetWidth||65;
+    var pinH=20;
     // Place near center with slight random offset
-    var cx=(rect.width/2-sz/2)+(Math.random()-0.5)*40;
-    var cy=(rect.height/2-sz/2)+(Math.random()-0.5)*40;
+    var cx=(rect.width/2-20)+(Math.random()-0.5)*40;
+    var cy=(rect.height/2-pinH/2)+(Math.random()-0.5)*40;
     if(typeof window.clampQPosition==='function'){
-      var cl=window.clampQPosition(cx,cy,rect.width,rect.height,sz,qz);cx=cl.x;cy=cl.y;
-    } else { cx=Math.max(0,Math.min(cx,rect.width-sz));cy=Math.max(0,Math.min(cy,rect.height-sz)); }
+      var cl=window.clampQPosition(cx,cy,rect.width,rect.height,pinH,qz);cx=cl.x;cy=cl.y;
+    } else { cx=Math.max(0,Math.min(cx,rect.width-60));cy=Math.max(0,Math.min(cy,rect.height-pinH)); }
     var placed;
     if(fromTray && typeof window.cloneTokenForQuadrant==='function'){
       placed=window.cloneTokenForQuadrant(selected);
       if(!placed) return;
       selected.classList.remove('selected');
       qz.appendChild(placed);
+      selected.classList.add('q-placed-hidden');
     } else {
       placed=selected;
       qz.appendChild(placed);
@@ -1487,10 +1492,9 @@ on(document,'keydown',function(e){
     placed.style.left=(cx/rect.width*100)+'%';
     placed.style.top=(cy/rect.height*100)+'%';
     placed.classList.remove('selected');
-    if(typeof window.refitQToken==='function') window.refitQToken(placed);
     if(typeof window.bringQTokenToFront==='function') window.bringQTokenToFront(placed);
     vib(4);
-    live('Placed "'+(placed.innerText||'item')+'" on quadrant');
+    live('Placed "'+(placed.textContent||'item').trim()+'" on quadrant');
     if(typeof window.scheduleQuadrantSave==='function') window.scheduleQuadrantSave();
     return;
   }
