@@ -1920,7 +1920,8 @@ var TIER_PROMPTS = [
     { label: 'RYAN', color: '#06b6d4' },
     { label: 'ANDY', color: '#f97316' },
     { label: 'DARRYL', color: '#15803d' },
-    { label: 'KELLY', color: '#db2777' }
+    { label: 'KELLY', color: '#db2777' },
+    { label: 'OSCAR', color: '#0891b2' }
   ]},
   { text: 'Most to Least Likely to Accidentally Start a Fire' },
   { text: 'Who Would Last the Longest on a Reality TV Show' },
