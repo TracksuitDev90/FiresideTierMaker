@@ -154,48 +154,98 @@
   box-shadow:inset 0 0 0 3px rgba(139,125,255,.4);
 }
 
-/* ---------- Quadrant tokens (smaller) ---------- */
-.q-zone .token{
+/* ---------- Quadrant pins (compact dot + name) ---------- */
+.q-pin{
   position:absolute;
-  width:65px;height:65px;
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
   z-index:5;
   cursor:grab;
-  /* Remove grid-based positioning */
   margin:0;
-  /* Depth ring for overlapping discernibility */
-  box-shadow:0 2px 8px rgba(0,0,0,.35), 0 0 0 2px rgba(255,255,255,.25);
-  transition:transform .08s ease, box-shadow .15s ease;
-}
-:root[data-theme="light"] .q-zone .token{
-  box-shadow:0 2px 8px rgba(0,0,0,.18), 0 0 0 2px rgba(0,0,0,.12);
-}
-.q-zone .token:active{cursor:grabbing}
-.q-zone .token.selected{
-  box-shadow:0 4px 16px rgba(0,0,0,.45), 0 0 0 3px var(--accent);
-}
-.q-zone .token .label{
-  font-family:'Montserrat',ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-  font-weight:900;
-  font-size:13px;
-  padding:4px;
-}
-.q-zone .token img{
-  width:100%;height:100%;object-fit:cover;border-radius:999px;pointer-events:none;
-}
-/* Tokens inside quadrant zones — kill all browser touch gestures */
-.q-zone .token{
+  padding:2px 6px 2px 2px;
+  border-radius:12px;
+  background:rgba(0,0,0,.35);
+  backdrop-filter:blur(6px);
+  -webkit-backdrop-filter:blur(6px);
+  white-space:nowrap;
+  max-width:120px;
+  transition:transform .06s ease, box-shadow .12s ease, background .15s ease;
   touch-action:none;
   -webkit-touch-callout:none;
   -webkit-user-select:none;
   user-select:none;
 }
+:root[data-theme="light"] .q-pin{
+  background:rgba(255,255,255,.7);
+  backdrop-filter:blur(6px);
+  -webkit-backdrop-filter:blur(6px);
+}
+.q-pin:hover{
+  background:rgba(0,0,0,.5);
+  transform:scale(1.04);
+}
+:root[data-theme="light"] .q-pin:hover{
+  background:rgba(255,255,255,.9);
+}
+.q-pin:active{cursor:grabbing}
+.q-pin.selected{
+  box-shadow:0 0 0 2px var(--accent), 0 2px 8px rgba(139,125,255,.4);
+}
+.q-pin-dot{
+  width:12px;height:12px;
+  border-radius:50%;
+  flex-shrink:0;
+  border:1.5px solid rgba(255,255,255,.5);
+}
+:root[data-theme="light"] .q-pin-dot{
+  border-color:rgba(0,0,0,.15);
+}
+.q-pin-label{
+  font-family:'Montserrat',ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  font-weight:700;
+  font-size:10px;
+  line-height:1.2;
+  color:#fff;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  max-width:90px;
+}
+:root[data-theme="light"] .q-pin-label{
+  color:#1a1a2e;
+}
+.q-pin-del{
+  display:none;
+  position:absolute;
+  top:-6px;right:-6px;
+  width:16px;height:16px;
+  border-radius:50%;
+  background:var(--danger, #ef4444);
+  color:#fff;
+  font-size:11px;line-height:16px;
+  text-align:center;
+  border:none;cursor:pointer;
+  padding:0;
+  z-index:10;
+}
+.q-pin:hover .q-pin-del{display:block}
 
-/* Direct-manipulation drag: the actual token becomes the drag visual */
+/* Tray token hidden when placed in quadrant */
+.q-placed-hidden{
+  display:none !important;
+}
+
+/* Direct-manipulation drag: the actual pin becomes the drag visual */
 .q-dragging-token{
-  /* GPU-composited layer for zero-lag movement */
   will-change:transform;
-  box-shadow:0 12px 32px rgba(0,0,0,.4) !important;
-  opacity:.95;
+  box-shadow:0 8px 24px rgba(0,0,0,.4) !important;
+  opacity:.92;
+  z-index:9999 !important;
+}
+
+/* Legacy token support in quadrant — hide if somehow still present */
+.q-zone .token{
+  display:none;
 }
 
 /* Lock viewport during quadrant drag */
@@ -227,8 +277,8 @@ body.quadrant-mode .controls{grid-template-columns:repeat(4,minmax(0,1fr))}
 @media (max-width:768px){
   .q-grid-wrap{min-height:420px}
   .q-zone{min-height:200px}
-  .q-zone .token{width:55px;height:55px}
-  .q-zone .token .label{font-size:11px;font-weight:900;padding:3px}
+  .q-pin-label{font-size:9px;max-width:70px}
+  .q-pin-dot{width:10px;height:10px}
   .q-axis-label{font-size:11px;padding:3px 4px}
   .q-labels-col,.q-labels-col-right{min-width:24px}
   .mode-toggle-wrap{max-width:420px}
@@ -237,8 +287,9 @@ body.quadrant-mode .controls{grid-template-columns:repeat(4,minmax(0,1fr))}
 @media (max-width:480px){
   .q-grid-wrap{min-height:370px}
   .q-zone{min-height:175px}
-  .q-zone .token{width:48px;height:48px}
-  .q-zone .token .label{font-size:10px;font-weight:900;padding:2px}
+  .q-pin{padding:1px 4px 1px 1px;gap:3px;max-width:100px}
+  .q-pin-label{font-size:8px;max-width:60px}
+  .q-pin-dot{width:9px;height:9px}
   .q-axis-label{font-size:10px;padding:2px 3px}
   .q-labels-col,.q-labels-col-right{min-width:20px}
   .mode-toggle-wrap{max-width:100%;gap:3px;padding:3px}
