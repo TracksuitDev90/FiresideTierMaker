@@ -1920,6 +1920,7 @@ var TIER_PROMPTS = [
     { label: 'OSCAR', color: '#0891b2' },
     { label: 'KEVIN', color: '#f59e0b' },
     { label: 'STANLEY', color: '#6b7280' },
+    { label: 'PHYLLIS', color: '#f43f5e' },
     { label: 'DARRYL', color: '#15803d' },
     { label: 'MEREDITH', color: '#9333ea' },
     { label: 'CREED', color: '#dc2626' }
