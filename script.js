@@ -1986,15 +1986,15 @@ var TIER_PROMPTS = [
     { label: 'LINKEDIN', color: '#0a66c2' }
   ]},
   { text: "Which Black Clover Magic Knight Squad would they be in?", tiers: [
-    { label: 'GOLDEN DAWN', color: '#DAA520', image: 'icons/squads/golden-dawn.svg' },
-    { label: 'BLACK BULLS', color: '#1a1a1a', image: 'icons/squads/black-bull.svg' },
-    { label: 'SILVER EAGLES', color: '#A9A9A9', image: 'icons/squads/silver-eagle.svg' },
-    { label: 'BLUE ROSE', color: '#4169E1', image: 'icons/squads/blue-rose.svg' },
-    { label: 'CRIMSON LION', color: '#DC143C', image: 'icons/squads/crimson-lion.svg' },
-    { label: 'GREEN MANTIS', color: '#228B22', image: 'icons/squads/green-mantis.svg' },
-    { label: 'PURPLE ORCAS', color: '#6A0DAD', image: 'icons/squads/purple-orca.svg' },
-    { label: 'CORAL PEACOCK', color: '#FF7F50', image: 'icons/squads/coral-peacock.svg' },
-    { label: 'AQUA DEER', color: '#00CED1', image: 'icons/squads/aqua-deer.svg' }
+    { label: 'GOLDEN DAWN', color: '#DAA520', image: 'icons/squads/golden-dawn.png' },
+    { label: 'BLACK BULLS', color: '#1a1a1a', image: 'icons/squads/black-bull.png' },
+    { label: 'SILVER EAGLES', color: '#A9A9A9', image: 'icons/squads/silver-eagle.png' },
+    { label: 'BLUE ROSE', color: '#4169E1', image: 'icons/squads/blue-rose.png' },
+    { label: 'CRIMSON LION', color: '#DC143C', image: 'icons/squads/crimson-lion.png' },
+    { label: 'GREEN MANTIS', color: '#228B22', image: 'icons/squads/green-mantis.png' },
+    { label: 'PURPLE ORCAS', color: '#6A0DAD', image: 'icons/squads/purple-orca.png' },
+    { label: 'CORAL PEACOCK', color: '#FF7F50', image: 'icons/squads/coral-peacock.png' },
+    { label: 'AQUA DEER', color: '#00CED1', image: 'icons/squads/aqua-deer.png' }
   ]}
 ];
 // Pin the newest prompts first, shuffle the rest

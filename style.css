@@ -521,7 +521,7 @@ a{color:inherit;text-decoration:none}
 
 /* Image-based tier label crest */
 .label-chip.has-crest{
-  padding:4px;cursor:default;background:transparent !important;
+  padding:4px;cursor:default;
 }
 .label-chip.has-crest .label-crest{
   width:100%;height:100%;object-fit:contain;
