@@ -519,6 +519,15 @@ a{color:inherit;text-decoration:none}
   text-align:center;padding:6px 8px;overflow:hidden;
 }
 
+/* Image-based tier label crest */
+.label-chip.has-crest{
+  padding:4px;cursor:default;background:transparent !important;
+}
+.label-chip.has-crest .label-crest{
+  width:100%;height:100%;object-fit:contain;
+  pointer-events:none;filter:drop-shadow(0 2px 4px rgba(0,0,0,.4));
+}
+
 /* Chip area: positions color picker relative to chip, not the stretching tier-label */
 .chip-area{position:relative;width:100%;height:100%}
 

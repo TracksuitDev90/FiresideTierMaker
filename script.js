@@ -183,7 +183,7 @@ function tintFrom(color){
   );
 }
 function ensureId(el, prefix){ if(!el.id){ el.id=(prefix||'id')+'-'+uid(); } return el.id; }
-function rowLabel(row){ var chip=row?row.querySelector('.label-chip'):null; return chip?chip.textContent.replace(/\s+/g,' ').trim():'row'; }
+function rowLabel(row){ var chip=row?row.querySelector('.label-chip'):null; if(!chip) return 'row'; if(chip.classList.contains('has-crest')){ var img=chip.querySelector('.label-crest'); return img&&img.alt?img.alt:'crest'; } return chip.textContent.replace(/\s+/g,' ').trim()||'row'; }
 
 /* ---------- Chip label auto-sizer ---------- */
 /* Canvas-based measurement with word-wrap simulation.
@@ -192,6 +192,7 @@ function rowLabel(row){ var chip=row?row.querySelector('.label-chip'):null; retu
    but never breaking a word. */
 function fitChipLabel(chip){
   if (!chip) return;
+  if (chip.classList.contains('has-crest')) return;
   var text = chip.textContent.replace(/\s+/g,' ').trim();
   if (!text) { chip.style.fontSize = ''; return; }
 
@@ -251,10 +252,12 @@ function labelFitsAt(text, px, w, h) {
 function uniformizeTierLabels(){
   var chips = $$('#tierBoard .label-chip');
   if (!chips.length) return;
+  // Skip image-based labels
+  var textChips = chips.filter(function(c){ return !c.classList.contains('has-crest'); });
   // Fit each chip individually first
-  chips.forEach(function(c){ fitChipLabel(c); });
+  textChips.forEach(function(c){ fitChipLabel(c); });
   // Only uniformize chips whose text is 3+ characters
-  var longChips = chips.filter(function(c){
+  var longChips = textChips.filter(function(c){
     return c.textContent.replace(/\s+/g,' ').trim().length > 2;
   });
   if (longChips.length < 2) return;
@@ -290,10 +293,26 @@ function createRow(cfg){
   var colorBtn = dom.colorBtn, colorInput = dom.colorInput;
 
   ensureId(drop,'zone');
-  chip.textContent = cfg.label;
+
+  /* Image-based tier label: show crest image instead of text */
+  if(cfg.image){
+    var img = document.createElement('img');
+    img.src = cfg.image;
+    img.alt = cfg.label || '';
+    img.className = 'label-crest';
+    img.draggable = false;
+    chip.textContent = '';
+    chip.appendChild(img);
+    chip.removeAttribute('contenteditable');
+    chip.classList.add('has-crest');
+    chip.dataset.crestSrc = cfg.image;
+  } else {
+    chip.textContent = cfg.label;
+  }
   applyTierColor(node, cfg.color);
 
   on(chip,'input', function(){
+    if(chip.classList.contains('has-crest')) return;
     uniformizeTierLabels();
     // Browser may re-scroll contenteditable after style changes;
     // reset scroll in the next frame so text stays left-aligned
@@ -301,8 +320,8 @@ function createRow(cfg){
     requestAnimationFrame(function(){ chip.scrollLeft = 0; });
   });
   on(chip,'keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); chip.blur(); } });
-  on(chip,'blur', function(){ uniformizeTierLabels(); chip.scrollLeft = 0; });
-  fitChipLabel(chip);
+  on(chip,'blur', function(){ if(!chip.classList.contains('has-crest')){ uniformizeTierLabels(); chip.scrollLeft = 0; } });
+  if(!cfg.image) fitChipLabel(chip);
 
   /* Color picker — label wraps input so native click opens the dialog */
   on(colorBtn,'click', function(e){ e.stopPropagation(); });
@@ -1555,8 +1574,9 @@ function saveTierList(){
     var chip = row.querySelector('.label-chip');
     var drop = row.querySelector('.tier-drop');
     var rowData = {
-      label: chip ? chip.textContent : '',
+      label: chip ? (chip.classList.contains('has-crest') ? (chip.querySelector('.label-crest') ? chip.querySelector('.label-crest').alt : '') : chip.textContent) : '',
       color: chip ? chip.dataset.color : '#ff6b6b',
+      image: chip && chip.dataset.crestSrc ? chip.dataset.crestSrc : undefined,
       tokens: []
     };
     $$('.token', drop).forEach(function(tok){
@@ -1599,7 +1619,7 @@ function loadTierList(){
     tray.innerHTML = '';
     // Restore rows
     data.rows.forEach(function(rowData){
-      var node = createRow({ label: rowData.label, color: rowData.color });
+      var node = createRow({ label: rowData.label, color: rowData.color, image: rowData.image });
       var drop = node.querySelector('.tier-drop');
       rowData.tokens.forEach(function(tokData){
         if (tokData.type === 'name') {
@@ -1964,6 +1984,17 @@ var TIER_PROMPTS = [
     { label: 'REDDIT', color: '#ff4500' },
     { label: 'YOUTUBE', color: '#ff0000' },
     { label: 'LINKEDIN', color: '#0a66c2' }
+  ]},
+  { text: "Which Black Clover Magic Knight Squad would they be in?", tiers: [
+    { label: 'GOLDEN DAWN', color: '#DAA520', image: 'icons/squads/golden-dawn.svg' },
+    { label: 'BLACK BULLS', color: '#1a1a1a', image: 'icons/squads/black-bull.svg' },
+    { label: 'SILVER EAGLES', color: '#A9A9A9', image: 'icons/squads/silver-eagle.svg' },
+    { label: 'BLUE ROSE', color: '#4169E1', image: 'icons/squads/blue-rose.svg' },
+    { label: 'CRIMSON LION', color: '#DC143C', image: 'icons/squads/crimson-lion.svg' },
+    { label: 'GREEN MANTIS', color: '#228B22', image: 'icons/squads/green-mantis.svg' },
+    { label: 'PURPLE ORCAS', color: '#6A0DAD', image: 'icons/squads/purple-orca.svg' },
+    { label: 'CORAL PEACOCK', color: '#FF7F50', image: 'icons/squads/coral-peacock.svg' },
+    { label: 'AQUA DEER', color: '#00CED1', image: 'icons/squads/aqua-deer.svg' }
   ]}
 ];
 // Pin the newest prompts first, shuffle the rest
@@ -2385,7 +2416,7 @@ function applyPrompt(prompt){
     board.innerHTML = '';
     // Create new rows from prompt config
     prompt.tiers.forEach(function(t){
-      board.appendChild(createRow({ label: t.label, color: t.color }));
+      board.appendChild(createRow({ label: t.label, color: t.color, image: t.image }));
     });
     uniformizeTierLabels();
     refreshRadialOptions();

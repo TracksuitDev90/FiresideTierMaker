@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <radialGradient id="br-grad" cx="50%" cy="40%" r="50%">
+      <stop offset="0%" stop-color="#6495ED"/>
+      <stop offset="100%" stop-color="#1a3a7a"/>
+    </radialGradient>
+  </defs>
+  <g transform="translate(100,95)">
+    <!-- Outer petals -->
+    <ellipse cx="0" cy="-30" rx="18" ry="28" fill="#4169E1" stroke="#2a4cb0" stroke-width="1.5" opacity="0.9"/>
+    <ellipse cx="0" cy="-30" rx="18" ry="28" fill="#4169E1" stroke="#2a4cb0" stroke-width="1.5" opacity="0.9" transform="rotate(72)"/>
+    <ellipse cx="0" cy="-30" rx="18" ry="28" fill="#4169E1" stroke="#2a4cb0" stroke-width="1.5" opacity="0.9" transform="rotate(144)"/>
+    <ellipse cx="0" cy="-30" rx="18" ry="28" fill="#4169E1" stroke="#2a4cb0" stroke-width="1.5" opacity="0.9" transform="rotate(216)"/>
+    <ellipse cx="0" cy="-30" rx="18" ry="28" fill="#4169E1" stroke="#2a4cb0" stroke-width="1.5" opacity="0.9" transform="rotate(288)"/>
+    <!-- Inner petals -->
+    <ellipse cx="0" cy="-20" rx="12" ry="18" fill="#6495ED" stroke="#4169E1" stroke-width="1" transform="rotate(36)"/>
+    <ellipse cx="0" cy="-20" rx="12" ry="18" fill="#6495ED" stroke="#4169E1" stroke-width="1" transform="rotate(108)"/>
+    <ellipse cx="0" cy="-20" rx="12" ry="18" fill="#6495ED" stroke="#4169E1" stroke-width="1" transform="rotate(180)"/>
+    <ellipse cx="0" cy="-20" rx="12" ry="18" fill="#6495ED" stroke="#4169E1" stroke-width="1" transform="rotate(252)"/>
+    <ellipse cx="0" cy="-20" rx="12" ry="18" fill="#6495ED" stroke="#4169E1" stroke-width="1" transform="rotate(324)"/>
+    <!-- Center -->
+    <circle cx="0" cy="0" r="10" fill="url(#br-grad)"/>
+    <circle cx="0" cy="0" r="5" fill="#87CEEB" opacity="0.7"/>
+    <!-- Stem -->
+    <path d="M0,30 Q-5,50 0,75" fill="none" stroke="#2E8B57" stroke-width="3"/>
+    <!-- Leaves -->
+    <path d="M0,50 Q-20,40 -25,55 Q-15,50 0,55" fill="#2E8B57"/>
+    <path d="M0,60 Q20,52 25,65 Q15,58 0,62" fill="#2E8B57"/>
+    <!-- Thorns -->
+    <path d="M-2,42 L-6,38" stroke="#2E8B57" stroke-width="2" stroke-linecap="round"/>
+    <path d="M2,55 L6,51" stroke="#2E8B57" stroke-width="2" stroke-linecap="round"/>
+  </g>
+</svg>

@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <linearGradient id="ad-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#00CED1"/>
+      <stop offset="100%" stop-color="#008B8B"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(100,110)">
+    <!-- Antlers - left -->
+    <path d="M-12,-40 L-18,-70 L-28,-60" fill="none" stroke="#00CED1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M-18,-70 L-10,-80" fill="none" stroke="#00CED1" stroke-width="3" stroke-linecap="round"/>
+    <path d="M-16,-58 L-30,-55" fill="none" stroke="#00CED1" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M-17,-65 L-35,-68" fill="none" stroke="#00CED1" stroke-width="2.5" stroke-linecap="round"/>
+    <!-- Antlers - right -->
+    <path d="M12,-40 L18,-70 L28,-60" fill="none" stroke="#00CED1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M18,-70 L10,-80" fill="none" stroke="#00CED1" stroke-width="3" stroke-linecap="round"/>
+    <path d="M16,-58 L30,-55" fill="none" stroke="#00CED1" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M17,-65 L35,-68" fill="none" stroke="#00CED1" stroke-width="2.5" stroke-linecap="round"/>
+    <!-- Head -->
+    <path d="M-20,-15 Q-22,-30 -15,-40 Q-5,-48 0,-48 Q5,-48 15,-40 Q22,-30 20,-15 Q18,0 12,8 Q5,15 0,18 Q-5,15 -12,8 Q-18,0 -20,-15 Z" fill="url(#ad-grad)" stroke="#006666" stroke-width="2"/>
+    <!-- Ears -->
+    <path d="M-18,-30 L-30,-38 L-20,-25" fill="#20B2AA" stroke="#006666" stroke-width="1.5"/>
+    <path d="M18,-30 L30,-38 L20,-25" fill="#20B2AA" stroke="#006666" stroke-width="1.5"/>
+    <!-- Eyes -->
+    <ellipse cx="-8" cy="-22" rx="4" ry="5" fill="#E0FFFF"/>
+    <ellipse cx="8" cy="-22" rx="4" ry="5" fill="#E0FFFF"/>
+    <circle cx="-8" cy="-21" r="2.5" fill="#004d4d"/>
+    <circle cx="8" cy="-21" r="2.5" fill="#004d4d"/>
+    <circle cx="-7" cy="-22" r="1" fill="white"/>
+    <circle cx="9" cy="-22" r="1" fill="white"/>
+    <!-- Nose -->
+    <ellipse cx="0" cy="-5" rx="6" ry="4" fill="#005f5f"/>
+    <!-- Mouth -->
+    <path d="M-3,0 Q0,3 3,0" fill="none" stroke="#005f5f" stroke-width="1"/>
+    <!-- Water droplet symbol on forehead -->
+    <path d="M0,-35 Q-4,-28 -4,-25 Q-4,-21 0,-19 Q4,-21 4,-25 Q4,-28 0,-35 Z" fill="#E0FFFF" opacity="0.7"/>
+  </g>
+</svg>
