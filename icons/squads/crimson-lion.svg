@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <radialGradient id="cl-mane" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FF4500"/>
+      <stop offset="100%" stop-color="#8B0000"/>
+    </radialGradient>
+  </defs>
+  <g transform="translate(100,105)">
+    <!-- Mane flames -->
+    <path d="M0,-75 Q10,-60 5,-45" fill="#FF6347" stroke="#DC143C" stroke-width="1"/>
+    <path d="M-25,-70 Q-15,-55 -15,-40" fill="#FF6347" stroke="#DC143C" stroke-width="1"/>
+    <path d="M25,-70 Q15,-55 15,-40" fill="#FF6347" stroke="#DC143C" stroke-width="1"/>
+    <path d="M-45,-55 Q-30,-45 -25,-30" fill="#FF4500" stroke="#DC143C" stroke-width="1"/>
+    <path d="M45,-55 Q30,-45 25,-30" fill="#FF4500" stroke="#DC143C" stroke-width="1"/>
+    <path d="M-55,-35 Q-40,-30 -30,-18" fill="#FF4500" stroke="#DC143C" stroke-width="1"/>
+    <path d="M55,-35 Q40,-30 30,-18" fill="#FF4500" stroke="#DC143C" stroke-width="1"/>
+    <path d="M-58,-10 Q-42,-10 -32,-5" fill="#DC143C" stroke="#B22222" stroke-width="1"/>
+    <path d="M58,-10 Q42,-10 32,-5" fill="#DC143C" stroke="#B22222" stroke-width="1"/>
+    <path d="M-55,10 Q-40,5 -30,5" fill="#DC143C" stroke="#B22222" stroke-width="1"/>
+    <path d="M55,10 Q40,5 30,5" fill="#DC143C" stroke="#B22222" stroke-width="1"/>
+    <!-- Mane circle -->
+    <circle cx="0" cy="-10" r="42" fill="url(#cl-mane)" opacity="0.85"/>
+    <!-- Face -->
+    <ellipse cx="0" cy="-5" rx="28" ry="32" fill="#CD853F" stroke="#8B4513" stroke-width="1.5"/>
+    <!-- Ears -->
+    <path d="M-22,-30 L-28,-45 L-15,-32" fill="#CD853F" stroke="#8B4513" stroke-width="1.5"/>
+    <path d="M22,-30 L28,-45 L15,-32" fill="#CD853F" stroke="#8B4513" stroke-width="1.5"/>
+    <!-- Eyes -->
+    <ellipse cx="-10" cy="-12" rx="5" ry="4.5" fill="#FFD700"/>
+    <ellipse cx="10" cy="-12" rx="5" ry="4.5" fill="#FFD700"/>
+    <circle cx="-10" cy="-12" r="2.5" fill="#1a1a1a"/>
+    <circle cx="10" cy="-12" r="2.5" fill="#1a1a1a"/>
+    <!-- Nose -->
+    <path d="M-4,2 Q0,-2 4,2 Q2,5 0,6 Q-2,5 -4,2" fill="#8B4513"/>
+    <!-- Mouth -->
+    <path d="M0,6 Q0,10 -6,12" fill="none" stroke="#8B4513" stroke-width="1.5"/>
+    <path d="M0,6 Q0,10 6,12" fill="none" stroke="#8B4513" stroke-width="1.5"/>
+    <!-- Chin/jaw -->
+    <path d="M-15,20 Q0,30 15,20" fill="none" stroke="#8B4513" stroke-width="1.5"/>
+  </g>
+</svg>

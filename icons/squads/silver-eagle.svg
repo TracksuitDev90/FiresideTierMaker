@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <linearGradient id="se-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E8E8E8"/>
+      <stop offset="100%" stop-color="#A9A9A9"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(100,100)">
+    <!-- Left wing -->
+    <path d="M-10,0 Q-30,-15 -75,-60 Q-70,-40 -60,-25 Q-55,-18 -45,-12 Q-35,-6 -20,0 Z" fill="url(#se-grad)" stroke="#777" stroke-width="1.5"/>
+    <path d="M-15,5 Q-40,0 -80,-20 Q-65,-5 -50,2 Q-35,8 -20,8 Z" fill="#C0C0C0" stroke="#777" stroke-width="1"/>
+    <path d="M-15,12 Q-45,15 -75,5 Q-55,15 -40,18 Q-28,18 -18,15 Z" fill="#B0B0B0" stroke="#777" stroke-width="1"/>
+    <!-- Right wing -->
+    <path d="M10,0 Q30,-15 75,-60 Q70,-40 60,-25 Q55,-18 45,-12 Q35,-6 20,0 Z" fill="url(#se-grad)" stroke="#777" stroke-width="1.5"/>
+    <path d="M15,5 Q40,0 80,-20 Q65,-5 50,2 Q35,8 20,8 Z" fill="#C0C0C0" stroke="#777" stroke-width="1"/>
+    <path d="M15,12 Q45,15 75,5 Q55,15 40,18 Q28,18 18,15 Z" fill="#B0B0B0" stroke="#777" stroke-width="1"/>
+    <!-- Body -->
+    <ellipse cx="0" cy="5" rx="16" ry="25" fill="url(#se-grad)" stroke="#888" stroke-width="1.5"/>
+    <!-- Head -->
+    <circle cx="0" cy="-22" r="13" fill="url(#se-grad)" stroke="#888" stroke-width="1.5"/>
+    <!-- Beak -->
+    <path d="M0,-18 L8,-28 L0,-23 L-8,-28 Z" fill="#FFD700" stroke="#B8860B" stroke-width="1"/>
+    <!-- Eyes -->
+    <circle cx="-5" cy="-24" r="2.5" fill="#1a1a1a"/>
+    <circle cx="5" cy="-24" r="2.5" fill="#1a1a1a"/>
+    <circle cx="-4.5" cy="-24.5" r="0.8" fill="white"/>
+    <circle cx="5.5" cy="-24.5" r="0.8" fill="white"/>
+    <!-- Tail feathers -->
+    <path d="M-5,28 L-12,55 L0,40 L12,55 L5,28" fill="#C0C0C0" stroke="#888" stroke-width="1"/>
+    <!-- Crown/crest detail -->
+    <path d="M-6,-35 L-3,-40 L0,-36 L3,-40 L6,-35" fill="#C0C0C0" stroke="#888" stroke-width="1"/>
+  </g>
+</svg>
