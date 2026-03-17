@@ -100,14 +100,14 @@ a{color:inherit;text-decoration:none}
 #undoBtn .ico svg,
 #trashClear .ico svg,
 #saveBtn .ico svg{fill:none;stroke:currentColor}
-#addTierBtn .ico svg{stroke:#15613a}
-#undoBtn .ico svg{stroke:#7c4a03}
-#trashClear .ico svg{stroke:#b91c1c}
-#saveBtn .ico svg{stroke:#4338ca}
-:root[data-theme="light"] #addTierBtn .ico svg,
-:root[data-theme="light"] #undoBtn .ico svg,
-:root[data-theme="light"] #trashClear .ico svg,
-:root[data-theme="light"] #saveBtn .ico svg{stroke:currentColor}
+#addTierBtn .ico svg{stroke:#2EA043}
+#undoBtn .ico svg{stroke:#BB800A}
+#trashClear .ico svg{stroke:#DA3633}
+#saveBtn .ico svg{stroke:#388BFD}
+:root[data-theme="light"] #addTierBtn .ico svg{stroke:#3FB950}
+:root[data-theme="light"] #undoBtn .ico svg{stroke:#D29922}
+:root[data-theme="light"] #trashClear .ico svg{stroke:#FF7B72}
+:root[data-theme="light"] #saveBtn .ico svg{stroke:#58A6FF}
 /* Theme toggle icon: match button text color explicitly */
 #themeToggle .ico svg{fill:#111}
 :root[data-theme="light"] #themeToggle .ico svg{fill:#f0f2f5}
@@ -145,16 +145,16 @@ a{color:inherit;text-decoration:none}
 #addTierBtn.animate .ico svg{transform:scale(1.2)}
 
 /* Unique tool-button colors — dark mode: original bright bg + dark text; icons get dark colored strokes above */
-#addTierBtn{background:#4ADE80;color:#111;border-color:rgba(0,0,0,.12);box-shadow:var(--shadow),inset 0 0 0 1px rgba(255,255,255,.18);padding:0 24px 0 12px}
-#undoBtn{background:#FBBF24;color:#111;border-color:rgba(0,0,0,.12);box-shadow:var(--shadow),inset 0 0 0 1px rgba(255,255,255,.18)}
-#trashClear{background:#FCA5A5;color:#111;border-color:rgba(0,0,0,.12);box-shadow:var(--shadow),inset 0 0 0 1px rgba(255,255,255,.18)}
-#saveBtn{background:#818CF8;color:#111;border-color:rgba(0,0,0,.12);box-shadow:var(--shadow),inset 0 0 0 1px rgba(255,255,255,.18)}
+#addTierBtn{background:#56D364;color:#2EA043;border-color:rgba(0,0,0,.12);box-shadow:var(--shadow),inset 0 0 0 1px rgba(255,255,255,.18);padding:0 24px 0 12px}
+#undoBtn{background:#E3B341;color:#BB800A;border-color:rgba(0,0,0,.12);box-shadow:var(--shadow),inset 0 0 0 1px rgba(255,255,255,.18)}
+#trashClear{background:#FFA198;color:#DA3633;border-color:rgba(0,0,0,.12);box-shadow:var(--shadow),inset 0 0 0 1px rgba(255,255,255,.18)}
+#saveBtn{background:#79C0FF;color:#388BFD;border-color:rgba(0,0,0,.12);box-shadow:var(--shadow),inset 0 0 0 1px rgba(255,255,255,.18)}
 
 /* Light mode tone-on-tone overrides — deeper text, pastel bg */
-:root[data-theme="light"] #addTierBtn{background:#dcfce7;color:#15803d;border-color:rgba(21,128,61,.2);box-shadow:var(--shadow),inset 0 0 0 1px rgba(21,128,61,.06)}
-:root[data-theme="light"] #undoBtn{background:#fef9c3;color:#a16207;border-color:rgba(161,98,7,.2);box-shadow:var(--shadow),inset 0 0 0 1px rgba(161,98,7,.06)}
-:root[data-theme="light"] #trashClear{background:#fee2e2;color:#dc2626;border-color:rgba(220,38,38,.2);box-shadow:var(--shadow),inset 0 0 0 1px rgba(220,38,38,.06)}
-:root[data-theme="light"] #saveBtn{background:#e0e7ff;color:#4f46e5;border-color:rgba(79,70,229,.2);box-shadow:var(--shadow),inset 0 0 0 1px rgba(79,70,229,.06)}
+:root[data-theme="light"] #addTierBtn{background:#AFF5B4;color:#3FB950;border-color:rgba(63,185,80,.2);box-shadow:var(--shadow),inset 0 0 0 1px rgba(63,185,80,.06)}
+:root[data-theme="light"] #undoBtn{background:#F8E3A1;color:#D29922;border-color:rgba(210,153,34,.2);box-shadow:var(--shadow),inset 0 0 0 1px rgba(210,153,34,.06)}
+:root[data-theme="light"] #trashClear{background:#FFDAD5;color:#FF7B72;border-color:rgba(255,123,114,.2);box-shadow:var(--shadow),inset 0 0 0 1px rgba(255,123,114,.06)}
+:root[data-theme="light"] #saveBtn{background:#CAE8FF;color:#58A6FF;border-color:rgba(88,166,255,.2);box-shadow:var(--shadow),inset 0 0 0 1px rgba(88,166,255,.06)}
 
 /* Theme toggle: shows TARGET mode appearance (original styling) */
 #themeToggle{background:#f0f2f5;color:#111;border-color:rgba(0,0,0,.12);font-weight:700;box-shadow:var(--shadow),inset 0 0 0 1px rgba(255,255,255,.18)}
