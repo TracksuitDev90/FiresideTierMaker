@@ -100,16 +100,16 @@ a{color:inherit;text-decoration:none}
 #undoBtn .ico svg,
 #trashClear .ico svg,
 #saveBtn .ico svg{fill:none;stroke:currentColor}
-#addTierBtn .ico svg{stroke:#2EA043}
-#undoBtn .ico svg{stroke:#BB800A}
-#trashClear .ico svg{stroke:#DA3633}
-#saveBtn .ico svg{stroke:#388BFD}
-:root[data-theme="light"] #addTierBtn .ico svg{stroke:#3FB950}
-:root[data-theme="light"] #undoBtn .ico svg{stroke:#D29922}
-:root[data-theme="light"] #trashClear .ico svg{stroke:#FF7B72}
-:root[data-theme="light"] #saveBtn .ico svg{stroke:#58A6FF}
+#addTierBtn .ico svg{stroke:#196C2E}
+#undoBtn .ico svg{stroke:#845306}
+#trashClear .ico svg{stroke:#8E1519}
+#saveBtn .ico svg{stroke:#1158C7}
+:root[data-theme="light"] #addTierBtn .ico svg{stroke:#2EA043}
+:root[data-theme="light"] #undoBtn .ico svg{stroke:#BB800A}
+:root[data-theme="light"] #trashClear .ico svg{stroke:#F85149}
+:root[data-theme="light"] #saveBtn .ico svg{stroke:#388BFD}
 /* Theme toggle icon: match button text color explicitly */
-#themeToggle .ico svg{fill:#111}
+#themeToggle .ico svg{fill:#3D3480}
 :root[data-theme="light"] #themeToggle .ico svg{fill:#f0f2f5}
 /* Theme toggle: let moon-icon filter rules apply naturally (no !important override) */
 
@@ -145,19 +145,19 @@ a{color:inherit;text-decoration:none}
 #addTierBtn.animate .ico svg{transform:scale(1.2)}
 
 /* Unique tool-button colors — dark mode: original bright bg + dark text; icons get dark colored strokes above */
-#addTierBtn{background:#56D364;color:#2EA043;border-color:rgba(0,0,0,.12);box-shadow:var(--shadow),inset 0 0 0 1px rgba(255,255,255,.18);padding:0 24px 0 12px}
-#undoBtn{background:#E3B341;color:#BB800A;border-color:rgba(0,0,0,.12);box-shadow:var(--shadow),inset 0 0 0 1px rgba(255,255,255,.18)}
-#trashClear{background:#FFA198;color:#DA3633;border-color:rgba(0,0,0,.12);box-shadow:var(--shadow),inset 0 0 0 1px rgba(255,255,255,.18)}
-#saveBtn{background:#79C0FF;color:#388BFD;border-color:rgba(0,0,0,.12);box-shadow:var(--shadow),inset 0 0 0 1px rgba(255,255,255,.18)}
+#addTierBtn{background:#56D364;color:#196C2E;border-color:rgba(0,0,0,.12);box-shadow:var(--shadow),inset 0 0 0 1px rgba(255,255,255,.18);padding:0 24px 0 12px}
+#undoBtn{background:#E3B341;color:#845306;border-color:rgba(0,0,0,.12);box-shadow:var(--shadow),inset 0 0 0 1px rgba(255,255,255,.18)}
+#trashClear{background:#FFA198;color:#8E1519;border-color:rgba(0,0,0,.12);box-shadow:var(--shadow),inset 0 0 0 1px rgba(255,255,255,.18)}
+#saveBtn{background:#79C0FF;color:#1158C7;border-color:rgba(0,0,0,.12);box-shadow:var(--shadow),inset 0 0 0 1px rgba(255,255,255,.18)}
 
 /* Light mode tone-on-tone overrides — deeper text, pastel bg */
-:root[data-theme="light"] #addTierBtn{background:#AFF5B4;color:#3FB950;border-color:rgba(63,185,80,.2);box-shadow:var(--shadow),inset 0 0 0 1px rgba(63,185,80,.06)}
-:root[data-theme="light"] #undoBtn{background:#F8E3A1;color:#D29922;border-color:rgba(210,153,34,.2);box-shadow:var(--shadow),inset 0 0 0 1px rgba(210,153,34,.06)}
-:root[data-theme="light"] #trashClear{background:#FFDAD5;color:#FF7B72;border-color:rgba(255,123,114,.2);box-shadow:var(--shadow),inset 0 0 0 1px rgba(255,123,114,.06)}
-:root[data-theme="light"] #saveBtn{background:#CAE8FF;color:#58A6FF;border-color:rgba(88,166,255,.2);box-shadow:var(--shadow),inset 0 0 0 1px rgba(88,166,255,.06)}
+:root[data-theme="light"] #addTierBtn{background:#AFF5B4;color:#2EA043;border-color:rgba(46,160,67,.2);box-shadow:var(--shadow),inset 0 0 0 1px rgba(46,160,67,.06)}
+:root[data-theme="light"] #undoBtn{background:#F8E3A1;color:#BB800A;border-color:rgba(187,128,10,.2);box-shadow:var(--shadow),inset 0 0 0 1px rgba(187,128,10,.06)}
+:root[data-theme="light"] #trashClear{background:#FFDAD5;color:#F85149;border-color:rgba(248,81,73,.2);box-shadow:var(--shadow),inset 0 0 0 1px rgba(248,81,73,.06)}
+:root[data-theme="light"] #saveBtn{background:#CAE8FF;color:#388BFD;border-color:rgba(56,139,253,.2);box-shadow:var(--shadow),inset 0 0 0 1px rgba(56,139,253,.06)}
 
 /* Theme toggle: shows TARGET mode appearance (original styling) */
-#themeToggle{background:#f0f2f5;color:#111;border-color:rgba(0,0,0,.12);font-weight:700;box-shadow:var(--shadow),inset 0 0 0 1px rgba(255,255,255,.18)}
+#themeToggle{background:#B8B8FF;color:#3D3480;border-color:rgba(0,0,0,.12);font-weight:700;box-shadow:var(--shadow),inset 0 0 0 1px rgba(255,255,255,.18)}
 :root[data-theme="light"] #themeToggle{background:#1e1b3a;color:#f0f2f5;border-color:rgba(255,255,255,.1);box-shadow:var(--shadow),inset 0 0 0 1px rgba(255,255,255,.1)}
 #themeToggle.animate .ico svg{transform:rotate(180deg)}
 
