@@ -140,7 +140,9 @@ function desaturate(hex, amount){
       var color = chip && chip.dataset.color ? chip.dataset.color : '#8b7dff';
       if(chip){
         var _rgb = hexToRgb(color), _s = Math.max(_rgb.r,_rgb.g,_rgb.b)-Math.min(_rgb.r,_rgb.g,_rgb.b);
-        chip.style.background = isLight ? (_s < 20 ? darken(color, 0.10) : boostSaturation(color, 0.12)) : desaturate(color, 0.12);
+        var cCol = isLight ? boostSaturation(color, 0.12) : desaturate(color, 0.12);
+        if(_s < 20) cCol = isLight ? '#636363' : '#7d7d7d';
+        chip.style.background = cCol;
       }
       if (drop && drop.dataset.manual!=='true'){
         drop.style.background = tintFrom(color);
@@ -327,14 +329,10 @@ function applyTierColor(node, color){
   var colorInput = node.querySelector('.color-pick-input');
 
   var isLight = document.documentElement.getAttribute('data-theme')==='light';
-  var chipColor;
-  if(isLight){
-    // Grays (very low saturation) just get slightly darker in light mode instead of a color shift
-    var _rgb = hexToRgb(color), _s = Math.max(_rgb.r,_rgb.g,_rgb.b)-Math.min(_rgb.r,_rgb.g,_rgb.b);
-    chipColor = _s < 20 ? darken(color, 0.10) : boostSaturation(color, 0.12);
-  } else {
-    chipColor = desaturate(color, 0.12);
-  }
+  var chipColor = isLight ? boostSaturation(color, 0.12) : desaturate(color, 0.12);
+  // Grays (like UNKNOWN tier) get explicit themed values
+  var _rgb = hexToRgb(color), _s = Math.max(_rgb.r,_rgb.g,_rgb.b)-Math.min(_rgb.r,_rgb.g,_rgb.b);
+  if(_s < 20) chipColor = isLight ? '#636363' : '#7d7d7d';
   if(chip){ chip.dataset.color = color; chip.style.background = chipColor; chip.style.color = '#ffffff'; }
   if(del) del.style.background = darken(color, 0.35);
   if(drop){ drop.style.background = tintFrom(color); drop.dataset.manual = 'false'; }
