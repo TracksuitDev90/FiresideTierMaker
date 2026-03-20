@@ -2675,12 +2675,13 @@ document.addEventListener('DOMContentLoaded', function start(){
     // Populate tips
     var tipData = [
       isSmall()
-        ? 'Tap a circle to choose a row. Drag placed circles to reorder.'
-        : 'Drag circles into rows. Drag back to Image Storage to unplace.',
-      'Tap a tier letter to rename it. ' + (isSmall() ? 'Tap' : 'Hover over') + ' a label to change its color.',
-      'Tap a suggestion to use it as your title, or type your own.',
-      'Paste an image URL or upload files to add custom images.',
-      (isSmall() ? 'Swipe up on' : 'Double-click') + ' a custom token to delete it.'
+        ? 'Tap a token to choose a row. Drag placed tokens to reorder.'
+        : 'Drag tokens into rows to rank them. Drag back to Image Storage to unplace.',
+      'Tap a tier label to rename it. ' + (isSmall() ? 'Tap' : 'Hover over') + ' a label to change its color.',
+      'Tap a suggestion card to use it as your title, or type your own directly.',
+      'Add images via upload, paste a URL, or use the built-in image search.',
+      (isSmall() ? 'Swipe up on' : 'Double-click') + ' a custom token to delete it.',
+      'Use Save Tierlist to download your board as a PNG image.'
     ];
     tips.innerHTML = tipData.map(function(t){ return '<div class="tip">' + t + '</div>'; }).join('');
 
