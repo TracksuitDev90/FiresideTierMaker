@@ -254,21 +254,25 @@ a{color:inherit;text-decoration:none}
 }
 .help-handle:active{cursor:grabbing}
 .help-handle-pill{
-  width:36px;height:4px;border-radius:99px;
-  background:var(--muted);opacity:.25;
+  width:44px;height:4px;border-radius:99px;
+  background:var(--accent);opacity:.35;
   transition:opacity .2s ease,width .2s ease,background .2s ease;
 }
 .help-drawer.peek .help-handle-pill,
 .help-handle:hover .help-handle-pill{
-  opacity:.5;width:44px;background:var(--accent);
+  opacity:.6;width:52px;background:var(--accent);
+}
+.help-handle-icon{
+  vertical-align:-1px;margin-right:3px;
 }
 .help-handle-label{
-  font-size:10px;font-weight:800;letter-spacing:2px;
-  color:var(--muted);opacity:.4;
+  font-size:11px;font-weight:800;letter-spacing:1.5px;
+  color:var(--muted);opacity:.55;
+  display:flex;align-items:center;gap:4px;
   transition:opacity .2s ease,color .2s ease,transform .2s ease;
 }
 .help-drawer.peek .help-handle-label,
-.help-handle:hover .help-handle-label{opacity:.7;color:var(--accent)}
+.help-handle:hover .help-handle-label{opacity:.85;color:var(--accent)}
 .help-drawer.open .help-handle-label{opacity:0;transform:translateY(-4px)}
 .help-tray{
   height:0;overflow:hidden;
@@ -294,6 +298,7 @@ a{color:inherit;text-decoration:none}
 .help-drawer.open .help-tips .tip:nth-child(3){transition-delay:.15s}
 .help-drawer.open .help-tips .tip:nth-child(4){transition-delay:.2s}
 .help-drawer.open .help-tips .tip:nth-child(5){transition-delay:.25s}
+.help-drawer.open .help-tips .tip:nth-child(6){transition-delay:.3s}
 @media (max-width:480px){
   .help-tips{padding:4px 12px 14px;font-size:13px}
   .help-tips .tip{padding:6px 0}
