@@ -411,7 +411,7 @@ var defaultTiers = [
   { label:'B', color:'#22c55e' },
   { label:'C', color:'#3b82f6' },
   { label:'D', color:'#a78bfa' },
-  { label:'UNKNOWN', color:'#71717a' }       // "do not interact" / unsure
+  { label:'?', color:'#71717a' }              // "do not interact" / unsure
 ];
 
 /* Fresh colors for new tiers (avoids default S/A/B/C/D colors) */
@@ -439,7 +439,7 @@ var DEFAULT_TOKEN_COLORS = {
   'Versse': '#19852d',
   'Haven':  '#FFBC00',
   'Abby':   '#FFAEE6',
-  'Cindy':  '#FA008D'
+  'Cindy':  '#F5B0BD'
 };
 
 /* ---------- PRE-RENDERED CIRCLE PALETTE ---------- */
