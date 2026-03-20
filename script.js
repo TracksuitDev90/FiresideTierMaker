@@ -67,6 +67,27 @@ function mixHex(aHex,bHex,t){ var a=hexToRgb(aHex), b=hexToRgb(bHex);
     Math.round(a.b+(b.b-a.b)*t)
   );
 }
+/* Boost saturation: convert RGB→HSL, bump S, convert back */
+function boostSaturation(hex, amount){
+  var c=hexToRgb(hex), r=c.r/255, g=c.g/255, b=c.b/255;
+  var max=Math.max(r,g,b), min=Math.min(r,g,b), d=max-min;
+  var h=0, s=0, l=(max+min)/2;
+  if(d!==0){
+    s=l>0.5?d/(2-max-min):d/(max-min);
+    if(max===r) h=((g-b)/d+(g<b?6:0))/6;
+    else if(max===g) h=((b-r)/d+2)/6;
+    else h=((r-g)/d+4)/6;
+  }
+  s=Math.min(1, s+amount);
+  // HSL→RGB
+  function hue2rgb(p,q,t){ if(t<0)t+=1; if(t>1)t-=1; if(t<1/6)return p+(q-p)*6*t; if(t<1/2)return q; if(t<2/3)return p+(q-p)*(2/3-t)*6; return p; }
+  var rr,gg,bb;
+  if(s===0){ rr=gg=bb=l; } else {
+    var q2=l<0.5?l*(1+s):l+s-l*s, p2=2*l-q2;
+    rr=hue2rgb(p2,q2,h+1/3); gg=hue2rgb(p2,q2,h); bb=hue2rgb(p2,q2,h-1/3);
+  }
+  return rgbToHex(Math.round(rr*255),Math.round(gg*255),Math.round(bb*255));
+}
 
 /* ---------- Theme (button shows TARGET mode) ---------- */
 (function(){
@@ -93,10 +114,13 @@ function mixHex(aHex,bHex,t){ var a=hexToRgb(aHex), b=hexToRgb(bHex);
       toggle.setAttribute('aria-pressed', mode==='light' ? 'true' : 'false');
       if(icon) icon.innerHTML = (target==='Light' ? SUN_HTML : MOON_HTML);
     }
+    var isLight = mode==='light';
     $$('.tier-row').forEach(function(row){
       var chip=$('.label-chip',row), drop=$('.tier-drop',row);
+      var color = chip && chip.dataset.color ? chip.dataset.color : '#8b7dff';
+      if(chip) chip.style.background = isLight ? boostSaturation(color, 0.12) : color;
       if (drop && drop.dataset.manual!=='true'){
-        drop.style.background = tintFrom(chip && chip.dataset.color ? chip.dataset.color : '#8b7dff');
+        drop.style.background = tintFrom(color);
       }
     });
   }
@@ -175,7 +199,7 @@ function tintFrom(color){
   var surface = cssVar('--surface') || '#121212';
   var a=hexToRgb(surface), b=hexToRgb(color);
   var dark = document.documentElement.getAttribute('data-theme')!=='light';
-  var amt = dark?0.14:0.09;
+  var amt = dark?0.14:0.16;
   return rgbToHex(
     Math.round(a.r+(b.r-a.r)*amt),
     Math.round(a.g+(b.g-a.g)*amt),
@@ -279,7 +303,9 @@ function applyTierColor(node, color){
   var colorBtn = node.querySelector('.color-pick-btn');
   var colorInput = node.querySelector('.color-pick-input');
 
-  if(chip){ chip.dataset.color = color; chip.style.background = color; chip.style.color = '#ffffff'; }
+  var isLight = document.documentElement.getAttribute('data-theme')==='light';
+  var chipColor = isLight ? boostSaturation(color, 0.12) : color;
+  if(chip){ chip.dataset.color = color; chip.style.background = chipColor; chip.style.color = '#ffffff'; }
   if(del) del.style.background = darken(color, 0.35);
   if(drop){ drop.style.background = tintFrom(color); drop.dataset.manual = 'false'; }
   if(colorBtn){ var dot = colorBtn.querySelector('.color-dot-indicator'); if(dot) dot.style.background = colorPickDotColor(color); }
@@ -2314,6 +2340,37 @@ function hidePromptStack(){
 var _longPressTimer = null;
 var LONG_PRESS_MS = 500;
 
+/* Sort prompts by thematic similarity for the full list view.
+   Uses keyword matching to assign a category, then groups by category.
+   Does NOT mutate TIER_PROMPTS — returns a new sorted array of indices. */
+function getSimilaritySortedIndices(){
+  var categories = [
+    { key: 'personality',  words: ['character','energy','vibe','aura','chaos','archetype','main character','dramatic','element','season','alignment','d&d','era','overrated','underrated'] },
+    { key: 'social',       words: ['trust','secret','roommate','friend','bestie','squad','role','group','gatekeep','love language','texter','text','gen chat','fireside','valuable','impact','left','year'] },
+    { key: 'popculture',   words: ['hogwarts','pok','office','one piece','pirate ship','black clover','horror','villain','drunk','coffee','fast food','music genre','social media'] },
+    { key: 'survival',     words: ['survive','survival','hunger games','zombie','apocalypse','woods','lost','spy','heist','escape','fire','prison','stab','back'] },
+    { key: 'talent',       words: ['win','battle','dance','roast','trivia','talent','cook','advice','famous','viral','tiktok','voice','dressed','fries','cry','pixar','reality','ticket','party'] }
+  ];
+  var indexed = [];
+  for(var i=0; i<TIER_PROMPTS.length; i++){
+    var t = TIER_PROMPTS[i].text.toLowerCase();
+    var cat = 'zzz_other'; // sort last
+    for(var c=0; c<categories.length; c++){
+      for(var w=0; w<categories[c].words.length; w++){
+        if(t.indexOf(categories[c].words[w]) !== -1){ cat=categories[c].key; break; }
+      }
+      if(cat !== 'zzz_other') break;
+    }
+    indexed.push({ idx: i, cat: cat, text: t });
+  }
+  indexed.sort(function(a,b){
+    if(a.cat < b.cat) return -1;
+    if(a.cat > b.cat) return 1;
+    return a.text < b.text ? -1 : a.text > b.text ? 1 : 0;
+  });
+  return indexed.map(function(x){ return x.idx; });
+}
+
 function openPromptList(){
   if($('#promptListOverlay')) return; // already open
 
@@ -2339,11 +2396,12 @@ function openPromptList(){
   header.appendChild(closeBtn);
   sheet.appendChild(header);
 
-  // Scrollable list
+  // Scrollable list — sorted by similarity
   var list = document.createElement('div');
   list.className = 'prompt-list-scroll';
 
-  for(var i = 0; i < TIER_PROMPTS.length; i++){
+  var sortedIndices = getSimilaritySortedIndices();
+  for(var si = 0; si < sortedIndices.length; si++){
     (function(idx){
       var prompt = TIER_PROMPTS[idx];
       var colors = getCardColors(idx);
@@ -2373,7 +2431,7 @@ function openPromptList(){
         applyPrompt(prompt);
       });
       list.appendChild(item);
-    })(i);
+    })(sortedIndices[si]);
   }
 
   sheet.appendChild(list);
