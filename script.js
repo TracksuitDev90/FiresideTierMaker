@@ -439,7 +439,7 @@ var DEFAULT_TOKEN_COLORS = {
   'Versse': '#19852d',
   'Haven':  '#FFBC00',
   'Abby':   '#FFAEE6',
-  'Cindy':  '#FF1439'
+  'Cindy':  '#FA008D'
 };
 
 /* ---------- PRE-RENDERED CIRCLE PALETTE ---------- */
