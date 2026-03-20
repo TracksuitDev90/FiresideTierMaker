@@ -426,7 +426,7 @@ function nextTierColor(){ var c=NEW_TIER_COLORS[tierIdx%NEW_TIER_COLORS.length];
 var communityCast = [
   "Abby","Anette","Andruw","Authority","B7","Camryn","Cindy","Clamy","Clay","Cody","Cookies",
   "Denver","Devon","Dexy","Dior","Domo","Gavin","Harry","Haven","Katie","Kiev","Kikki",
-  "Meegan","Mew's","Neil","NJ","Paper","Ray","Raymond","Safoof","Sky","Smitty","Tubawk","Versse","Vyken","Zwjk"
+  "Meegan","Michael","Mew's","Neil","NJ","Paper","Ray","Raymond","Safoof","Sky","Smitty","Tubawk","Versse","Vyken","Zwjk"
 ];
 
 /* Fixed signature colors for specific cast members — never rotate */
@@ -435,10 +435,11 @@ var DEFAULT_TOKEN_COLORS = {
   'Cody':   '#8F949E',
   'Camryn': '#99748f',
   'Sky':    '#76a071',
-  'Devon':  '#9457eb',
+  'Devon':  '#7E57C2',
   'Versse': '#19852d',
   'Haven':  '#FFBC00',
-  'Abby':   '#FFAEE6'
+  'Abby':   '#FFAEE6',
+  'Cindy':  '#FF1439'
 };
 
 /* ---------- PRE-RENDERED CIRCLE PALETTE ---------- */
@@ -450,11 +451,11 @@ var BASE_PALETTE = [
   '#D7CCC8','#BCAAA4','#A1887F','#B0BEC5','#90A4AE'
 ];
 
-/* Token text: 40% darker than base, lightened for very dark backgrounds */
+/* Token text: 50% darker than base, lightened for very dark backgrounds */
 function pickTextColor(bgHex){
   var lum = relativeLuminance(hexToRgb(bgHex));
-  if(lum < 0.12) return lighten(bgHex, 0.40);
-  return darken(bgHex, 0.40);
+  if(lum < 0.12) return lighten(bgHex, 0.50);
+  return darken(bgHex, 0.50);
 }
 
 /* Fisher-Yates shuffle so tokens get different colors each page load */
