@@ -88,6 +88,26 @@ function boostSaturation(hex, amount){
   }
   return rgbToHex(Math.round(rr*255),Math.round(gg*255),Math.round(bb*255));
 }
+/* Reduce saturation by amount (0-1) */
+function desaturate(hex, amount){
+  var c=hexToRgb(hex), r=c.r/255, g=c.g/255, b=c.b/255;
+  var max=Math.max(r,g,b), min=Math.min(r,g,b), d=max-min;
+  var h=0, s=0, l=(max+min)/2;
+  if(d!==0){
+    s=l>0.5?d/(2-max-min):d/(max-min);
+    if(max===r) h=((g-b)/d+(g<b?6:0))/6;
+    else if(max===g) h=((b-r)/d+2)/6;
+    else h=((r-g)/d+4)/6;
+  }
+  s=Math.max(0, s-amount);
+  function hue2rgb(p,q,t){ if(t<0)t+=1; if(t>1)t-=1; if(t<1/6)return p+(q-p)*6*t; if(t<1/2)return q; if(t<2/3)return p+(q-p)*(2/3-t)*6; return p; }
+  var rr,gg,bb;
+  if(s===0){ rr=gg=bb=l; } else {
+    var q2=l<0.5?l*(1+s):l+s-l*s, p2=2*l-q2;
+    rr=hue2rgb(p2,q2,h+1/3); gg=hue2rgb(p2,q2,h); bb=hue2rgb(p2,q2,h-1/3);
+  }
+  return rgbToHex(Math.round(rr*255),Math.round(gg*255),Math.round(bb*255));
+}
 
 /* ---------- Theme (button shows TARGET mode) ---------- */
 (function(){
@@ -118,7 +138,10 @@ function boostSaturation(hex, amount){
     $$('.tier-row').forEach(function(row){
       var chip=$('.label-chip',row), drop=$('.tier-drop',row);
       var color = chip && chip.dataset.color ? chip.dataset.color : '#8b7dff';
-      if(chip) chip.style.background = isLight ? boostSaturation(color, 0.12) : color;
+      if(chip){
+        var _rgb = hexToRgb(color), _s = Math.max(_rgb.r,_rgb.g,_rgb.b)-Math.min(_rgb.r,_rgb.g,_rgb.b);
+        chip.style.background = isLight ? (_s < 20 ? darken(color, 0.10) : boostSaturation(color, 0.12)) : desaturate(color, 0.12);
+      }
       if (drop && drop.dataset.manual!=='true'){
         drop.style.background = tintFrom(color);
       }
@@ -199,7 +222,7 @@ function tintFrom(color){
   var surface = cssVar('--surface') || '#121212';
   var a=hexToRgb(surface), b=hexToRgb(color);
   var dark = document.documentElement.getAttribute('data-theme')!=='light';
-  var amt = dark?0.14:0.16;
+  var amt = dark?0.10:0.16;
   return rgbToHex(
     Math.round(a.r+(b.r-a.r)*amt),
     Math.round(a.g+(b.g-a.g)*amt),
@@ -304,7 +327,14 @@ function applyTierColor(node, color){
   var colorInput = node.querySelector('.color-pick-input');
 
   var isLight = document.documentElement.getAttribute('data-theme')==='light';
-  var chipColor = isLight ? boostSaturation(color, 0.12) : color;
+  var chipColor;
+  if(isLight){
+    // Grays (very low saturation) just get slightly darker in light mode instead of a color shift
+    var _rgb = hexToRgb(color), _s = Math.max(_rgb.r,_rgb.g,_rgb.b)-Math.min(_rgb.r,_rgb.g,_rgb.b);
+    chipColor = _s < 20 ? darken(color, 0.10) : boostSaturation(color, 0.12);
+  } else {
+    chipColor = desaturate(color, 0.12);
+  }
   if(chip){ chip.dataset.color = color; chip.style.background = chipColor; chip.style.color = '#ffffff'; }
   if(del) del.style.background = darken(color, 0.35);
   if(drop){ drop.style.background = tintFrom(color); drop.dataset.manual = 'false'; }

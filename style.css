@@ -100,14 +100,10 @@ a{color:inherit;text-decoration:none}
 #undoBtn .ico svg,
 #trashClear .ico svg,
 #saveBtn .ico svg{fill:none;stroke:currentColor}
-#addTierBtn .ico svg{stroke:#2EA043}
-#undoBtn .ico svg{stroke:#BB800A}
-#trashClear .ico svg{stroke:#F85149}
-#saveBtn .ico svg{stroke:#388BFD}
-:root[data-theme="light"] #addTierBtn .ico svg{stroke:#196C2E}
-:root[data-theme="light"] #undoBtn .ico svg{stroke:#845306}
-:root[data-theme="light"] #trashClear .ico svg{stroke:#8E1519}
-:root[data-theme="light"] #saveBtn .ico svg{stroke:#1158C7}
+#addTierBtn .ico svg{stroke:#196C2E}
+#undoBtn .ico svg{stroke:#845306}
+#trashClear .ico svg{stroke:#8E1519}
+#saveBtn .ico svg{stroke:#1158C7}
 /* Theme toggle icon: match button text color explicitly */
 #themeToggle .ico svg{fill:#111}
 :root[data-theme="light"] #themeToggle .ico svg{fill:#f0f2f5}
@@ -144,17 +140,11 @@ a{color:inherit;text-decoration:none}
 #undoBtn.animate .ico svg{transform:rotate(-360deg);transition:transform .4s ease}
 #addTierBtn.animate .ico svg{transform:scale(1.2)}
 
-/* Unique tool-button colors — dark mode: pastel bg + deeper text (swapped) */
-#addTierBtn{background:#AFF5B4;color:#2EA043;border-color:rgba(46,160,67,.2);box-shadow:var(--shadow),inset 0 0 0 1px rgba(46,160,67,.06);padding:0 24px 0 12px}
-#undoBtn{background:#F8E3A1;color:#BB800A;border-color:rgba(187,128,10,.2);box-shadow:var(--shadow),inset 0 0 0 1px rgba(187,128,10,.06)}
-#trashClear{background:#FFDAD5;color:#F85149;border-color:rgba(248,81,73,.2);box-shadow:var(--shadow),inset 0 0 0 1px rgba(248,81,73,.06)}
-#saveBtn{background:#CAE8FF;color:#388BFD;border-color:rgba(56,139,253,.2);box-shadow:var(--shadow),inset 0 0 0 1px rgba(56,139,253,.06)}
-
-/* Light mode: bright bg + dark text (swapped) */
-:root[data-theme="light"] #addTierBtn{background:#56D364;color:#196C2E;border-color:rgba(0,0,0,.12);box-shadow:var(--shadow),inset 0 0 0 1px rgba(255,255,255,.18)}
-:root[data-theme="light"] #undoBtn{background:#E3B341;color:#845306;border-color:rgba(0,0,0,.12);box-shadow:var(--shadow),inset 0 0 0 1px rgba(255,255,255,.18)}
-:root[data-theme="light"] #trashClear{background:#FFA198;color:#8E1519;border-color:rgba(0,0,0,.12);box-shadow:var(--shadow),inset 0 0 0 1px rgba(255,255,255,.18)}
-:root[data-theme="light"] #saveBtn{background:#79C0FF;color:#1158C7;border-color:rgba(0,0,0,.12);box-shadow:var(--shadow),inset 0 0 0 1px rgba(255,255,255,.18)}
+/* Unique tool-button colors — same bright styling in both themes */
+#addTierBtn{background:#56D364;color:#196C2E;border-color:rgba(0,0,0,.12);box-shadow:var(--shadow),inset 0 0 0 1px rgba(255,255,255,.18);padding:0 24px 0 12px}
+#undoBtn{background:#E3B341;color:#845306;border-color:rgba(0,0,0,.12);box-shadow:var(--shadow),inset 0 0 0 1px rgba(255,255,255,.18)}
+#trashClear{background:#FFA198;color:#8E1519;border-color:rgba(0,0,0,.12);box-shadow:var(--shadow),inset 0 0 0 1px rgba(255,255,255,.18)}
+#saveBtn{background:#79C0FF;color:#1158C7;border-color:rgba(0,0,0,.12);box-shadow:var(--shadow),inset 0 0 0 1px rgba(255,255,255,.18)}
 
 /* Theme toggle: shows TARGET mode appearance (original styling) */
 #themeToggle{background:#f0f2f5;color:#111;border-color:rgba(0,0,0,.12);font-weight:700;box-shadow:var(--shadow),inset 0 0 0 1px rgba(255,255,255,.18)}
