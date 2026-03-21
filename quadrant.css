@@ -110,7 +110,7 @@
   grid-template-rows:1fr 1fr;
   gap:0;
   border-radius:16px;
-  overflow:hidden;
+  overflow:visible;
   border:3px solid var(--q-line-color, rgba(255,255,255,.2));
   box-shadow:var(--shadow);
   /* Aspect ratio to keep it roughly square */
@@ -130,6 +130,7 @@
   min-height:200px;
   transition:background .25s ease;
   cursor:crosshair;
+  overscroll-behavior:contain;
 }
 /* Thick inner lines via borders on individual quadrants; inner r = outer 16 - border 3 = 13 */
 .q-zone--tl{border-right:2px solid var(--q-line-color, rgba(255,255,255,.2));border-bottom:2px solid var(--q-line-color, rgba(255,255,255,.2));border-radius:13px 0 0 0}
@@ -159,12 +160,12 @@
   position:absolute;
   display:inline-flex;
   align-items:center;
-  gap:5px;
+  gap:6px;
   z-index:5;
   cursor:grab;
   margin:0;
-  padding:3px 8px 3px 3px;
-  border-radius:14px;
+  padding:3px 9px 3px 3px;
+  border-radius:16px;
   background:rgba(0,0,0,.35);
   backdrop-filter:blur(6px);
   -webkit-backdrop-filter:blur(6px);
@@ -193,7 +194,7 @@
   box-shadow:0 0 0 2px var(--accent), 0 2px 8px rgba(139,125,255,.4);
 }
 .q-pin-dot{
-  width:14px;height:14px;
+  width:16px;height:16px;
   border-radius:50%;
   flex-shrink:0;
   border:1.5px solid rgba(255,255,255,.5);
@@ -204,12 +205,12 @@
 .q-pin-label{
   font-family:'Montserrat',ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
   font-weight:700;
-  font-size:12px;
+  font-size:14px;
   line-height:1.2;
   color:#fff;
   overflow:hidden;
   text-overflow:ellipsis;
-  max-width:100px;
+  max-width:110px;
 }
 :root[data-theme="light"] .q-pin-label{
   color:#1a1a2e;
@@ -249,7 +250,7 @@
   display:none;
 }
 
-/* Lock viewport during quadrant drag */
+/* Lock viewport during quadrant drag — prevent scroll, zoom, text selection */
 body.q-dragging{
   overflow:hidden !important;
   touch-action:none !important;
@@ -257,14 +258,18 @@ body.q-dragging{
   user-select:none !important;
   -webkit-touch-callout:none !important;
   cursor:grabbing !important;
+  -webkit-text-size-adjust:none !important;
 }
 body.q-dragging *{
   -webkit-user-select:none !important;
   user-select:none !important;
   -webkit-touch-callout:none !important;
+  touch-action:none !important;
 }
 html.q-dragging-lock{
   overflow:hidden !important;
+  touch-action:none !important;
+  overscroll-behavior:none !important;
 }
 
 /* ---------- Controls layout in quadrant mode ---------- */
@@ -278,8 +283,8 @@ body.quadrant-mode .controls{grid-template-columns:repeat(4,minmax(0,1fr))}
 @media (max-width:768px){
   .q-grid-wrap{min-height:420px}
   .q-zone{min-height:200px}
-  .q-pin-label{font-size:10px;max-width:80px}
-  .q-pin-dot{width:12px;height:12px}
+  .q-pin-label{font-size:11px;max-width:90px}
+  .q-pin-dot{width:14px;height:14px}
   .q-axis-label{font-size:11px;padding:3px 4px}
   .q-labels-col,.q-labels-col-right{min-width:24px}
   .mode-toggle-wrap{max-width:420px}
@@ -288,9 +293,9 @@ body.quadrant-mode .controls{grid-template-columns:repeat(4,minmax(0,1fr))}
 @media (max-width:480px){
   .q-grid-wrap{min-height:370px}
   .q-zone{min-height:175px}
-  .q-pin{padding:2px 5px 2px 2px;gap:4px;max-width:110px}
-  .q-pin-label{font-size:9px;max-width:70px}
-  .q-pin-dot{width:10px;height:10px}
+  .q-pin{padding:2px 6px 2px 2px;gap:4px;max-width:120px}
+  .q-pin-label{font-size:10px;max-width:80px}
+  .q-pin-dot{width:12px;height:12px}
   .q-axis-label{font-size:10px;padding:2px 3px}
   .q-labels-col,.q-labels-col-right{min-width:20px}
   .mode-toggle-wrap{max-width:100%;gap:3px;padding:3px}

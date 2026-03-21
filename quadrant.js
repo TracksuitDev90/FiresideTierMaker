@@ -33,7 +33,17 @@
 
   /* ---------- Z-index stacking counter ---------- */
   var _qZCounter = 10; // start above the CSS baseline
-  function nextQZ(){ return ++_qZCounter; }
+  function nextQZ(){
+    // Reset when counter gets too high (prevents unbounded growth)
+    if(_qZCounter > 90000){
+      _qZCounter = 10;
+      // Re-normalize all pins to sequential z-indices
+      var allPins = document.querySelectorAll('.q-pin');
+      for(var i=0;i<allPins.length;i++) allPins[i].style.zIndex = 10+i;
+      _qZCounter = 10 + allPins.length;
+    }
+    return ++_qZCounter;
+  }
   function bringToFront(tok){ tok.style.zIndex = nextQZ(); }
 
   /* Default axis labels */
@@ -45,8 +55,8 @@
   };
 
   /* ---------- Dot+name pin dimensions ---------- */
-  var Q_DOT_SIZE = 14; // diameter of the color dot (+15%)
-  var Q_PIN_HEIGHT = 23; // total pin height (dot + name sit inline) (+15%)
+  var Q_DOT_SIZE = 16; // diameter of the color dot (15% larger than original 14)
+  var Q_PIN_HEIGHT = 26; // total pin height (15% larger than original 23)
 
   /* ---------- Token size for quadrant (matches CSS) ---------- */
   function qTokenSize(){
@@ -55,10 +65,11 @@
   }
 
   /* ---------- Clamp token position allowing overflow toward center axes ---------- */
-  function clampQPosition(x, y, w, h, sz, zone){
+  function clampQPosition(x, y, w, h, sz, zone, pinEl){
     var pos = zone && zone.id ? zone.id.replace('qzone-','') : '';
     var pinH = Q_PIN_HEIGHT;
-    var pinW = 80; // approximate max pin width
+    // Use actual pin width if available, otherwise estimate
+    var pinW = (pinEl && pinEl.offsetWidth) ? pinEl.offsetWidth : 90;
     var minX = 0, maxX = w - pinW;
     var minY = 0, maxY = h - pinH;
     // Allow pins to extend past the axis-side edges slightly
@@ -206,9 +217,11 @@
     }
     pin.dataset.pinName = name || imgAlt || '';
 
-    // Click to select/deselect
+    // Click to select/deselect (suppress if drag just ended)
     on(pin,'click',function(e){
+      if(pin._justDragged){ pin._justDragged = false; return; }
       if(e.target.closest('.q-pin-del')) return;
+      e.stopPropagation(); // prevent zone click handler from also firing
       var already = pin.classList.contains('selected');
       // Deselect all tokens and pins
       $$('.token.selected').forEach(function(t){ t.classList.remove('selected'); });
@@ -385,7 +398,7 @@
       pin.setPointerCapture(e.pointerId);
       bringToFront(pin);
 
-      // Lock viewport
+      // Lock viewport — prevent scroll/zoom on mobile
       document.body.classList.add('dragging-item','q-dragging');
       document.documentElement.classList.add('q-dragging-lock');
 
@@ -395,60 +408,60 @@
       var originTop = pin.style.top;
       var savedZIndex = pin.style.zIndex || '';
 
-      // --- Stay-in-zone approach: no reparenting, zoom-proof ---
-      // Convert current % position to px within zone
+      // Snapshot zone rect once at start (recomputed on drop for accuracy)
       var zoneRect = zone.getBoundingClientRect();
       var startPxX = (parseFloat(originLeft) || 0) / 100 * zoneRect.width;
       var startPxY = (parseFloat(originTop) || 0) / 100 * zoneRect.height;
 
-      // Where the finger initially touched relative to the zone
-      var fingerStartX = e.clientX - zoneRect.left;
-      var fingerStartY = e.clientY - zoneRect.top;
+      // Grab offset: distance from pin top-left to pointer
+      var grabOffX = (e.clientX - zoneRect.left) - startPxX;
+      var grabOffY = (e.clientY - zoneRect.top) - startPxY;
 
-      // Offset from pin origin to finger touch point
-      var grabOffX = fingerStartX - startPxX;
-      var grabOffY = fingerStartY - startPxY;
-
-      // Visual feedback: lift the pin
+      // Visual feedback
       pin.classList.add('q-dragging-token');
       pin.style.transition = 'none';
       pin.style.zIndex = '9999';
       pin.style.willChange = 'transform';
 
       var lastDZ = null;
-      var _curPxX = startPxX, _curPxY = startPxY;
-      var _targetPxX = startPxX, _targetPxY = startPxY;
+      // Track last pointer position for direct 1:1 movement
+      var _lastClientX = e.clientX;
+      var _lastClientY = e.clientY;
+      // Accumulated offset from start position (px)
+      var _offsetX = 0;
+      var _offsetY = 0;
+      // Flag to batch RAF updates
+      var _needsUpdate = false;
       var _rafId = 0;
       var _dragging = true;
-      // Track if finger has left the origin zone (for cross-zone drops)
-      var _crossZone = null;
 
-      // RAF loop: interpolate toward target for buttery-smooth movement
+      // Block touchmove on document to prevent iOS rubber-band / Chrome pull-to-refresh
+      function blockTouch(ev){ if(_dragging) ev.preventDefault(); }
+      document.addEventListener('touchmove', blockTouch, {passive:false});
+
+      // Single RAF loop: apply accumulated offset directly (no lerp = zero lag)
       function rafLoop(){
         if(!_dragging) return;
-        // Lerp factor: 1.0 = instant (no smoothing lag), lower = smoother but laggier
-        _curPxX += (_targetPxX - _curPxX) * 0.7;
-        _curPxY += (_targetPxY - _curPxY) * 0.7;
-        // Apply as transform offset from the pin's current %-based position
-        var offsetX = _curPxX - startPxX;
-        var offsetY = _curPxY - startPxY;
-        pin.style.transform = 'translate3d('+offsetX+'px,'+offsetY+'px,0) scale(1.06)';
+        if(_needsUpdate){
+          pin.style.transform = 'translate3d('+_offsetX+'px,'+_offsetY+'px,0) scale(1.06)';
+          _needsUpdate = false;
+        }
         _rafId = requestAnimationFrame(rafLoop);
       }
       _rafId = requestAnimationFrame(rafLoop);
 
       function move(ev){
         ev.preventDefault();
-        // Fresh zone rect each move — handles scroll, resize, or zoom changes
-        var zr = zone.getBoundingClientRect();
-        // Finger position relative to zone
-        var fx = ev.clientX - zr.left;
-        var fy = ev.clientY - zr.top;
-        // Pin position = finger minus grab offset
-        _targetPxX = fx - grabOffX;
-        _targetPxY = fy - grabOffY;
+        // Delta from last move — immune to zone rect drift, zoom, scroll
+        var dx = ev.clientX - _lastClientX;
+        var dy = ev.clientY - _lastClientY;
+        _lastClientX = ev.clientX;
+        _lastClientY = ev.clientY;
+        _offsetX += dx;
+        _offsetY += dy;
+        _needsUpdate = true;
 
-        // Hit-test under finger for cross-zone detection
+        // Hit-test under finger for cross-zone detection (throttled to RAF)
         pin.style.pointerEvents = 'none';
         var el = document.elementFromPoint(ev.clientX, ev.clientY);
         pin.style.pointerEvents = 'auto';
@@ -457,81 +470,81 @@
         if(lastDZ && lastDZ !== dz) lastDZ.classList.remove('drag-over');
         if(dz && dz !== lastDZ){ dz.classList.add('drag-over'); vib(4); }
         lastDZ = dz || null;
-        _crossZone = dz;
       }
 
       function up(ev){
         _dragging = false;
         cancelAnimationFrame(_rafId);
-        try{pin.releasePointerCapture(e.pointerId);}catch(_){}
-        document.removeEventListener('pointermove',move,false);
-        document.removeEventListener('pointerup',up,false);
-        document.removeEventListener('pointercancel',up,false);
+        document.removeEventListener('touchmove', blockTouch);
+        try{ pin.releasePointerCapture(e.pointerId); }catch(_){}
+        document.removeEventListener('pointermove', move);
+        document.removeEventListener('pointerup', up);
+        document.removeEventListener('pointercancel', up);
 
-        // Unlock viewport
-        document.body.classList.remove('dragging-item','q-dragging');
-        document.documentElement.classList.remove('q-dragging-lock');
+        // Critical cleanup in finally block to prevent stuck state
+        try{
+          // Determine drop target
+          pin.style.pointerEvents = 'none';
+          var dropX = ev.clientX, dropY = ev.clientY;
+          var el = document.elementFromPoint(dropX, dropY);
+          pin.style.pointerEvents = '';
+          var dropZone = el ? el.closest('.q-zone') : null;
+          var dropTray = el ? el.closest('#tray') : null;
 
-        // Clear drag-over highlights
-        qZones.forEach(function(z){z.classList.remove('drag-over');});
-        if(tray) tray.classList.remove('drag-over');
+          if(dropTray){
+            var srcId = pin.dataset.sourceTokenId;
+            pin.remove();
+            if(srcId) unhideTrayToken(srcId);
+            live('Removed from quadrant chart');
+            vib(6);
+            scheduleQuadrantSave();
+          } else if(dropZone){
+            var dRect = dropZone.getBoundingClientRect();
+            var pinH = Q_PIN_HEIGHT;
+            var nx = dropX - dRect.left - grabOffX;
+            var ny = dropY - dRect.top - grabOffY;
+            var clampedDrop = clampQPosition(nx, ny, dRect.width, dRect.height, pinH, dropZone, pin);
+            nx = clampedDrop.x; ny = clampedDrop.y;
 
-        // Reset visual overrides
-        pin.classList.remove('q-dragging-token');
-        pin.style.transform = '';
-        pin.style.transition = '';
-        pin.style.willChange = '';
-
-        // Determine drop target
-        pin.style.pointerEvents = 'none';
-        var dropX = ev.clientX, dropY = ev.clientY;
-        var el = document.elementFromPoint(dropX, dropY);
-        pin.style.pointerEvents = '';
-        var dropZone = el ? el.closest('.q-zone') : null;
-        var dropTray = el ? el.closest('#tray') : null;
-
-        if(dropTray){
-          // Destroy pin and unhide the source tray token
-          var srcId = pin.dataset.sourceTokenId;
-          pin.remove();
-          if(srcId) unhideTrayToken(srcId);
-          live('Removed from quadrant chart');
-          vib(6);
-          scheduleQuadrantSave();
-        } else if(dropZone){
-          // Compute final position in drop zone coordinates
-          var dRect = dropZone.getBoundingClientRect();
-          var pinH = Q_PIN_HEIGHT;
-          var nx = dropX - dRect.left - grabOffX;
-          var ny = dropY - dRect.top - grabOffY;
-          var clampedDrop = clampQPosition(nx, ny, dRect.width, dRect.height, pinH, dropZone);
-          nx = clampedDrop.x; ny = clampedDrop.y;
-
-          if(dropZone !== originZone){
-            var fromId2 = ensureId(originZone,'zone');
-            recordPlacement(pin.id, fromId2, dropZone.id, '');
-            dropZone.appendChild(pin);
+            if(dropZone !== originZone){
+              var fromId2 = ensureId(originZone,'zone');
+              recordPlacement(pin.id, fromId2, dropZone.id, '');
+              dropZone.appendChild(pin);
+            }
+            pin.style.position = 'absolute';
+            pin.style.left = (nx/dRect.width*100)+'%';
+            pin.style.top = (ny/dRect.height*100)+'%';
+            pin.style.zIndex = '';
+            bringToFront(pin);
+            vib(6);
+            scheduleQuadrantSave();
+          } else {
+            // Snap back to original position
+            pin.style.position = 'absolute';
+            pin.style.left = originLeft;
+            pin.style.top = originTop;
+            pin.style.zIndex = savedZIndex;
           }
-          pin.style.position = 'absolute';
-          pin.style.left = (nx/dRect.width*100)+'%';
-          pin.style.top = (ny/dRect.height*100)+'%';
-          pin.style.zIndex = '';
-          bringToFront(pin);
-          vib(6);
-          scheduleQuadrantSave();
-        } else {
-          // Snap back to original position
-          pin.style.position = 'absolute';
-          pin.style.left = originLeft;
-          pin.style.top = originTop;
-          pin.style.zIndex = savedZIndex;
+        } finally {
+          // Always clean up — even if drop logic throws
+          document.body.classList.remove('dragging-item','q-dragging');
+          document.documentElement.classList.remove('q-dragging-lock');
+          qZones.forEach(function(z){ z.classList.remove('drag-over'); });
+          if(tray) tray.classList.remove('drag-over');
+          pin.classList.remove('q-dragging-token');
+          pin.style.transform = '';
+          pin.style.transition = '';
+          pin.style.willChange = '';
+          pin.style.pointerEvents = '';
+          // Suppress the click event that fires after pointerup
+          pin._justDragged = true;
         }
       }
 
       // Non-passive so preventDefault blocks scroll/zoom
-      document.addEventListener('pointermove',move,{passive:false,capture:false});
-      document.addEventListener('pointerup',up,false);
-      document.addEventListener('pointercancel',up,false);
+      document.addEventListener('pointermove', move, {passive:false});
+      document.addEventListener('pointerup', up, false);
+      document.addEventListener('pointercancel', up, false);
     }, {passive:false,capture:false});
   }
 
@@ -799,6 +812,18 @@
     var qClone = clone.querySelector('#quadrantBoard');
     if(qClone){ qClone.style.display = 'block'; qClone.classList.add('q-export-mode'); }
 
+    // Clean up pins in clone: strip drag/selection state and inline shadows
+    var clonePins = clone.querySelectorAll('.q-pin');
+    for(var ci=0;ci<clonePins.length;ci++){
+      var cp = clonePins[ci];
+      cp.classList.remove('q-dragging-token','selected');
+      cp.style.boxShadow = 'none';
+      cp.style.transform = 'none';
+      cp.style.willChange = 'auto';
+      cp.style.opacity = '1';
+      cp.style.transition = 'none';
+    }
+
     // Hide prompt stack and edit chrome
     var style = document.createElement('style');
     style.textContent = [
@@ -809,10 +834,12 @@
       '.token-del{display:none !important}',
       '.q-pin-del{display:none !important}',
       '.mode-toggle-wrap{display:none !important}',
-      // Pin styling for export
-      '.q-pin{position:absolute !important}',
-      ".q-pin-label{font-family:'Montserrat',ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif !important;font-weight:700 !important;font-size:12px !important}",
-      '.q-pin-dot{width:14px !important;height:14px !important;border-radius:50% !important;flex-shrink:0 !important}',
+      // Pin styling for export — reset all drag/hover shadows
+      '.q-pin{position:absolute !important;box-shadow:none !important;transform:none !important;will-change:auto !important;opacity:1 !important}',
+      '.q-pin.q-dragging-token{box-shadow:none !important;opacity:1 !important}',
+      '.q-pin.selected{box-shadow:none !important}',
+      ".q-pin-label{font-family:'Montserrat',ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif !important;font-weight:700 !important;font-size:14px !important}",
+      '.q-pin-dot{width:16px !important;height:16px !important;border-radius:50% !important;flex-shrink:0 !important}',
       // Ensure quadrant grid renders properly at export width
       '.q-grid-wrap{min-height:500px !important}',
       '.q-zone{min-height:240px !important;overflow:visible !important}',
