@@ -397,6 +397,7 @@ function createRow(cfg){
     var tokens = $$('.token', drop);
     flipZones([drop,tray], function(){ tokens.forEach(function(t){ tray.appendChild(t); }); });
     node.remove(); uniformizeTierLabels(); refreshRadialOptions();
+    scheduleSave();
   });
 
   enableRowReorder(labelArea, node);
