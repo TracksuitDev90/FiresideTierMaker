@@ -425,17 +425,15 @@ var tierIdx = 0;
 function nextTierColor(){ var c=NEW_TIER_COLORS[tierIdx%NEW_TIER_COLORS.length]; tierIdx++; return c; }
 
 var communityCast = [
-  "Abby","Anette","Andruw","Authority","B7","Camryn","Cindy","Clamy","Clay","Cody","Cookies",
+  "Abby","Anette","Andruw","Authority","B7","Camryn","Cindy","Cody","Cookies",
   "Denver","Devon","Dexy","Dior","Domo","Gavin","Harry","Haven","Katie","Kiev","Kikki",
-  "Meegan","Michael","Mew's","Neil","NJ","Paper","Ray","Raymond","Safoof","Sky","Smitty","Tubawk","Versse","Vyken","Zwjk"
+  "Meegan","Michael","Mew's","Neil","NJ","Paper","Ray","Raymond","Safoof","Smitty","Tubawk","Versse","Vyken","Zwjk"
 ];
 
 /* Fixed signature colors for specific cast members — never rotate */
 var DEFAULT_TOKEN_COLORS = {
-  'Clay':   '#C61937',
   'Cody':   '#8F949E',
   'Camryn': '#99748f',
-  'Sky':    '#76a071',
   'Devon':  '#7E57C2',
   'Versse': '#19852d',
   'Haven':  '#FFBC00',
