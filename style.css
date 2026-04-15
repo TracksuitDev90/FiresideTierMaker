@@ -24,10 +24,10 @@ a{color:inherit;text-decoration:none}
   --shadow:0 0 0 transparent;
   --accent:#8b7dff; --brand:var(--neon); --neon:#baf800;
   /* Pastel status-badge tokens for control buttons */
-  --btn-green-bg:#c9ebcf;   --btn-green-fg:#1f6e3a;
-  --btn-yellow-bg:#f9e2b3;  --btn-yellow-fg:#8b5a10;
-  --btn-red-bg:#f4cfcf;     --btn-red-fg:#9a2a2a;
-  --btn-violet-bg:#dcd8fb;  --btn-violet-fg:#4b3fb5;
+  --btn-green-bg:#b2e0bc;   --btn-green-fg:#1f6e3a;
+  --btn-yellow-bg:#f7d68b;  --btn-yellow-fg:#8b5a10;
+  --btn-red-bg:#f0b5b5;     --btn-red-fg:#9a2a2a;
+  --btn-violet-bg:#c8c1f8;  --btn-violet-fg:#4b3fb5;
   --btn-theme-bg:#e8e2d4;   --btn-theme-fg:#3a3020;
 }
 :root[data-theme="light"]{
@@ -37,10 +37,10 @@ a{color:inherit;text-decoration:none}
   --shadow:0 10px 24px rgba(0,0,0,.08);
   --accent:#6b5fff; --brand:#191919; --neon:#191919;
   /* Pastel status-badge tokens (light mode) */
-  --btn-green-bg:#d7efdb;   --btn-green-fg:#26794a;
-  --btn-yellow-bg:#fce8c2;  --btn-yellow-fg:#a06414;
-  --btn-red-bg:#f8dcdc;     --btn-red-fg:#a83232;
-  --btn-violet-bg:#e6e3fd;  --btn-violet-fg:#5549c9;
+  --btn-green-bg:#c2e6cb;   --btn-green-fg:#26794a;
+  --btn-yellow-bg:#fadb9c;  --btn-yellow-fg:#a06414;
+  --btn-red-bg:#f3c4c4;     --btn-red-fg:#a83232;
+  --btn-violet-bg:#d2cafa;  --btn-violet-fg:#5549c9;
   --btn-theme-bg:#1e2a38;   --btn-theme-fg:#dbe3ee;
 }
 
@@ -149,10 +149,8 @@ a{color:inherit;text-decoration:none}
 #undoBtn.animate .ico svg{transform:rotate(-360deg);transition:transform .4s ease}
 #addTierBtn.animate .ico svg{transform:scale(1.2)}
 
-/* Pastel status-badge color scheme — flat fills with matching-hue outline,
-   left-aligned so icon + text line up across grid cells at all breakpoints */
+/* Pastel status-badge color scheme — flat fills with matching-hue outline */
 #newBracketBtn,#addTierBtn,#undoBtn,#trashClear,#saveBtn,#themeToggle{
-  justify-content:flex-start;
   border-color:color-mix(in srgb, currentColor 35%, transparent);
 }
 #newBracketBtn{background:var(--btn-green-bg);color:var(--btn-green-fg);box-shadow:none}
