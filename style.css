@@ -149,15 +149,20 @@ a{color:inherit;text-decoration:none}
 #undoBtn.animate .ico svg{transform:rotate(-360deg);transition:transform .4s ease}
 #addTierBtn.animate .ico svg{transform:scale(1.2)}
 
-/* Pastel status-badge color scheme — flat fills, no border, no inset sheen */
-#newBracketBtn{background:var(--btn-green-bg);color:var(--btn-green-fg);border-color:transparent;box-shadow:none}
-#addTierBtn{background:var(--btn-green-bg);color:var(--btn-green-fg);border-color:transparent;box-shadow:none;padding:0 24px 0 12px}
-#undoBtn{background:var(--btn-yellow-bg);color:var(--btn-yellow-fg);border-color:transparent;box-shadow:none}
-#trashClear{background:var(--btn-red-bg);color:var(--btn-red-fg);border-color:transparent;box-shadow:none}
-#saveBtn{background:var(--btn-violet-bg);color:var(--btn-violet-fg);border-color:transparent;box-shadow:none}
+/* Pastel status-badge color scheme — flat fills with matching-hue outline,
+   left-aligned so icon + text line up across grid cells at all breakpoints */
+#newBracketBtn,#addTierBtn,#undoBtn,#trashClear,#saveBtn,#themeToggle{
+  justify-content:flex-start;
+  border-color:color-mix(in srgb, currentColor 35%, transparent);
+}
+#newBracketBtn{background:var(--btn-green-bg);color:var(--btn-green-fg);box-shadow:none}
+#addTierBtn{background:var(--btn-green-bg);color:var(--btn-green-fg);box-shadow:none}
+#undoBtn{background:var(--btn-yellow-bg);color:var(--btn-yellow-fg);box-shadow:none}
+#trashClear{background:var(--btn-red-bg);color:var(--btn-red-fg);box-shadow:none}
+#saveBtn{background:var(--btn-violet-bg);color:var(--btn-violet-fg);box-shadow:none}
 
 /* Theme toggle: vibe varies per theme (warm cream in dark mode, deep navy in light mode) */
-#themeToggle{background:var(--btn-theme-bg);color:var(--btn-theme-fg);border-color:transparent;font-weight:700;box-shadow:none}
+#themeToggle{background:var(--btn-theme-bg);color:var(--btn-theme-fg);font-weight:700;box-shadow:none}
 #themeToggle.animate .ico svg{transform:rotate(180deg)}
 
 .btn.small{height:42px;padding:0 12px;border-radius:12px;font-weight:700}
