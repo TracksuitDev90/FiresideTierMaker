@@ -2051,11 +2051,8 @@ var TIER_PROMPTS = [
     { label: 'AQUA DEER', color: '#00CED1', image: 'icons/squads/aqua-deer.png' }
   ]}
 ];
-// Pin the newest prompts first, shuffle the rest
-var _newestCount = 5;
-var _newest = TIER_PROMPTS.splice(TIER_PROMPTS.length - _newestCount, _newestCount).reverse();
+// Fully shuffle prompts so older topics get equal rotation
 shuffleArray(TIER_PROMPTS);
-TIER_PROMPTS = _newest.concat(TIER_PROMPTS);
 var _deckIndex = 0;
 var _promptUserSet = false;
 var _maxVisibleCards = 3;

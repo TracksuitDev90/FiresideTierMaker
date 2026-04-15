@@ -24,11 +24,11 @@ a{color:inherit;text-decoration:none}
   --shadow:0 0 0 transparent;
   --accent:#8b7dff; --brand:var(--neon); --neon:#baf800;
   /* Pastel status-badge tokens for control buttons */
-  --btn-green-bg:#b2e0bc;   --btn-green-fg:#1f6e3a;
-  --btn-yellow-bg:#f7d68b;  --btn-yellow-fg:#8b5a10;
-  --btn-red-bg:#f0b5b5;     --btn-red-fg:#9a2a2a;
-  --btn-violet-bg:#c8c1f8;  --btn-violet-fg:#4b3fb5;
-  --btn-theme-bg:#e8e2d4;   --btn-theme-fg:#3a3020;
+  --btn-green-bg:#aee5ba;   --btn-green-fg:#177638;
+  --btn-yellow-bg:#ffda83;  --btn-yellow-fg:#975d04;
+  --btn-red-bg:#f6afaf;     --btn-red-fg:#a51f1f;
+  --btn-violet-bg:#c4bbfd;  --btn-violet-fg:#4233c0;
+  --btn-theme-bg:#eae3d2;   --btn-theme-fg:#3d311d;
 }
 :root[data-theme="light"]{
   --surface:#f7f8fb; --surface-raised:#fff; --card:#f0f3f8;
@@ -37,11 +37,11 @@ a{color:inherit;text-decoration:none}
   --shadow:0 10px 24px rgba(0,0,0,.08);
   --accent:#6b5fff; --brand:#191919; --neon:#191919;
   /* Pastel status-badge tokens (light mode) */
-  --btn-green-bg:#c2e6cb;   --btn-green-fg:#26794a;
-  --btn-yellow-bg:#fadb9c;  --btn-yellow-fg:#a06414;
-  --btn-red-bg:#f3c4c4;     --btn-red-fg:#a83232;
-  --btn-violet-bg:#d2cafa;  --btn-violet-fg:#5549c9;
-  --btn-theme-bg:#1e2a38;   --btn-theme-fg:#dbe3ee;
+  --btn-green-bg:#beeac9;   --btn-green-fg:#1e8149;
+  --btn-yellow-bg:#ffdd97;  --btn-yellow-fg:#ae6606;
+  --btn-red-bg:#f8bfbf;     --btn-red-fg:#b42626;
+  --btn-violet-bg:#cfc5ff;  --btn-violet-fg:#4b3cd6;
+  --btn-theme-bg:#1c2a3b;   --btn-theme-fg:#d9e3f0;
 }
 
 /* ---------- Layout ---------- */
@@ -592,7 +592,7 @@ a{color:inherit;text-decoration:none}
 .token:active{transform:translateY(0)}
 .token:focus-visible{outline:3px solid var(--accent);outline-offset:4px}
 .token .label{
-  padding:7px;text-align:center;font-family:'Montserrat',ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-weight:900;font-size:22px;line-height:1.1;
+  padding:7px;text-align:center;font-family:'Rubik',ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-weight:600;font-size:22px;line-height:1.1;
   white-space:nowrap;
   display:flex;align-items:center;justify-content:center;
   width:100%;height:100%;overflow:hidden;
