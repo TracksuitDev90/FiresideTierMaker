@@ -114,7 +114,7 @@
     if (loading || !hasMore) return;
     loading = true;
     setStatus('Searching\u2026');
-    showSpinner();
+    if (fresh) showSkeletons(); else showSpinner();
 
     /* First page: try Wikipedia article images for best relevance,
        then fill remaining slots with Commons search.
@@ -123,25 +123,26 @@
       searchWikipediaImages(query, function (wikiResults) {
         searchCommons(query, 0, function (err, commonsResults, more) {
           loading = false;
-          if (err && !wikiResults.length) { setStatus(err); return; }
+          removeSkeletons();
+          removeSpinner();
+          if (err && !wikiResults.length) { setStatus(err); showEmptyState(query, true); return; }
           // Merge: wiki results first (higher relevance), then commons
           var merged = dedup(wikiResults.concat(commonsResults));
           renderResults(merged);
           hasMore = more;
-          removeSpinner();
           page++;
-          if (!merged.length) setStatus('No results found. Try different keywords.');
+          if (!merged.length) { setStatus(''); showEmptyState(query, false); }
           else setStatus('');
         });
       });
     } else {
       searchCommons(query, page, function (err, results, more) {
         loading = false;
+        removeSpinner();
         if (err) { setStatus(err); return; }
         var unique = dedup(results);
         renderResults(unique);
         hasMore = more;
-        removeSpinner();
         page++;
         if (!unique.length && !more) setStatus('No more results.');
         else setStatus('');
@@ -310,6 +311,33 @@
   function removeSpinner() {
     var s = qs('.img-search-loading', grid);
     if (s) s.remove();
+  }
+  function showSkeletons() {
+    removeSkeletons();
+    for (var i = 0; i < 9; i++) {
+      var s = document.createElement('div');
+      s.className = 'img-search-skel';
+      grid.appendChild(s);
+    }
+  }
+  function removeSkeletons() {
+    qsa('.img-search-skel', grid).forEach(function (s) { s.remove(); });
+  }
+  function showEmptyState(q, isError) {
+    var wrap = document.createElement('div');
+    wrap.className = 'img-search-empty';
+    var safeQ = String(q).replace(/[<>&]/g, function (c) {
+      return c === '<' ? '&lt;' : c === '>' ? '&gt;' : '&amp;';
+    });
+    wrap.innerHTML =
+      '<div class="img-search-empty-icon">' + (isError ? '!' : '?') + '</div>' +
+      '<h4 class="img-search-empty-title">' +
+        (isError ? 'Something went wrong' : 'No matches for \u201C' + safeQ + '\u201D') +
+      '</h4>' +
+      '<p class="img-search-empty-sub">' +
+        (isError ? 'Check your connection and try again.' : 'Try a different spelling, a related term, or a broader query.') +
+      '</p>';
+    grid.appendChild(wrap);
   }
 
   /* ---------- add selected images to tray ---------- */

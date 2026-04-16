@@ -792,11 +792,23 @@ function enablePointerDrag(node){
       document.removeEventListener('pointerup', up, false);
       cancelAnimationFrame(raf);
       var target = document.elementFromPoint(x,y);
-      if (ghost && ghost.parentNode) ghost.parentNode.removeChild(ghost);
+      var zonePreview = getDropZoneFromElement(target);
+      if (!zonePreview && ghost && ghost.parentNode) {
+        // Snap-back animation: tween ghost toward original tile before removing
+        var orect = node.getBoundingClientRect();
+        ghost.style.setProperty('--snap-x', (orect.left - (x - offsetX)) + 'px');
+        ghost.style.setProperty('--snap-y', (orect.top  - (y - offsetY)) + 'px');
+        ghost.classList.add('snap-back');
+        var gh = ghost;
+        setTimeout(function(){ if (gh && gh.parentNode) gh.parentNode.removeChild(gh); }, 240);
+        ghost = null;
+      } else if (ghost && ghost.parentNode) {
+        ghost.parentNode.removeChild(ghost);
+      }
       node.classList.remove('drag-hidden');
       document.body.classList.remove('dragging-item');
 
-      var zone = getDropZoneFromElement(target);
+      var zone = zonePreview;
       if (zone){
         var fromId = ensureId(originParent,'zone');
         var toId   = ensureId(zone,'zone');
@@ -889,10 +901,21 @@ function enableMouseTouchDragFallback(node){
     if(!dragging) return; dragging=false;
     cancelAnimationFrame(raf);
     var target=document.elementFromPoint(x,y);
-    if (ghost && ghost.parentNode) ghost.parentNode.removeChild(ghost);
+    var zonePreview2 = getDropZoneFromElement(target);
+    if (!zonePreview2 && ghost && ghost.parentNode) {
+      var orect2 = node.getBoundingClientRect();
+      ghost.style.setProperty('--snap-x', (orect2.left - (x - offsetX)) + 'px');
+      ghost.style.setProperty('--snap-y', (orect2.top  - (y - offsetY)) + 'px');
+      ghost.classList.add('snap-back');
+      var gh2 = ghost;
+      setTimeout(function(){ if (gh2 && gh2.parentNode) gh2.parentNode.removeChild(gh2); }, 240);
+      ghost = null;
+    } else if (ghost && ghost.parentNode) {
+      ghost.parentNode.removeChild(ghost);
+    }
     node.classList.remove('drag-hidden');
     document.body.classList.remove('dragging-item');
-    var zone=getDropZoneFromElement(target);
+    var zone=zonePreview2;
     if (zone){
       var fromId=ensureId(originParent,'zone'), toId=ensureId(zone,'zone');
       var originBeforeId = originNext ? ensureId(originNext,'tok') : '';
@@ -1291,11 +1314,22 @@ function showConfirm(title, msg, onConfirm){
   function close(){ overlay.remove(); }
   on(cancelBtn, 'click', close);
   on(overlay, 'click', function(e){ if(e.target === overlay) close(); });
-  on(okBtn, 'click', function(){ close(); onConfirm(); });
+  on(okBtn, 'click', function(){
+    if (okBtn.classList.contains('arming')) return;
+    close(); onConfirm();
+  });
   // Esc to cancel
   function onKey(e){ if(e.key==='Escape'){ close(); document.removeEventListener('keydown', onKey); } }
   document.addEventListener('keydown', onKey);
-  okBtn.focus();
+  // Safety: destructive OK button is disabled for 400ms so a double-Enter can't nuke the board
+  okBtn.classList.add('arming');
+  okBtn.disabled = true;
+  setTimeout(function(){
+    okBtn.classList.remove('arming');
+    okBtn.disabled = false;
+    okBtn.focus();
+  }, 400);
+  cancelBtn.focus();
 }
 
 /* ---------- Clear / Undo ---------- */
@@ -1496,6 +1530,21 @@ on($('#saveBtn'),'click', function(){
   };
   var _exportFontCSS = (_bowlbyFontFaceCSS || '') + (_montserratFontFaceCSS || '');
   if (_exportFontCSS) exportOpts.fontEmbedCSS = _exportFontCSS;
+  // Show export-in-progress state on the Save button
+  var saveBtn = $('#saveBtn');
+  var saveLabel = saveBtn ? saveBtn.querySelector('span:not(.ico)') : null;
+  var savedLabelText = saveLabel ? saveLabel.textContent : '';
+  if (saveBtn) {
+    saveBtn.setAttribute('data-state', 'saving');
+    saveBtn.disabled = true;
+    if (saveLabel) saveLabel.textContent = 'Saving\u2026';
+  }
+  function resetSaveBtn(){
+    if (!saveBtn) return;
+    saveBtn.removeAttribute('data-state');
+    saveBtn.disabled = false;
+    if (saveLabel) saveLabel.textContent = savedLabelText;
+  }
   htmlToImage.toPng(clone, exportOpts).then(function(dataUrl){
     var boardTitle = ($('.board-title') || {}).textContent || '';
     var slug = boardTitle.trim().replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase();
@@ -1503,9 +1552,12 @@ on($('#saveBtn'),'click', function(){
     document.body.appendChild(a); a.click();
     setTimeout(function(){ a.remove(); }, 300);
     cloneWrap.remove();
+    resetSaveBtn();
     showSaveToast('Saved!');
+    vib([6, 40, 10]);
   }).catch(function(err){
     cloneWrap.remove();
+    resetSaveBtn();
     showSaveToast('Export failed — try again', true);
     console.error('PNG export error:', err);
   });
@@ -1583,6 +1635,34 @@ on(document,'keydown',function(e){
     selected.classList.remove('selected');
     selected.style.position=''; selected.style.left=''; selected.style.top='';
     recordPlacement(selected.id,fromId2,zone.id,kbBeforeId2); vib(4); live('Moved "'+(selected.innerText||'item')+'" to '+rowLabel(row));
+  }
+});
+
+/* ---------- Global keyboard shortcuts: Cmd/Ctrl+Z, Cmd/Ctrl+S, ? ---------- */
+on(document,'keydown', function(e){
+  var t = e.target;
+  var typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
+  var mod = e.metaKey || e.ctrlKey;
+  // Undo
+  if (mod && !e.shiftKey && (e.key === 'z' || e.key === 'Z')) {
+    if (typing) return; // don't override text-editor undo
+    e.preventDefault();
+    var undoBtn = $('#undoBtn');
+    if (undoBtn && !undoBtn.disabled) undoBtn.click();
+    return;
+  }
+  // Save
+  if (mod && (e.key === 's' || e.key === 'S')) {
+    e.preventDefault();
+    var saveBtn = $('#saveBtn');
+    if (saveBtn && !saveBtn.disabled) saveBtn.click();
+    return;
+  }
+  // ? opens help drawer
+  if (!mod && !typing && (e.key === '?' || (e.shiftKey && e.key === '/'))) {
+    e.preventDefault();
+    var handle = $('#helpHandle');
+    if (handle) handle.click();
   }
 });
 
@@ -2104,6 +2184,14 @@ function buildPromptCard(promptIndex){
   card.setAttribute('aria-roledescription', 'swipeable card');
   card.setAttribute('aria-label', prompt.text + (prompt.tiers ? ' (includes custom tiers)' : ''));
 
+  // Skip button (left) — explicit alternative to swipe-left / ArrowLeft
+  var skipBtn = document.createElement('button');
+  skipBtn.type = 'button';
+  skipBtn.className = 'prompt-card-btn prompt-card-skip';
+  skipBtn.setAttribute('aria-label', 'Skip this prompt');
+  skipBtn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>';
+  card.appendChild(skipBtn);
+
   var text = document.createElement('span');
   text.className = 'prompt-card-text';
   text.textContent = prompt.text;
@@ -2120,6 +2208,15 @@ function buildPromptCard(promptIndex){
     badge.style.alignItems = 'center';
     card.appendChild(badge);
   }
+
+  // Use button (right) — explicit alternative to tap/swipe-right/Enter
+  var useBtn = document.createElement('button');
+  useBtn.type = 'button';
+  useBtn.className = 'prompt-card-btn prompt-card-use';
+  useBtn.setAttribute('aria-label', 'Use this prompt');
+  useBtn.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 10 18 20 6"/></svg>';
+  card.appendChild(useBtn);
+
   return card;
 }
 
@@ -2309,6 +2406,40 @@ function enableCardSwipe(card){
     document.addEventListener('pointermove', onMove);
     document.addEventListener('pointerup', onUp);
   });
+
+  // Explicit skip / use buttons — stop propagation so the card's tap-to-apply doesn't also fire
+  function flyOff(dir){
+    var cardW2 = card.offsetWidth || 300;
+    var flyX = dir * (cardW2 + 100);
+    var flyRotate = dir * 16;
+    card.style.transition = 'transform .5s cubic-bezier(.2,0,0,1), opacity .3s ease';
+    card.style.transform = 'translateX(' + flyX + 'px) rotate(' + flyRotate + 'deg)';
+    card.style.opacity = '0';
+    vib(6);
+  }
+  var skipEl = card.querySelector('.prompt-card-skip');
+  var useEl  = card.querySelector('.prompt-card-use');
+  if (skipEl) {
+    ['pointerdown','mousedown','touchstart','click'].forEach(function(evt){
+      skipEl.addEventListener(evt, function(e){ e.stopPropagation(); }, true);
+    });
+    skipEl.addEventListener('click', function(e){
+      e.stopPropagation();
+      flyOff(-1);
+      advanceCardStack();
+    });
+  }
+  if (useEl) {
+    ['pointerdown','mousedown','touchstart','click'].forEach(function(evt){
+      useEl.addEventListener(evt, function(e){ e.stopPropagation(); }, true);
+    });
+    useEl.addEventListener('click', function(e){
+      e.stopPropagation();
+      var pIdxU = parseInt(card.dataset.promptIndex, 10);
+      flyOff(1);
+      setTimeout(function(){ applyPrompt(TIER_PROMPTS[pIdxU]); }, 250);
+    });
+  }
 
   /* #10 Keyboard support — Enter/Space to apply, ArrowLeft to skip */
   on(card, 'keydown', function(e){
@@ -2582,14 +2713,37 @@ document.addEventListener('DOMContentLoaded', function start(){
 
   // creators
   function addNameFromInput(){
-    var name = $('#nameInput').value.trim();
-    if (!name) return;
+    var input = $('#nameInput');
+    var name = input.value.trim();
+    if (!name) {
+      var bar = document.querySelector('.action-bar');
+      input.classList.remove('shake');
+      if (bar) bar.classList.remove('invalid-name');
+      // force reflow so the animation restarts on rapid re-submit
+      void input.offsetWidth;
+      input.classList.add('shake');
+      if (bar) bar.classList.add('invalid-name');
+      setTimeout(function(){ input.classList.remove('shake'); }, 320);
+      setTimeout(function(){ if (bar) bar.classList.remove('invalid-name'); }, 1400);
+      live('Name required');
+      input.focus();
+      return;
+    }
     tray.insertBefore(buildNameToken(name, $('#nameColor').value, true), tray.firstChild);
-    $('#nameInput').value=''; $('#nameColor').value = nextPreset();
+    input.value=''; $('#nameColor').value = nextPreset();
     refitAllLabels();
+    updateAddReady();
     scheduleSave();
   }
+  // Reflect input-has-content on the + button so it looks "armed"
+  function updateAddReady(){
+    var btn = $('#addNameBtn');
+    var inp = $('#nameInput');
+    if (!btn || !inp) return;
+    btn.classList.toggle('ready', !!inp.value.trim());
+  }
   on($('#addNameBtn'),'click', addNameFromInput);
+  on($('#nameInput'),'input', updateAddReady);
   // Enter key submits name (item 7)
   on($('#nameInput'),'keydown', function(e){
     if (e.key === 'Enter') { e.preventDefault(); addNameFromInput(); }
@@ -2598,16 +2752,22 @@ document.addEventListener('DOMContentLoaded', function start(){
   // --- Add Image dropdown ---
   var imgDropdown = $('#imgDropdown');
   var urlInputRow = $('#urlInputRow');
+  var imgBtnWrap = document.querySelector('.img-btn-wrap');
+  function syncDropdownChevron(){
+    if (!imgBtnWrap || !imgDropdown) return;
+    imgBtnWrap.classList.toggle('open', !imgDropdown.classList.contains('hidden'));
+  }
   on($('#addImageBtn'), 'click', function(e){
     e.stopPropagation();
     if(imgDropdown) imgDropdown.classList.toggle('hidden');
     if(urlInputRow) urlInputRow.classList.add('hidden');
+    syncDropdownChevron();
   });
   // Close dropdown on outside click
   on(document, 'click', function(e){
     if(imgDropdown && !imgDropdown.classList.contains('hidden')){
       var wrap = e.target.closest && e.target.closest('.img-btn-wrap');
-      if(!wrap) imgDropdown.classList.add('hidden');
+      if(!wrap) { imgDropdown.classList.add('hidden'); syncDropdownChevron(); }
     }
   });
   // Upload option
@@ -2643,17 +2803,41 @@ document.addEventListener('DOMContentLoaded', function start(){
     e.target.value = ''; // Reset so same file can be uploaded again
   });
 
-  // Image URL input
+  // Image URL input — validates with an Image() preflight so broken URLs surface as a toast
   function addImageFromUrl(){
     var urlInput = $('#imageUrlInput');
+    var goBtn = $('#addUrlBtn');
     var url = urlInput ? urlInput.value.trim() : '';
     if (!url) return;
-    if (url.indexOf('http') !== 0) { urlInput.value = ''; return; }
-    var token = buildImageToken(url, '');
-    tray.insertBefore(token, tray.firstChild);
-    urlInput.value = '';
-    if(imgDropdown) imgDropdown.classList.add('hidden');
-    scheduleSave();
+    if (url.indexOf('http') !== 0) {
+      showSaveToast('URL must start with http:// or https://', true);
+      return;
+    }
+    if (goBtn) { goBtn.classList.add('loading'); goBtn.disabled = true; }
+    var probe = new Image();
+    var done = false;
+    var cleanup = function(){ if (goBtn) { goBtn.classList.remove('loading'); goBtn.disabled = false; } };
+    probe.onload = function(){
+      if (done) return; done = true;
+      cleanup();
+      var token = buildImageToken(url, '');
+      tray.insertBefore(token, tray.firstChild);
+      urlInput.value = '';
+      if(imgDropdown) { imgDropdown.classList.add('hidden'); syncDropdownChevron(); }
+      scheduleSave();
+    };
+    probe.onerror = function(){
+      if (done) return; done = true;
+      cleanup();
+      showSaveToast('Could not load that image — check the URL', true);
+    };
+    // Fail gracefully if nothing responds within 8s
+    setTimeout(function(){
+      if (done) return; done = true;
+      cleanup();
+      showSaveToast('Image took too long to load — try another URL', true);
+    }, 8000);
+    probe.src = url;
   }
   on($('#addUrlBtn'), 'click', addImageFromUrl);
   on($('#imageUrlInput'), 'keydown', function(e){
@@ -2788,3 +2972,191 @@ document.addEventListener('DOMContentLoaded', function start(){
   refitAllLabels();
   live('Ready.');
 });
+
+/* ---------- First-run onboarding (subtle, one-time, dismissible) ---------- */
+(function(){
+  var KEY = 'fstm_onboarded_v1';
+  var SKIPPED = 'fstm_onboarded_skip_v1';
+  try {
+    if (localStorage.getItem(KEY) || localStorage.getItem(SKIPPED)) return;
+  } catch(_){ return; }
+
+  var activeStep = null; // {el: HTMLElement, teardown: Fn}
+  var stepIdx = 0;
+  var placementTokensSeenFirstPlace = false;
+
+  // If the user already has content (returning via storage), don't onboard
+  if (document.querySelector('#tray .token')) {
+    try { localStorage.setItem(KEY, '1'); } catch(_){}
+    return;
+  }
+
+  function finish(){
+    try { localStorage.setItem(KEY, '1'); } catch(_){}
+    teardownActive();
+  }
+  function skipAll(){
+    try { localStorage.setItem(SKIPPED, '1'); } catch(_){}
+    teardownActive();
+  }
+  function teardownActive(){
+    if (activeStep && activeStep.teardown) activeStep.teardown();
+    activeStep = null;
+  }
+
+  function positionAround(target, ring, tip, arrow, preferBelow){
+    var r = target.getBoundingClientRect();
+    var ringW = r.width + 16, ringH = r.height + 16;
+    ring.style.left = (r.left + window.scrollX - 8) + 'px';
+    ring.style.top  = (r.top  + window.scrollY - 8) + 'px';
+    ring.style.width  = ringW + 'px';
+    ring.style.height = ringH + 'px';
+
+    // Tip: try below, flip above if it would go off-screen
+    var tipW = 240;
+    var tipH = tip.offsetHeight || 70;
+    var below = preferBelow !== false;
+    var spaceBelow = window.innerHeight - r.bottom;
+    if (spaceBelow < tipH + 24) below = false;
+
+    var left = Math.max(8, Math.min(r.left + window.scrollX + r.width/2 - tipW/2, window.innerWidth - tipW - 8));
+    var top  = below ? (r.bottom + window.scrollY + 14) : (r.top + window.scrollY - tipH - 14);
+    tip.style.left = left + 'px';
+    tip.style.top  = top  + 'px';
+    tip.style.maxWidth = tipW + 'px';
+
+    // Arrow
+    var arrowLeft = Math.min(Math.max(r.left + window.scrollX + r.width/2 - left - 6, 14), tipW - 20);
+    arrow.style.left = arrowLeft + 'px';
+    if (below) {
+      arrow.style.top = '-7px';
+      arrow.style.transform = 'rotate(45deg)';
+    } else {
+      arrow.style.top = 'calc(100% - 6px)';
+      arrow.style.transform = 'rotate(225deg)';
+    }
+  }
+
+  function showStep(target, message, preferBelow){
+    teardownActive();
+    if (!target || !target.getBoundingClientRect) return;
+
+    var ring = document.createElement('div');
+    ring.className = 'coach-ring';
+    ring.setAttribute('aria-hidden', 'true');
+
+    var tip = document.createElement('div');
+    tip.className = 'coach-tip';
+    tip.setAttribute('role', 'status');
+
+    var arrow = document.createElement('span');
+    arrow.className = 'coach-tip-arrow';
+    tip.appendChild(arrow);
+
+    var msg = document.createElement('div');
+    msg.textContent = message;
+    tip.appendChild(msg);
+
+    var skip = document.createElement('button');
+    skip.type = 'button';
+    skip.className = 'coach-tip-skip';
+    skip.textContent = 'Skip tour';
+    skip.addEventListener('click', function(){ skipAll(); });
+    tip.appendChild(skip);
+
+    var close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'coach-tip-close';
+    close.setAttribute('aria-label', 'Dismiss hint');
+    close.innerHTML = '&times;';
+    close.addEventListener('click', function(){ teardownActive(); });
+    tip.appendChild(close);
+
+    document.body.appendChild(ring);
+    document.body.appendChild(tip);
+
+    function reposition(){ positionAround(target, ring, tip, arrow, preferBelow); }
+    reposition();
+    setTimeout(reposition, 40); // after layout settles
+    window.addEventListener('resize', reposition);
+    window.addEventListener('scroll', reposition, true);
+
+    activeStep = {
+      teardown: function(){
+        window.removeEventListener('resize', reposition);
+        window.removeEventListener('scroll', reposition, true);
+        if (ring.parentNode) ring.parentNode.removeChild(ring);
+        if (tip.parentNode)  tip.parentNode.removeChild(tip);
+      }
+    };
+  }
+
+  function step1(){
+    var target = document.querySelector('.action-bar');
+    if (!target) return;
+    showStep(target, 'Start here — upload images or type a name to add items.', true);
+
+    var trayEl = document.querySelector('#tray');
+    if (!trayEl) return;
+    var obs = new MutationObserver(function(){
+      if (trayEl.querySelector('.token')) {
+        obs.disconnect();
+        teardownActive();
+        setTimeout(step2, 350);
+      }
+    });
+    obs.observe(trayEl, { childList: true });
+    // Stop observing after timeout so we don't leak
+    setTimeout(function(){ obs.disconnect(); }, 60000);
+  }
+
+  function step2(){
+    var firstRow = document.querySelector('#tierBoard .tier-row .tier-drop');
+    if (!firstRow) return;
+    showStep(firstRow, 'Drag an item here to rank it.', false);
+
+    // Dismiss as soon as any token enters any tier-drop zone
+    var board = document.querySelector('#tierBoard');
+    if (!board) return;
+    var obs = new MutationObserver(function(muts){
+      for (var i = 0; i < muts.length; i++) {
+        var m = muts[i];
+        if (m.type === 'childList' && m.target.classList && m.target.classList.contains('tier-drop')) {
+          if (m.target.querySelector('.token')) {
+            obs.disconnect();
+            teardownActive();
+            placementTokensSeenFirstPlace = true;
+            setTimeout(step3, 400);
+            return;
+          }
+        }
+      }
+    });
+    obs.observe(board, { childList: true, subtree: true });
+    setTimeout(function(){ obs.disconnect(); }, 300000);
+  }
+
+  function step3(){
+    // Wait until user has 3+ placed tokens before showing save hint
+    function countPlaced(){
+      return document.querySelectorAll('#tierBoard .tier-drop .token').length;
+    }
+    function attempt(){
+      if (countPlaced() >= 3) {
+        var saveBtn = document.querySelector('#saveBtn');
+        if (!saveBtn) { finish(); return; }
+        showStep(saveBtn, 'Nice! Save as PNG anytime you\u2019re ready.', false);
+        // Dismiss on save click or after 8s
+        var onSave = function(){ saveBtn.removeEventListener('click', onSave); finish(); };
+        saveBtn.addEventListener('click', onSave);
+        setTimeout(function(){ saveBtn.removeEventListener('click', onSave); finish(); }, 8000);
+      } else {
+        setTimeout(attempt, 1500);
+      }
+    }
+    setTimeout(attempt, 1500);
+  }
+
+  // Start after a short delay so the page settles
+  setTimeout(step1, 900);
+})();
