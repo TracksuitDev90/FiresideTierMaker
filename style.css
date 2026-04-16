@@ -13,7 +13,7 @@ body.radial-open{overflow:hidden;position:fixed;width:100%;}
 img{max-width:100%;display:block}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 input,textarea{font:inherit;color:inherit}
-:focus-visible{outline:2px solid transparent;box-shadow:0 0 0 3px rgba(139,125,255,.45);border-radius:inherit}
+:focus-visible{outline:2px solid transparent;box-shadow:var(--focus-ring);border-radius:inherit}
 a{color:inherit;text-decoration:none}
 
 /* ---------- Theme ---------- */
@@ -23,6 +23,15 @@ a{color:inherit;text-decoration:none}
   --text:#e0e0e0; --muted:#9e9e9e; --border:rgba(255,255,255,.12);
   --shadow:0 0 0 transparent;
   --accent:#8b7dff; --brand:var(--neon); --neon:#baf800;
+  /* Motion system — single source of truth for easing & duration */
+  --ease-standard:cubic-bezier(.2,0,0,1);       /* enter/exit */
+  --ease-spring:cubic-bezier(.34,1.4,.64,1);    /* playful pop */
+  --ease-out:cubic-bezier(0,0,.2,1);            /* exits only */
+  --dur-micro:120ms;
+  --dur-short:220ms;
+  --dur-med:350ms;
+  --dur-long:480ms;
+  --focus-ring:0 0 0 3px rgba(139,125,255,.45);
   /* Pastel status-badge tokens for control buttons */
   --btn-green-bg:#aee5ba;   --btn-green-fg:#177638;
   --btn-yellow-bg:#ffda83;  --btn-yellow-fg:#975d04;
@@ -165,6 +174,33 @@ a{color:inherit;text-decoration:none}
 
 .btn.small{height:42px;padding:0 12px;border-radius:12px;font-weight:700}
 
+/* Undo disabled state — browser default is nearly invisible */
+#undoBtn:disabled{
+  opacity:.45;cursor:not-allowed;filter:grayscale(.35);pointer-events:none;
+}
+#undoBtn:disabled:hover{transform:none;box-shadow:none}
+
+/* Save button during export — disabled look with inline spinner */
+#saveBtn[data-state="saving"]{
+  pointer-events:none;filter:grayscale(.2);
+}
+#saveBtn[data-state="saving"] .ico svg{
+  animation:url-spin .8s linear infinite;
+}
+
+/* Smooth theme swap — transitions only on the paintable surfaces, not everything */
+body,.panel,.btn,.tier-drop,.tier-label,.tray-well,.action-bar,.action-icon,.action-input,.input,.token,.prompt-card,#tray{
+  transition:background-color var(--dur-short) var(--ease-standard),color var(--dur-short) var(--ease-standard),border-color var(--dur-short) var(--ease-standard);
+}
+@media (prefers-reduced-motion:reduce){
+  body,.panel,.btn,.tier-drop,.tier-label,.tray-well,.action-bar,.action-icon,.action-input,.input,.token,.prompt-card,#tray{
+    transition:none;
+  }
+}
+
+/* Clear-board safeguard: destructive OK disabled for first 400ms */
+.confirm-ok.arming{opacity:.55;pointer-events:none;filter:saturate(.6)}
+
 /* ---------- Creator ---------- */
 .creator-grid{display:grid;gap:0}
 
@@ -188,6 +224,48 @@ a{color:inherit;text-decoration:none}
 .action-icon:hover{color:var(--accent);background:rgba(139,125,255,.1)}
 .action-icon:active{background:rgba(139,125,255,.18)}
 .action-icon svg{width:24px;height:24px}
+/* "+" add button reflects input state */
+#addNameBtn.ready{color:var(--accent)}
+#addNameBtn.ready svg{animation:add-ready-pulse 1.6s ease-in-out infinite}
+@keyframes add-ready-pulse{
+  0%,100%{transform:scale(1)}
+  50%{transform:scale(1.12)}
+}
+/* Upload icon chevron — signals this opens a menu */
+.img-btn-wrap{position:relative}
+.img-btn-wrap::after{
+  content:'';position:absolute;right:8px;bottom:10px;
+  width:0;height:0;
+  border-left:4px solid transparent;border-right:4px solid transparent;
+  border-top:4px solid currentColor;
+  color:var(--muted);opacity:.55;pointer-events:none;
+  transition:transform var(--dur-micro) var(--ease-standard),opacity var(--dur-micro) var(--ease-standard);
+}
+.img-btn-wrap:hover::after{opacity:.8}
+.img-btn-wrap.open::after{transform:rotate(180deg);opacity:.9}
+/* Shake for empty-name validation */
+@keyframes input-shake{
+  0%,100%{transform:translateX(0)}
+  20%{transform:translateX(-6px)}
+  40%{transform:translateX(6px)}
+  60%{transform:translateX(-4px)}
+  80%{transform:translateX(3px)}
+}
+.action-input.shake{animation:input-shake .28s ease-in-out}
+.action-bar.invalid-name{
+  box-shadow:0 0 0 2px color-mix(in srgb, var(--btn-red-fg) 55%, transparent);
+  transition:box-shadow var(--dur-short) var(--ease-standard);
+}
+/* Inline loader for URL Go button */
+.url-go.loading{color:transparent;position:relative}
+.url-go.loading::after{
+  content:'';position:absolute;top:50%;left:50%;
+  width:14px;height:14px;margin:-7px 0 0 -7px;
+  border:2px solid rgba(255,255,255,.35);border-top-color:#fff;
+  border-radius:999px;
+  animation:url-spin .6s linear infinite;
+}
+@keyframes url-spin{to{transform:rotate(360deg)}}
 .action-divider{
   width:2.5px;height:32px;flex:0 0 2.5px;border-radius:2px;
   background:rgba(255,255,255,.22);
@@ -415,6 +493,34 @@ a{color:inherit;text-decoration:none}
   font-size:17px;color:var(--neon);flex:0 0 auto;opacity:.7;
   line-height:1;
 }
+/* Explicit skip / use buttons on the top card — additive to swipe + keyboard */
+.prompt-card-btn{
+  position:relative;z-index:3;flex:0 0 auto;
+  width:30px;height:30px;border-radius:999px;
+  display:inline-flex;align-items:center;justify-content:center;
+  background:color-mix(in srgb, currentColor 14%, transparent);
+  color:currentColor;opacity:0;
+  border:1px solid color-mix(in srgb, currentColor 30%, transparent);
+  cursor:pointer;
+  transition:opacity var(--dur-short) var(--ease-standard),
+             transform var(--dur-micro) var(--ease-standard),
+             background var(--dur-micro) var(--ease-standard);
+  -webkit-tap-highlight-color:transparent;
+}
+.prompt-card[data-stack-pos="0"] .prompt-card-btn{opacity:.75}
+.prompt-card[data-stack-pos="0"] .prompt-card-btn:hover{
+  opacity:1;transform:scale(1.08);
+  background:color-mix(in srgb, currentColor 22%, transparent);
+}
+.prompt-card[data-stack-pos="0"] .prompt-card-btn:active{transform:scale(.94)}
+.prompt-card-skip{margin-right:6px}
+.prompt-card-use{margin-left:6px}
+.prompt-card-btn svg{display:block}
+@media(max-width:480px){
+  .prompt-card-btn{width:28px;height:28px}
+  .prompt-card-skip{margin-right:4px}
+  .prompt-card-use{margin-left:4px}
+}
 /* Idle hint nudge */
 @keyframes card-hint{
   0%,100%{transform:translateX(0) rotate(0)}
@@ -616,14 +722,36 @@ a{color:inherit;text-decoration:none}
 
 /* FLIP animation */
 .token.flip-anim{transition:transform 180ms ease}
-.drag-ghost{position:fixed;left:0;top:0;z-index:50;pointer-events:none;width:99px;height:99px;border-radius:999px;opacity:.92;transform:translate3d(0,0,0) scale(1.08);box-shadow:0 12px 32px rgba(0,0,0,.4)}
+.drag-ghost{position:fixed;left:0;top:0;z-index:50;pointer-events:none;width:99px;height:99px;border-radius:999px;opacity:.92;transform:translate3d(0,0,0) scale(1.08) rotate(2deg);filter:saturate(1.1);box-shadow:0 14px 36px rgba(0,0,0,.45),0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent)}
 .drag-hidden{opacity:0;pointer-events:none}
 /* During drag reorder, animate sibling tokens sliding into new positions */
 .reorder-active .token:not(.drag-hidden){transition:transform 150ms ease,margin 150ms ease}
 .reorder-active .drag-hidden{width:99px;height:99px;border:3px dashed rgba(139,125,255,.35);border-radius:999px;background:rgba(139,125,255,.06);opacity:1}
 body.dragging-item{cursor:grabbing;user-select:none;-webkit-user-select:none}
-@keyframes pop-in{from{transform:scale(.94)}to{transform:scale(1)}}
-.animate-drop{animation:pop-in .18s ease}
+/* All drop zones get an idle tint while dragging so eligibility is visible before hover */
+body.dragging-item .tier-drop{
+  background:color-mix(in srgb, var(--accent) 5%, var(--card));
+  border-color:color-mix(in srgb, var(--accent) 28%, var(--border));
+  transition:background var(--dur-short) var(--ease-standard),border-color var(--dur-short) var(--ease-standard);
+}
+body.dragging-item #tray{
+  background:color-mix(in srgb, var(--accent) 3%, transparent);
+  border-radius:12px;
+  transition:background var(--dur-short) var(--ease-standard);
+}
+@keyframes pop-in{
+  0%{transform:scale(.94);box-shadow:0 0 0 6px color-mix(in srgb, var(--accent) 45%, transparent)}
+  60%{transform:scale(1.02);box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent)}
+  100%{transform:scale(1);box-shadow:0 0 0 0 transparent}
+}
+.animate-drop{animation:pop-in .24s var(--ease-spring)}
+
+/* Snap-back when released outside a drop zone */
+@keyframes drag-ghost-snap{
+  0%{opacity:.92}
+  100%{opacity:0;transform:translate3d(var(--snap-x,0),var(--snap-y,0),0) scale(.9) rotate(0deg)}
+}
+.drag-ghost.snap-back{animation:drag-ghost-snap .22s var(--ease-standard) forwards}
 
 /* Token entrance animation when created */
 @keyframes token-enter{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:scale(1)}}
@@ -694,6 +822,59 @@ body.dragging-item{cursor:grabbing;user-select:none;-webkit-user-select:none}
 @media print{body{background:#fff;color:#000}.panel,#tray,.controls,.creator-grid{box-shadow:none;border-color:#ddd}.token.selected,.token:focus-visible{outline-color:#000}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 
+
+/* ---------- First-run coachmarks ---------- */
+.coach-ring{
+  position:absolute;pointer-events:none;z-index:90;
+  border-radius:inherit;
+  box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 85%, transparent),
+             0 0 0 8px color-mix(in srgb, var(--accent) 25%, transparent),
+             0 8px 28px color-mix(in srgb, var(--accent) 35%, transparent);
+  animation:coach-pulse 1.8s ease-in-out infinite;
+}
+@keyframes coach-pulse{
+  0%,100%{box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 85%, transparent),0 0 0 8px color-mix(in srgb, var(--accent) 22%, transparent),0 8px 28px color-mix(in srgb, var(--accent) 30%, transparent)}
+  50%{box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 90%, transparent),0 0 0 14px color-mix(in srgb, var(--accent) 10%, transparent),0 12px 36px color-mix(in srgb, var(--accent) 45%, transparent)}
+}
+.coach-tip{
+  position:absolute;z-index:91;pointer-events:auto;
+  max-width:240px;
+  background:var(--surface-high);color:var(--text);
+  border:1px solid var(--border);border-radius:12px;
+  padding:10px 34px 10px 12px;
+  font-size:13px;font-weight:600;line-height:1.35;
+  box-shadow:0 8px 28px rgba(0,0,0,.35);
+  animation:coach-tip-in .32s var(--ease-spring);
+}
+.coach-tip-arrow{
+  position:absolute;width:12px;height:12px;
+  background:var(--surface-high);
+  border-left:1px solid var(--border);border-top:1px solid var(--border);
+  transform:rotate(45deg);
+}
+.coach-tip-close{
+  position:absolute;top:6px;right:6px;
+  width:22px;height:22px;border-radius:999px;
+  display:grid;place-items:center;
+  background:transparent;color:var(--muted);font-size:16px;line-height:1;
+  cursor:pointer;border:0;
+  transition:background var(--dur-micro) var(--ease-standard),color var(--dur-micro) var(--ease-standard);
+}
+.coach-tip-close:hover{background:color-mix(in srgb, var(--accent) 15%, transparent);color:var(--text)}
+.coach-tip-skip{
+  display:block;margin-top:6px;font-size:11px;font-weight:700;
+  color:var(--muted);opacity:.8;cursor:pointer;
+  background:none;border:0;padding:0;letter-spacing:.3px;text-transform:uppercase;
+}
+.coach-tip-skip:hover{color:var(--accent);opacity:1}
+@keyframes coach-tip-in{
+  0%{opacity:0;transform:translateY(6px) scale(.96)}
+  100%{opacity:1;transform:translateY(0) scale(1)}
+}
+@media (prefers-reduced-motion:reduce){
+  .coach-ring{animation:none;box-shadow:0 0 0 3px var(--accent),0 0 0 8px color-mix(in srgb, var(--accent) 22%, transparent)}
+  .coach-tip{animation:none}
+}
 
 /* ---------- Toast notification ---------- */
 .toast{

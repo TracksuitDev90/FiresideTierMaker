@@ -149,6 +149,37 @@
 }
 @keyframes imgSpin{to{transform:rotate(360deg)}}
 
+/* Skeleton placeholders for initial load */
+.img-search-skel{
+  min-height:140px;border-radius:10px;
+  background:linear-gradient(100deg, var(--surface) 25%, var(--card) 45%, var(--surface) 65%);
+  background-size:200% 100%;
+  animation:img-shimmer 1.2s linear infinite;
+}
+@keyframes img-shimmer{
+  0%{background-position:100% 0}
+  100%{background-position:-100% 0}
+}
+@media (prefers-reduced-motion:reduce){
+  .img-search-skel{animation:none;background:var(--card)}
+}
+
+/* Friendly empty state */
+.img-search-empty{
+  grid-column:1 / -1;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;padding:48px 24px;gap:10px;color:var(--muted);
+}
+.img-search-empty-icon{
+  width:56px;height:56px;border-radius:999px;
+  display:grid;place-items:center;
+  background:color-mix(in srgb, var(--accent) 12%, transparent);
+  color:var(--accent);
+  font-size:28px;font-weight:900;
+}
+.img-search-empty-title{font-size:15px;font-weight:800;color:var(--text);margin:0}
+.img-search-empty-sub{font-size:13px;margin:0;max-width:280px;line-height:1.45}
+
 /* ---------- Responsive ---------- */
 @media (max-width:600px){
   .img-search-modal{border-radius:14px 14px 0 0;max-height:95vh;margin-top:auto}
