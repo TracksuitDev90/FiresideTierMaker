@@ -1354,6 +1354,8 @@ on($('#trashClear'),'click', function(){
       try { localStorage.removeItem(STORAGE_KEY); } catch(e){}
       try { localStorage.removeItem('tm_quadrant'); } catch(e){}
       try { localStorage.removeItem('tm_mode'); } catch(e){}
+      // Clearing the board is a hard reset — don't re-prompt the first-run tour.
+      try { localStorage.setItem('fstm_onboarded_v1', '1'); } catch(e){}
       location.reload();
     }
   });
@@ -2311,6 +2313,8 @@ function enableCardSwipe(card){
 
   on(card, 'pointerdown', function(e){
     if(e.button && e.button!==0) return;
+    // Don't start drag/long-press on the inner skip/use buttons — let their click fire.
+    if(e.target && e.target.closest && e.target.closest('.prompt-card-btn')) return;
     e.preventDefault();
     card.setPointerCapture(e.pointerId);
     clearTimeout(_hintTimer);
@@ -2984,6 +2988,7 @@ document.addEventListener('DOMContentLoaded', function start(){
   var activeStep = null; // {el: HTMLElement, teardown: Fn}
   var stepIdx = 0;
   var placementTokensSeenFirstPlace = false;
+  var tourDone = false;
 
   // If the user already has content (returning via storage), don't onboard
   if (document.querySelector('#tray .token')) {
@@ -2992,10 +2997,12 @@ document.addEventListener('DOMContentLoaded', function start(){
   }
 
   function finish(){
+    tourDone = true;
     try { localStorage.setItem(KEY, '1'); } catch(_){}
     teardownActive();
   }
   function skipAll(){
+    tourDone = true;
     try { localStorage.setItem(SKIPPED, '1'); } catch(_){}
     teardownActive();
   }
@@ -3092,6 +3099,7 @@ document.addEventListener('DOMContentLoaded', function start(){
   }
 
   function step1(){
+    if (tourDone) return;
     var target = document.querySelector('.action-bar');
     if (!target) return;
     showStep(target, 'Start here — upload images or type a name to add items.', true);
@@ -3099,6 +3107,7 @@ document.addEventListener('DOMContentLoaded', function start(){
     var trayEl = document.querySelector('#tray');
     if (!trayEl) return;
     var obs = new MutationObserver(function(){
+      if (tourDone) { obs.disconnect(); return; }
       if (trayEl.querySelector('.token')) {
         obs.disconnect();
         teardownActive();
@@ -3111,6 +3120,7 @@ document.addEventListener('DOMContentLoaded', function start(){
   }
 
   function step2(){
+    if (tourDone) return;
     var firstRow = document.querySelector('#tierBoard .tier-row .tier-drop');
     if (!firstRow) return;
     showStep(firstRow, 'Drag an item here to rank it.', false);
@@ -3119,6 +3129,7 @@ document.addEventListener('DOMContentLoaded', function start(){
     var board = document.querySelector('#tierBoard');
     if (!board) return;
     var obs = new MutationObserver(function(muts){
+      if (tourDone) { obs.disconnect(); return; }
       for (var i = 0; i < muts.length; i++) {
         var m = muts[i];
         if (m.type === 'childList' && m.target.classList && m.target.classList.contains('tier-drop')) {
@@ -3137,11 +3148,13 @@ document.addEventListener('DOMContentLoaded', function start(){
   }
 
   function step3(){
+    if (tourDone) return;
     // Wait until user has 3+ placed tokens before showing save hint
     function countPlaced(){
       return document.querySelectorAll('#tierBoard .tier-drop .token').length;
     }
     function attempt(){
+      if (tourDone) return;
       if (countPlaced() >= 3) {
         var saveBtn = document.querySelector('#saveBtn');
         if (!saveBtn) { finish(); return; }
