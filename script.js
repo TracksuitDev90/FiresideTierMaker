@@ -204,7 +204,7 @@ function buildRowDom(){
   colorBtn.appendChild(colorInput);
 
   var del=document.createElement('button'); del.className='row-del'; del.type='button';
-  del.innerHTML='<svg viewBox="0 0 24 24"><path d="M18.3 5.7L12 12l-6.3-6.3-1.4 1.4L10.6 13.4l-6.3 6.3 1.4 1.4L12 14.4l6.3 6.3 1.4-1.4-6.3-6.3 6.3-6.3z"/></svg>';
+  del.innerHTML='<svg viewBox="0 0 24 24"><path d="M6 6 L18 18 M18 6 L6 18" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/></svg>';
 
   var chipArea = document.createElement('div');
   chipArea.className = 'chip-area';
@@ -340,6 +340,17 @@ function applyTierColor(node, color){
   if(colorInput) colorInput.value = color;
 }
 
+/* Reveal a tier's tools (delete X, color dot) and start a 30s idle timer that
+   fades them away again. Used on touch devices, where there is no hover: tools
+   show on load and after any direct interaction with the tier, then quietly
+   fade out when left alone. */
+function pokeTierTools(labelArea){
+  if(!labelArea) return;
+  labelArea.classList.add('show-tools');
+  clearTimeout(labelArea._toolTimer);
+  labelArea._toolTimer = setTimeout(function(){ labelArea.classList.remove('show-tools'); }, 30000);
+}
+
 /* ---------- Create / wire a new row ---------- */
 function createRow(cfg){
   var dom = buildRowDom();
@@ -386,13 +397,18 @@ function createRow(cfg){
     node.classList.add('color-flash'); setTimeout(function(){ node.classList.remove('color-flash'); }, 350);
   });
 
-  /* Reveal color dot on tap (mobile — no hover) */
+  /* Reveal tools on tap (mobile — no hover) */
   on(labelArea,'pointerdown', function(e){
     if(e.target.closest('.color-pick-btn') || e.target.closest('.row-del') || document.activeElement===chip) return;
-    labelArea.classList.add('show-tools');
-    clearTimeout(labelArea._toolTimer);
-    labelArea._toolTimer = setTimeout(function(){ labelArea.classList.remove('show-tools'); }, 6000);
+    pokeTierTools(labelArea);
   });
+
+  /* Touch only: tools start visible and begin the 30s idle countdown; any
+     direct interaction anywhere in the tier pops them back in and resets it. */
+  if(window.matchMedia && window.matchMedia('(hover:none)').matches){
+    pokeTierTools(labelArea);
+    on(node,'pointerdown', function(){ pokeTierTools(labelArea); });
+  }
 
   on(del,'click', function(){
     var tokens = $$('.token', drop);
@@ -426,9 +442,9 @@ var tierIdx = 0;
 function nextTierColor(){ var c=NEW_TIER_COLORS[tierIdx%NEW_TIER_COLORS.length]; tierIdx++; return c; }
 
 var communityCast = [
-  "Abby","Anette","Andruw","Authority","B7","Camryn","Cindy","Cody","Cookies",
+  "Anette","Andruw","Authority","B7","Camryn","Cindy","Cody","Cookies",
   "Denver","Devon","Dexy","Dior","Domo","Gavin","Harry","Haven","Katie","Kiev","Kikki",
-  "Meegan","Michael","Mew's","Neil","NJ","Paper","Ray","Raymond","Safoof","Smitty","Tubawk","Versse","Vyken","Zwjk"
+  "Meegan","Michael","Mew","Neil","NJ","Paper","Ray","Raymond","Safoof","Smitty","Tubawk","Versse","Vyken","Micah"
 ];
 
 /* Fixed signature colors for specific cast members — never rotate */
@@ -438,7 +454,6 @@ var DEFAULT_TOKEN_COLORS = {
   'Devon':  '#7E57C2',
   'Versse': '#19852d',
   'Haven':  '#FFBC00',
-  'Abby':   '#FFAEE6',
   'Cindy':  '#F5B0BD'
 };
 
@@ -1049,6 +1064,10 @@ function enableMobileTouchDrag(node){
     originParent.classList.add('reorder-active');
 
     var r=node.getBoundingClientRect(), offsetX=e.clientX-r.left, offsetY=e.clientY-r.top, x=e.clientX, y=e.clientY;
+    // Position the ghost over the original token immediately. Without this it
+    // spawns at the CSS default (top-left 0,0) and flashes near the prompt
+    // cards until the first pointermove sets its transform.
+    ghost.style.transform='translate3d('+(x-offsetX)+'px,'+(y-offsetY)+'px,0)';
     var lastInsertZone=null, lastInsertBefore=null, moved=false;
 
     function move(ev){
