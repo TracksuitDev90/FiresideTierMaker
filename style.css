@@ -18,7 +18,7 @@ a{color:inherit;text-decoration:none}
 
 /* ---------- Theme ---------- */
 :root{
-  --surface:#121212; --surface-raised:#1e1e1e; --card:#181818;
+  --surface:#0a0a0a; --surface-raised:#1e1e1e; --card:#181818;
   --surface-high:#2c2c2c;
   --text:#e0e0e0; --muted:#9e9e9e; --border:rgba(255,255,255,.12);
   --shadow:0 0 0 transparent;
@@ -174,9 +174,11 @@ a{color:inherit;text-decoration:none}
 
 .btn.small{height:42px;padding:0 12px;border-radius:12px;font-weight:700}
 
-/* Undo disabled state — browser default is nearly invisible */
+/* Undo disabled state — keep the yellow but drain most of its saturation so
+   it reads as inactive without turning muddy brown. Full saturation returns
+   the moment it's enabled. */
 #undoBtn:disabled{
-  opacity:.45;cursor:not-allowed;filter:grayscale(.35);pointer-events:none;
+  filter:saturate(.22);opacity:.72;cursor:not-allowed;pointer-events:none;
 }
 #undoBtn:disabled:hover{transform:none;box-shadow:none}
 
@@ -811,18 +813,6 @@ body.dragging-item #tray{
 
 /* ---------- A11y ---------- */
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap}
-/* Skip link — visually hidden until focused */
-.skip-link{
-  position:absolute;left:12px;top:-48px;z-index:100;
-  padding:10px 16px;border-radius:10px;
-  background:var(--surface-high);color:var(--text);
-  font-weight:800;border:1px solid var(--border);
-  box-shadow:var(--focus-ring);
-  transition:top var(--dur-short) var(--ease-standard);
-}
-.skip-link:focus{top:12px;outline:none}
-/* Don't show a focus ring on the board panel when reached via skip link */
-#boardPanel:focus{outline:none}
 
 /* ---------- Radial picker (mobile) ---------- */
 .radial{position:fixed;inset:0;z-index:60;pointer-events:auto;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}

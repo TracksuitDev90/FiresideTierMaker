@@ -2302,6 +2302,9 @@ function buildPromptCard(promptIndex){
   skipBtn.className = 'prompt-card-btn prompt-card-skip';
   skipBtn.setAttribute('aria-label', 'Skip this prompt');
   skipBtn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>';
+  // Prevent the press from starting a card drag, then skip on click.
+  on(skipBtn, 'pointerdown', function(e){ e.stopPropagation(); });
+  on(skipBtn, 'click', function(e){ e.stopPropagation(); e.preventDefault(); skipCard(card); });
   card.appendChild(skipBtn);
 
   var text = document.createElement('span');
@@ -2327,6 +2330,8 @@ function buildPromptCard(promptIndex){
   useBtn.className = 'prompt-card-btn prompt-card-use';
   useBtn.setAttribute('aria-label', 'Use this prompt');
   useBtn.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 12 10 18 20 6"/></svg>';
+  on(useBtn, 'pointerdown', function(e){ e.stopPropagation(); });
+  on(useBtn, 'click', function(e){ e.stopPropagation(); e.preventDefault(); useCard(card); });
   card.appendChild(useBtn);
 
   return card;
@@ -2405,6 +2410,28 @@ function advanceCardStack(){
   // Small delay so the promotion transition is already underway
   setTimeout(function(){ enableCardSwipe(newTop); }, 50);
   scheduleHint();
+}
+
+/* Fly a card off-screen in a direction (-1 left / +1 right) */
+function flyOffCard(card, dir){
+  var cardW = card.offsetWidth || 300;
+  card.style.transition = 'transform .5s cubic-bezier(.2,0,0,1), opacity .3s ease';
+  card.style.transform = 'translateX(' + (dir * (cardW + 100)) + 'px) rotate(' + (dir * 16) + 'deg)';
+  card.style.opacity = '0';
+  vib(6);
+}
+/* Use this card's prompt (check button / tap / swipe-right) */
+function useCard(card){
+  if(!card || card.dataset.stackPos !== '0') return;
+  var idx = parseInt(card.dataset.promptIndex, 10);
+  flyOffCard(card, 1);
+  setTimeout(function(){ applyPrompt(TIER_PROMPTS[idx]); }, 250);
+}
+/* Skip this card and advance to the next (x button / swipe-left) */
+function skipCard(card){
+  if(!card || card.dataset.stackPos !== '0') return;
+  flyOffCard(card, -1);
+  advanceCardStack();
 }
 
 function enableCardSwipe(card){
@@ -2521,39 +2548,8 @@ function enableCardSwipe(card){
     document.addEventListener('pointerup', onUp);
   });
 
-  // Explicit skip / use buttons — stop propagation so the card's tap-to-apply doesn't also fire
-  function flyOff(dir){
-    var cardW2 = card.offsetWidth || 300;
-    var flyX = dir * (cardW2 + 100);
-    var flyRotate = dir * 16;
-    card.style.transition = 'transform .5s cubic-bezier(.2,0,0,1), opacity .3s ease';
-    card.style.transform = 'translateX(' + flyX + 'px) rotate(' + flyRotate + 'deg)';
-    card.style.opacity = '0';
-    vib(6);
-  }
-  var skipEl = card.querySelector('.prompt-card-skip');
-  var useEl  = card.querySelector('.prompt-card-use');
-  if (skipEl) {
-    ['pointerdown','mousedown','touchstart','click'].forEach(function(evt){
-      skipEl.addEventListener(evt, function(e){ e.stopPropagation(); }, true);
-    });
-    skipEl.addEventListener('click', function(e){
-      e.stopPropagation();
-      flyOff(-1);
-      advanceCardStack();
-    });
-  }
-  if (useEl) {
-    ['pointerdown','mousedown','touchstart','click'].forEach(function(evt){
-      useEl.addEventListener(evt, function(e){ e.stopPropagation(); }, true);
-    });
-    useEl.addEventListener('click', function(e){
-      e.stopPropagation();
-      var pIdxU = parseInt(card.dataset.promptIndex, 10);
-      flyOff(1);
-      setTimeout(function(){ applyPrompt(TIER_PROMPTS[pIdxU]); }, 250);
-    });
-  }
+  // Skip / use buttons are wired in buildPromptCard so every card (including
+  // newly promoted ones) responds without depending on this call's timing.
 
   /* #10 Keyboard support — Enter/Space to apply, ArrowLeft to skip */
   on(card, 'keydown', function(e){
