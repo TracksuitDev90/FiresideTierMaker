@@ -144,12 +144,18 @@
        then fill remaining slots with Commons search.
        Subsequent pages: Commons search only. */
     if (page === 0) {
-      searchWikipediaImages(query, function (wikiResults) {
+      searchWikipediaImages(query, function (wikiErr, wikiResults) {
         searchCommons(query, 0, function (err, commonsResults, more) {
           loading = false;
           removeSkeletons();
           removeSpinner();
-          if (err && !wikiResults.length) { setStatus(err); showEmptyState(query, true); return; }
+          // Show the error state only when both sources failed and we have
+          // nothing to render — a single source failing still yields results.
+          if (err && wikiErr && !wikiResults.length && !commonsResults.length) {
+            setStatus('Network error – please try again.');
+            showEmptyState(query, true);
+            return;
+          }
           // Merge: wiki results first (higher relevance), then commons
           var merged = dedup(wikiResults.concat(commonsResults));
           renderResults(merged);
@@ -196,7 +202,7 @@
     fetch(url)
       .then(function (r) { return r.json(); })
       .then(function (data) {
-        if (!data.query || !data.query.pages) { cb([]); return; }
+        if (!data.query || !data.query.pages) { cb(null, []); return; }
         var pages = data.query.pages;
         // Collect all image filenames from the article pages
         var filenames = [];
@@ -207,7 +213,7 @@
             if (isUseful(t, null)) filenames.push(t);
           });
         });
-        if (!filenames.length) { cb([]); return; }
+        if (!filenames.length) { cb(null, []); return; }
 
         // Now fetch actual image URLs for those filenames (batch of up to 50)
         var titles = filenames.slice(0, 50).join('|');
@@ -219,7 +225,7 @@
         fetch(infoUrl)
           .then(function (r2) { return r2.json(); })
           .then(function (d2) {
-            if (!d2.query || !d2.query.pages) { cb([]); return; }
+            if (!d2.query || !d2.query.pages) { cb(null, []); return; }
             var results = [];
             Object.keys(d2.query.pages).forEach(function (k) {
               var p = d2.query.pages[k];
@@ -232,11 +238,11 @@
                 title: (p.title || '').replace('File:', '').replace(/\.\w+$/, '')
               });
             });
-            cb(results);
+            cb(null, results);
           })
-          .catch(function () { cb([]); });
+          .catch(function () { cb(true, []); });
       })
-      .catch(function () { cb([]); });
+      .catch(function () { cb(true, []); });
   }
 
   /* ---------- Wikimedia Commons search ---------- */
@@ -372,23 +378,32 @@
     var tray = document.querySelector('#tray');
     if (!tray) return;
 
-    srcs.forEach(function (src) {
-      var info = selected[src];
+    function addToken(finalSrc, info) {
       if (typeof window.buildImageToken === 'function') {
-        var token = window.buildImageToken(src, info.title || '');
+        var token = window.buildImageToken(finalSrc, info.title || '');
         tray.insertBefore(token, tray.firstChild);
       } else {
         var token = document.createElement('div');
         token.className = 'token';
         token.setAttribute('data-custom', 'true');
         var img = document.createElement('img');
-        img.src = src; img.alt = info.title || ''; img.draggable = false;
+        img.src = finalSrc; img.alt = info.title || ''; img.draggable = false;
         token.appendChild(img);
         tray.insertBefore(token, tray.firstChild);
       }
-    });
+      if (typeof window.scheduleSave === 'function') window.scheduleSave();
+    }
 
-    if (typeof window.scheduleSave === 'function') window.scheduleSave();
+    srcs.forEach(function (src) {
+      var info = selected[src];
+      // Inline external images so they persist + export cleanly; fall back to
+      // the raw URL if it can't be fetched.
+      if (typeof window.inlineImageSrc === 'function') {
+        window.inlineImageSrc(src, function (finalSrc) { addToken(finalSrc, info); });
+      } else {
+        addToken(src, info);
+      }
+    });
 
     setStatus(srcs.length + ' image' + (srcs.length > 1 ? 's' : '') + ' added!');
     selected = {};

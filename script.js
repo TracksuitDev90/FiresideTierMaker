@@ -654,6 +654,25 @@ function buildImageToken(src, alt){
   return el;
 }
 
+// Convert an external image URL to a data URL so it survives a refresh
+// (persisted inline) and exports cleanly (no tainted canvas). Falls back to
+// the original URL if the fetch is blocked by CORS or fails.
+function inlineImageSrc(src, cb){
+  if (typeof src !== 'string' || src.indexOf('data:') === 0) { cb(src); return; }
+  try {
+    fetch(src, { mode: 'cors', cache: 'no-cache' })
+      .then(function(r){ if(!r.ok) throw new Error('http '+r.status); return r.blob(); })
+      .then(function(blob){
+        var reader = new FileReader();
+        reader.onload = function(ev){ cb(ev.target.result); };
+        reader.onerror = function(){ cb(src); };
+        reader.readAsDataURL(blob);
+      })
+      .catch(function(){ cb(src); });
+  } catch(e){ cb(src); }
+}
+window.inlineImageSrc = inlineImageSrc;
+
 /* ---------- History (Undo) ---------- */
 var historyStack = []; // {itemId, fromId, toId, originBeforeId} or {type:'delete', element, parentId, beforeId}
 function recordPlacement(itemId, fromId, toId, originBeforeId){
@@ -2850,16 +2869,25 @@ document.addEventListener('DOMContentLoaded', function start(){
   });
 
   // Image upload with compression
+  var MAX_UPLOAD_BYTES = 25 * 1024 * 1024; // 25MB raw — reject huge files
   on($('#imageInput'),'change', function(e){
+    var rejected = 0;
     Array.prototype.forEach.call(e.target.files, function(file){
-      if(!file.type || file.type.indexOf('image/')!==0) return;
+      if(!file.type || file.type.indexOf('image/')!==0){ rejected++; return; }
+      if(file.size > MAX_UPLOAD_BYTES){
+        showSaveToast('"'+(file.name||'image')+'" is too large (max 25MB)', true);
+        return;
+      }
       compressImage(file, 200, function(dataUrl){
         if (dataUrl) {
           tray.insertBefore(buildImageToken(dataUrl, file.name), tray.firstChild);
           scheduleSave();
+        } else {
+          showSaveToast("Couldn't read \""+(file.name||'image')+'"', true);
         }
       });
     });
+    if (rejected) showSaveToast(rejected>1 ? rejected+' files skipped — images only' : 'That file isn’t an image', true);
     e.target.value = ''; // Reset so same file can be uploaded again
   });
 
@@ -2880,11 +2908,15 @@ document.addEventListener('DOMContentLoaded', function start(){
     probe.onload = function(){
       if (done) return; done = true;
       cleanup();
-      var token = buildImageToken(url, '');
-      tray.insertBefore(token, tray.firstChild);
+      // Inline so the image persists across refresh and exports cleanly;
+      // falls back to the raw URL when CORS blocks the fetch.
+      inlineImageSrc(url, function(finalSrc){
+        var token = buildImageToken(finalSrc, '');
+        tray.insertBefore(token, tray.firstChild);
+        scheduleSave();
+      });
       urlInput.value = '';
       if(imgDropdown) { imgDropdown.classList.add('hidden'); syncDropdownChevron(); }
-      scheduleSave();
     };
     probe.onerror = function(){
       if (done) return; done = true;
