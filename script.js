@@ -473,7 +473,7 @@ var _bowlbyReady = false;
 /* Ensure Bowlby One is loaded before first measurement; once loaded
    re-fit every tier label so sizes are accurate. */
 if (document.fonts && document.fonts.ready) {
-  document.fonts.ready.then(function(){ _bowlbyReady = true; uniformizeTierLabels(); refitAllLabels(); });
+  document.fonts.ready.then(function(){ _bowlbyReady = true; clearMeasureCache(); uniformizeTierLabels(); refitAllLabels(); });
 } else { _bowlbyReady = true; } // fallback for very old browsers
 
 /* Pre-fetch Bowlby One & Montserrat as base64 so html-to-image can embed them in SVG exports.
@@ -511,15 +511,25 @@ function _preloadGoogleFont(url, familyName, weight, cb){
 }
 _preloadGoogleFont('https://fonts.googleapis.com/css2?family=Bowlby+One&display=swap', 'Bowlby One', '400', function(css){ _bowlbyFontFaceCSS = css; });
 _preloadGoogleFont('https://fonts.googleapis.com/css2?family=Montserrat:wght@900&display=swap', 'Montserrat', '900', function(css){ _montserratFontFaceCSS = css; });
+// Memoize text-width lookups — the label fitters call these in tight
+// binary-search loops with repeating (text, weight, px) tuples. Cleared when
+// a web font loads (metrics change once the real font is available).
+var _measureCache = {};
+function clearMeasureCache(){ _measureCache = {}; }
+window.clearMeasureCache = clearMeasureCache;
 function measureText(text, fontWeight, px){
+  var key = 'b' + fontWeight + '' + px + '' + text;
+  if (key in _measureCache) return _measureCache[key];
   if(!_measureCtx) _measureCtx = document.createElement('canvas').getContext('2d');
   _measureCtx.font = fontWeight + ' ' + px + 'px "Bowlby One",ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial';
-  return _measureCtx.measureText(text).width;
+  return (_measureCache[key] = _measureCtx.measureText(text).width);
 }
 function measureTokenText(text, fontWeight, px){
+  var key = 'm' + fontWeight + '' + px + '' + text;
+  if (key in _measureCache) return _measureCache[key];
   if(!_measureCtx) _measureCtx = document.createElement('canvas').getContext('2d');
   _measureCtx.font = fontWeight + ' ' + px + 'px "Montserrat",ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial';
-  return _measureCtx.measureText(text).width;
+  return (_measureCache[key] = _measureCtx.measureText(text).width);
 }
 
 /* ---------- Live label fitter (UI) ---------- */
@@ -675,16 +685,20 @@ window.inlineImageSrc = inlineImageSrc;
 
 /* ---------- History (Undo) ---------- */
 var historyStack = []; // {itemId, fromId, toId, originBeforeId} or {type:'delete', element, parentId, beforeId}
+var HISTORY_MAX = 50;  // bound retention (deletion entries hold detached DOM nodes)
+function pushHistory(entry){
+  historyStack.push(entry);
+  if (historyStack.length > HISTORY_MAX) historyStack.shift();
+  var u = $('#undoBtn'); if (u) u.disabled = historyStack.length===0;
+}
 function recordPlacement(itemId, fromId, toId, originBeforeId){
   if (!fromId || !toId || fromId===toId) return;
-  historyStack.push({itemId:itemId, fromId:fromId, toId:toId, originBeforeId: originBeforeId||''});
-  var u = $('#undoBtn'); if (u) u.disabled = historyStack.length===0;
+  pushHistory({itemId:itemId, fromId:fromId, toId:toId, originBeforeId: originBeforeId||''});
 }
 function recordDeletion(element, parentEl, nextSibling){
   var parentId = ensureId(parentEl, 'zone');
   var beforeId = nextSibling ? ensureId(nextSibling, 'tok') : '';
-  historyStack.push({type:'delete', element:element, parentId:parentId, beforeId:beforeId});
-  var u = $('#undoBtn'); if (u) u.disabled = historyStack.length===0;
+  pushHistory({type:'delete', element:element, parentId:parentId, beforeId:beforeId});
 }
 function undoLast(){
   var last = historyStack.pop(); if (!last) return;
@@ -887,9 +901,15 @@ function enablePointerDrag(node){
     document.addEventListener('pointerup', up, false);
     loop();
 
+    var _lhx=null, _lhy=null;
     function loop(){
       raf = requestAnimationFrame(loop);
       autoScrollForDrag(y);
+      // Skip the hit-test + ghost write entirely when the pointer hasn't
+      // moved since last frame — elementFromPoint forces layout, so this
+      // avoids needless reflows while the finger/cursor is still.
+      if (x===_lhx && y===_lhy) return;
+      _lhx=x; _lhy=y;
       ghost.style.transform = 'translate3d('+(x-offsetX)+'px,'+(y-offsetY)+'px,0)';
       var el = document.elementFromPoint(x,y);
       var zone = getDropZoneFromElement(el);
@@ -997,9 +1017,12 @@ function enableMouseTouchDragFallback(node){
   function onTouchMove(e){ var t=e.touches[0]; if(t) move(t.clientX,t.clientY); }
   function onTouchEnd(){ document.removeEventListener('touchmove', onTouchMove, false); document.removeEventListener('touchend', onTouchEnd, false); end(); }
 
+  var _lhx=null, _lhy=null;
   function loop(){
     raf=requestAnimationFrame(loop);
     autoScrollForDrag(y);
+    if (x===_lhx && y===_lhy) return;
+    _lhx=x; _lhy=y;
     ghost.style.transform='translate3d('+(x-offsetX)+'px,'+(y-offsetY)+'px,0)';
     var el=document.elementFromPoint(x,y);
     var zone=getDropZoneFromElement(el);
@@ -1594,7 +1617,7 @@ on($('#saveBtn'),'click', function(){
     cloneWrap.remove();
     resetSaveBtn();
     showSaveToast('Export failed — try again', true);
-    console.error('PNG export error:', err);
+    if (window.DEBUG) console.error('PNG export error:', err);
   });
 });
 
@@ -1874,7 +1897,19 @@ function updateTrayCount(){
       setTimeout(function(){ badge.classList.remove('glow'); }, 600);
     }
   }
+  updateEmptyHint();
 }
+
+// Show a gentle hint when the whole board (tray + every tier) is empty.
+function updateEmptyHint(){
+  var hint = $('#emptyHint');
+  if (!hint) return;
+  // Hide outside the default tier mode (battles/quadrant manage their own UI).
+  var inTierMode = !(typeof window.currentChartMode === 'function' && window.currentChartMode() !== 'tier');
+  var hasTokens = $$('.token').length > 0;
+  hint.hidden = hasTokens || !inTierMode;
+}
+window.updateEmptyHint = updateEmptyHint;
 
 // Hook into mutations for auto-save
 var _saveObserver = null;

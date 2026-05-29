@@ -687,6 +687,14 @@ body,.panel,.btn,.tier-drop,.tier-label,.tray-well,.action-bar,.action-icon,.act
   .row-del{opacity:.6;pointer-events:auto}
 }
 
+/* Empty-board hint */
+.empty-hint{
+  margin:14px 4px 2px;text-align:center;
+  color:var(--muted);font-weight:600;font-size:15px;
+  animation:hint-fade var(--dur-med) var(--ease-standard);
+}
+@keyframes hint-fade{from{opacity:0}to{opacity:1}}
+
 /* Drops */
 .tier-drop{
   background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);

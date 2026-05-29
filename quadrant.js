@@ -898,8 +898,8 @@
       if(typeof showSaveToast === 'function') showSaveToast('Saved!');
     }).catch(function(err){
       cloneWrap.remove();
-      if(typeof showSaveToast === 'function') showSaveToast('Export failed — try again');
-      console.error('Quadrant PNG export error:', err);
+      if(typeof showSaveToast === 'function') showSaveToast('Export failed — try again', true);
+      if(window.DEBUG) console.error('Quadrant PNG export error:', err);
     });
   }
 
