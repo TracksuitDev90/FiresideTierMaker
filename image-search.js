@@ -15,6 +15,7 @@
 
   /* ---------- state ---------- */
   var overlay, grid, input, statusEl;
+  var _lastFocus = null;   // element to restore focus to on close
   var page       = 0;
   var query      = '';
   var loading    = false;
@@ -83,13 +84,31 @@
     });
 
     document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape' && !overlay.classList.contains('hidden')) close();
+      if (overlay.classList.contains('hidden')) return;
+      if (e.key === 'Escape') { close(); return; }
+      if (e.key === 'Tab') trapTab(e);
     });
+  }
+
+  /* Keep keyboard focus inside the modal while it's open. */
+  function trapTab(e) {
+    var focusables = qsa(
+      'a[href],button:not([disabled]),input,select,textarea,[tabindex]:not([tabindex="-1"])',
+      overlay
+    ).filter(function (el) { return el.offsetParent !== null; });
+    if (!focusables.length) return;
+    var first = focusables[0];
+    var last  = focusables[focusables.length - 1];
+    var active = document.activeElement;
+    if (e.shiftKey && active === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && active === last) { e.preventDefault(); first.focus(); }
+    else if (!overlay.contains(active)) { e.preventDefault(); first.focus(); }
   }
 
   /* ---------- open / close ---------- */
   function open() {
     if (!overlay) buildOverlay();
+    _lastFocus = document.activeElement;
     overlay.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
     setTimeout(function () { input.focus(); }, 60);
@@ -99,6 +118,11 @@
     if (!overlay) return;
     overlay.classList.add('hidden');
     document.body.style.overflow = '';
+    // Return focus to whatever opened the modal
+    if (_lastFocus && typeof _lastFocus.focus === 'function') {
+      try { _lastFocus.focus(); } catch (e) {}
+    }
+    _lastFocus = null;
   }
 
   function setStatus(msg) { if (statusEl) statusEl.textContent = msg; }
@@ -120,12 +144,18 @@
        then fill remaining slots with Commons search.
        Subsequent pages: Commons search only. */
     if (page === 0) {
-      searchWikipediaImages(query, function (wikiResults) {
+      searchWikipediaImages(query, function (wikiErr, wikiResults) {
         searchCommons(query, 0, function (err, commonsResults, more) {
           loading = false;
           removeSkeletons();
           removeSpinner();
-          if (err && !wikiResults.length) { setStatus(err); showEmptyState(query, true); return; }
+          // Show the error state only when both sources failed and we have
+          // nothing to render — a single source failing still yields results.
+          if (err && wikiErr && !wikiResults.length && !commonsResults.length) {
+            setStatus('Network error – please try again.');
+            showEmptyState(query, true);
+            return;
+          }
           // Merge: wiki results first (higher relevance), then commons
           var merged = dedup(wikiResults.concat(commonsResults));
           renderResults(merged);
@@ -172,7 +202,7 @@
     fetch(url)
       .then(function (r) { return r.json(); })
       .then(function (data) {
-        if (!data.query || !data.query.pages) { cb([]); return; }
+        if (!data.query || !data.query.pages) { cb(null, []); return; }
         var pages = data.query.pages;
         // Collect all image filenames from the article pages
         var filenames = [];
@@ -183,7 +213,7 @@
             if (isUseful(t, null)) filenames.push(t);
           });
         });
-        if (!filenames.length) { cb([]); return; }
+        if (!filenames.length) { cb(null, []); return; }
 
         // Now fetch actual image URLs for those filenames (batch of up to 50)
         var titles = filenames.slice(0, 50).join('|');
@@ -195,7 +225,7 @@
         fetch(infoUrl)
           .then(function (r2) { return r2.json(); })
           .then(function (d2) {
-            if (!d2.query || !d2.query.pages) { cb([]); return; }
+            if (!d2.query || !d2.query.pages) { cb(null, []); return; }
             var results = [];
             Object.keys(d2.query.pages).forEach(function (k) {
               var p = d2.query.pages[k];
@@ -208,11 +238,11 @@
                 title: (p.title || '').replace('File:', '').replace(/\.\w+$/, '')
               });
             });
-            cb(results);
+            cb(null, results);
           })
-          .catch(function () { cb([]); });
+          .catch(function () { cb(true, []); });
       })
-      .catch(function () { cb([]); });
+      .catch(function () { cb(true, []); });
   }
 
   /* ---------- Wikimedia Commons search ---------- */
@@ -255,6 +285,7 @@
       card.setAttribute('role', 'listitem');
       card.setAttribute('tabindex', '0');
       card.dataset.full  = r.full;
+      card.dataset.thumb = r.thumb || r.full;
       card.dataset.title = r.title;
 
       var img = document.createElement('img');
@@ -285,7 +316,7 @@
       delete selected[src];
       card.classList.remove('selected');
     } else {
-      selected[src] = { title: card.dataset.title };
+      selected[src] = { title: card.dataset.title, thumb: card.dataset.thumb };
       card.classList.add('selected');
     }
     updateSelCount();
@@ -348,23 +379,33 @@
     var tray = document.querySelector('#tray');
     if (!tray) return;
 
-    srcs.forEach(function (src) {
-      var info = selected[src];
+    function addToken(finalSrc, info) {
       if (typeof window.buildImageToken === 'function') {
-        var token = window.buildImageToken(src, info.title || '');
+        var token = window.buildImageToken(finalSrc, info.title || '');
         tray.insertBefore(token, tray.firstChild);
       } else {
         var token = document.createElement('div');
         token.className = 'token';
         token.setAttribute('data-custom', 'true');
         var img = document.createElement('img');
-        img.src = src; img.alt = info.title || ''; img.draggable = false;
+        img.src = finalSrc; img.alt = info.title || ''; img.draggable = false;
         token.appendChild(img);
         tray.insertBefore(token, tray.firstChild);
       }
-    });
+      if (typeof window.scheduleSave === 'function') window.scheduleSave();
+    }
 
-    if (typeof window.scheduleSave === 'function') window.scheduleSave();
+    srcs.forEach(function (src) {
+      var info = selected[src];
+      // Inline the 600px thumbnail (plenty for a ~99px token, far smaller than
+      // full-res) so it persists + exports cleanly; fall back to the raw URL.
+      var toInline = info.thumb || src;
+      if (typeof window.inlineImageSrc === 'function') {
+        window.inlineImageSrc(toInline, function (finalSrc) { addToken(finalSrc, info); });
+      } else {
+        addToken(toInline, info);
+      }
+    });
 
     setStatus(srcs.length + ' image' + (srcs.length > 1 ? 's' : '') + ' added!');
     selected = {};

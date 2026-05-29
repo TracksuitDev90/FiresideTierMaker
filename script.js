@@ -362,6 +362,7 @@ function createRow(cfg){
     chip.dataset.crestSrc = cfg.image;
   } else {
     chip.textContent = cfg.label;
+    chip.setAttribute('aria-label', 'Tier name');
   }
   applyTierColor(node, cfg.color);
 
@@ -472,7 +473,7 @@ var _bowlbyReady = false;
 /* Ensure Bowlby One is loaded before first measurement; once loaded
    re-fit every tier label so sizes are accurate. */
 if (document.fonts && document.fonts.ready) {
-  document.fonts.ready.then(function(){ _bowlbyReady = true; uniformizeTierLabels(); refitAllLabels(); });
+  document.fonts.ready.then(function(){ _bowlbyReady = true; clearMeasureCache(); uniformizeTierLabels(); refitAllLabels(); });
 } else { _bowlbyReady = true; } // fallback for very old browsers
 
 /* Pre-fetch Bowlby One & Montserrat as base64 so html-to-image can embed them in SVG exports.
@@ -510,15 +511,25 @@ function _preloadGoogleFont(url, familyName, weight, cb){
 }
 _preloadGoogleFont('https://fonts.googleapis.com/css2?family=Bowlby+One&display=swap', 'Bowlby One', '400', function(css){ _bowlbyFontFaceCSS = css; });
 _preloadGoogleFont('https://fonts.googleapis.com/css2?family=Montserrat:wght@900&display=swap', 'Montserrat', '900', function(css){ _montserratFontFaceCSS = css; });
+// Memoize text-width lookups — the label fitters call these in tight
+// binary-search loops with repeating (text, weight, px) tuples. Cleared when
+// a web font loads (metrics change once the real font is available).
+var _measureCache = {};
+function clearMeasureCache(){ _measureCache = {}; }
+window.clearMeasureCache = clearMeasureCache;
 function measureText(text, fontWeight, px){
+  var key = 'b' + fontWeight + '' + px + '' + text;
+  if (key in _measureCache) return _measureCache[key];
   if(!_measureCtx) _measureCtx = document.createElement('canvas').getContext('2d');
   _measureCtx.font = fontWeight + ' ' + px + 'px "Bowlby One",ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial';
-  return _measureCtx.measureText(text).width;
+  return (_measureCache[key] = _measureCtx.measureText(text).width);
 }
 function measureTokenText(text, fontWeight, px){
+  var key = 'm' + fontWeight + '' + px + '' + text;
+  if (key in _measureCache) return _measureCache[key];
   if(!_measureCtx) _measureCtx = document.createElement('canvas').getContext('2d');
   _measureCtx.font = fontWeight + ' ' + px + 'px "Montserrat",ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial';
-  return _measureCtx.measureText(text).width;
+  return (_measureCache[key] = _measureCtx.measureText(text).width);
 }
 
 /* ---------- Live label fitter (UI) ---------- */
@@ -653,18 +664,41 @@ function buildImageToken(src, alt){
   return el;
 }
 
+// Convert an external image URL to a data URL so it survives a refresh
+// (persisted inline) and exports cleanly (no tainted canvas). Falls back to
+// the original URL if the fetch is blocked by CORS or fails.
+function inlineImageSrc(src, cb){
+  if (typeof src !== 'string' || src.indexOf('data:') === 0) { cb(src); return; }
+  try {
+    fetch(src, { mode: 'cors', cache: 'no-cache' })
+      .then(function(r){ if(!r.ok) throw new Error('http '+r.status); return r.blob(); })
+      .then(function(blob){
+        var reader = new FileReader();
+        reader.onload = function(ev){ cb(ev.target.result); };
+        reader.onerror = function(){ cb(src); };
+        reader.readAsDataURL(blob);
+      })
+      .catch(function(){ cb(src); });
+  } catch(e){ cb(src); }
+}
+window.inlineImageSrc = inlineImageSrc;
+
 /* ---------- History (Undo) ---------- */
 var historyStack = []; // {itemId, fromId, toId, originBeforeId} or {type:'delete', element, parentId, beforeId}
+var HISTORY_MAX = 50;  // bound retention (deletion entries hold detached DOM nodes)
+function pushHistory(entry){
+  historyStack.push(entry);
+  if (historyStack.length > HISTORY_MAX) historyStack.shift();
+  var u = $('#undoBtn'); if (u) u.disabled = historyStack.length===0;
+}
 function recordPlacement(itemId, fromId, toId, originBeforeId){
   if (!fromId || !toId || fromId===toId) return;
-  historyStack.push({itemId:itemId, fromId:fromId, toId:toId, originBeforeId: originBeforeId||''});
-  var u = $('#undoBtn'); if (u) u.disabled = historyStack.length===0;
+  pushHistory({itemId:itemId, fromId:fromId, toId:toId, originBeforeId: originBeforeId||''});
 }
 function recordDeletion(element, parentEl, nextSibling){
   var parentId = ensureId(parentEl, 'zone');
   var beforeId = nextSibling ? ensureId(nextSibling, 'tok') : '';
-  historyStack.push({type:'delete', element:element, parentId:parentId, beforeId:beforeId});
-  var u = $('#undoBtn'); if (u) u.disabled = historyStack.length===0;
+  pushHistory({type:'delete', element:element, parentId:parentId, beforeId:beforeId});
 }
 function undoLast(){
   var last = historyStack.pop(); if (!last) return;
@@ -867,9 +901,15 @@ function enablePointerDrag(node){
     document.addEventListener('pointerup', up, false);
     loop();
 
+    var _lhx=null, _lhy=null;
     function loop(){
       raf = requestAnimationFrame(loop);
       autoScrollForDrag(y);
+      // Skip the hit-test + ghost write entirely when the pointer hasn't
+      // moved since last frame — elementFromPoint forces layout, so this
+      // avoids needless reflows while the finger/cursor is still.
+      if (x===_lhx && y===_lhy) return;
+      _lhx=x; _lhy=y;
       ghost.style.transform = 'translate3d('+(x-offsetX)+'px,'+(y-offsetY)+'px,0)';
       var el = document.elementFromPoint(x,y);
       var zone = getDropZoneFromElement(el);
@@ -977,9 +1017,12 @@ function enableMouseTouchDragFallback(node){
   function onTouchMove(e){ var t=e.touches[0]; if(t) move(t.clientX,t.clientY); }
   function onTouchEnd(){ document.removeEventListener('touchmove', onTouchMove, false); document.removeEventListener('touchend', onTouchEnd, false); end(); }
 
+  var _lhx=null, _lhy=null;
   function loop(){
     raf=requestAnimationFrame(loop);
     autoScrollForDrag(y);
+    if (x===_lhx && y===_lhy) return;
+    _lhx=x; _lhy=y;
     ghost.style.transform='translate3d('+(x-offsetX)+'px,'+(y-offsetY)+'px,0)';
     var el=document.elementFromPoint(x,y);
     var zone=getDropZoneFromElement(el);
@@ -1124,6 +1167,7 @@ var radialCloseBtn = radial?$('.radial-close', radial):null;
 var radialForToken = null;
 var _radialGeo = [];
 var _savedScrollY = null;
+var _radialLastFocus = null;
 
 function rowCount(){ return $$('.tier-row').length; }
 function refreshRadialOptions(){
@@ -1138,6 +1182,8 @@ function openRadial(token){
     radial.removeEventListener('pointerdown', radial._backdropHandler);
     delete radial._backdropHandler;
   }
+  // Remember the trigger so focus can return when the picker closes
+  if (!_radialLastFocus) _radialLastFocus = document.activeElement;
   radialForToken = token;
 
   // Save scroll position to prevent drift
@@ -1223,7 +1269,7 @@ function openRadial(token){
   radial.classList.add('visible', 'show');
   radial.setAttribute('aria-hidden', 'false');
   setTimeout(function(){ radial.classList.remove('show'); }, 160 + N * 20);
-  if (_radialGeo.length) updateHighlight(0);
+  if (_radialGeo.length){ updateHighlight(0); if(_radialGeo[0].btn) _radialGeo[0].btn.focus(); }
 }
 function updateHighlight(index){
   if(!_radialGeo.length) return;
@@ -1237,7 +1283,11 @@ if(radialCloseBtn){
 }
 function selectRadialTarget(row){
   if (!radialForToken || !row) return;
+  // The picker may have been open when its target tier was deleted — bail
+  // instead of moving the token into a detached row.
+  if (!document.contains(row)) { closeRadial(); return; }
   var zone = row.querySelector('.tier-drop');
+  if (!zone) { closeRadial(); return; }
   var fromId = ensureId(radialForToken.parentElement, 'zone');
   var origin = radialForToken.parentElement; ensureId(zone, 'zone');
   var originNext = radialForToken.nextElementSibling;
@@ -1249,6 +1299,7 @@ function selectRadialTarget(row){
   window.scrollTo(0, scrollSnap);
   radialForToken.classList.remove('selected');
   recordPlacement(radialForToken.id, fromId, zone.id, originBeforeId);
+  live('Moved "'+(radialForToken.innerText||'item')+'" to '+rowLabel(row));
   vib(7);
   closeRadial();
 }
@@ -1272,6 +1323,11 @@ function closeRadial(){
     window.scrollTo(0, scrollY);
     requestAnimationFrame(function(){ window.scrollTo(0, scrollY); });
   }
+  // Return focus to the element that opened the picker
+  if (_radialLastFocus && typeof _radialLastFocus.focus === 'function'){
+    try { _radialLastFocus.focus(); } catch(e){}
+  }
+  _radialLastFocus = null;
 }
 on(window, 'resize', refreshRadialOptions);
 
@@ -1561,7 +1617,7 @@ on($('#saveBtn'),'click', function(){
     cloneWrap.remove();
     resetSaveBtn();
     showSaveToast('Export failed — try again', true);
-    console.error('PNG export error:', err);
+    if (window.DEBUG) console.error('PNG export error:', err);
   });
 });
 
@@ -1577,6 +1633,7 @@ function showSaveToast(msg, isError){
   setTimeout(function(){ toast.classList.add('toast-out'); }, 1800);
   setTimeout(function(){ toast.remove(); }, 2200);
 }
+window.showSaveToast = showSaveToast;
 
 /* ---------- Dismiss delete overlay on outside click ---------- */
 on(document,'click', function(e){
@@ -1700,6 +1757,25 @@ function compressImage(file, maxSize, callback){
 /* ---------- LocalStorage persistence ---------- */
 var STORAGE_KEY = 'tm_tierlist';
 
+// Persist to localStorage, surfacing failures (quota exceeded, private mode)
+// instead of swallowing them. Toast is throttled so a failing autosave loop
+// doesn't spam the user.
+var _lastStorageToast = 0;
+function safeSetItem(key, value){
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch(e){
+    var now = Date.now();
+    if (now - _lastStorageToast > 10000 && typeof showSaveToast === 'function') {
+      _lastStorageToast = now;
+      showSaveToast("Couldn't save — storage may be full", true);
+    }
+    return false;
+  }
+}
+window.safeSetItem = safeSetItem;
+
 function saveTierList(){
   var data = { rows: [], tray: [], title: '' };
   // Save title
@@ -1738,45 +1814,58 @@ function saveTierList(){
       data.tray.push({ type: 'image', src: img.src, alt: img.alt, custom: true });
     }
   });
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e){}
+  safeSetItem(STORAGE_KEY, JSON.stringify(data));
 }
 
+// Append a single saved token to a zone, skipping malformed entries.
+function restoreToken(zone, tokData){
+  if (!tokData || typeof tokData !== 'object') return;
+  if (tokData.type === 'name') {
+    if (typeof tokData.name !== 'string') return;
+    zone.appendChild(buildNameToken(tokData.name, tokData.color || '#7da7ff', !!tokData.custom, tokData.textColor));
+  } else if (tokData.type === 'image') {
+    if (typeof tokData.src !== 'string' || !tokData.src) return;
+    zone.appendChild(buildImageToken(tokData.src, tokData.alt));
+  }
+}
 function loadTierList(){
+  var json;
+  try { json = localStorage.getItem(STORAGE_KEY); } catch(e){ return false; }
+  if (!json) return false;
+  var data;
+  try { data = JSON.parse(json); } catch(e){ data = null; }
+  // Validate top-level shape before touching the DOM.
+  if (!data || !Array.isArray(data.rows)) {
+    if (typeof showSaveToast === 'function') showSaveToast('Saved board was corrupted — starting fresh', true);
+    return false;
+  }
   try {
-    var json = localStorage.getItem(STORAGE_KEY);
-    if (!json) return false;
-    var data = JSON.parse(json);
-    if (!data || !data.rows) return false;
     // Restore title
     var titleEl = $('.board-title');
-    if (titleEl && data.title) titleEl.textContent = data.title;
+    if (titleEl && typeof data.title === 'string') titleEl.textContent = data.title;
     // Clear default rows and tray
     board.innerHTML = '';
     tray.innerHTML = '';
-    // Restore rows
+    // Restore rows (skip malformed rows/tokens rather than aborting)
     data.rows.forEach(function(rowData){
+      if (!rowData || typeof rowData !== 'object') return;
       var node = createRow({ label: rowData.label, color: rowData.color, image: rowData.image });
       var drop = node.querySelector('.tier-drop');
-      rowData.tokens.forEach(function(tokData){
-        if (tokData.type === 'name') {
-          drop.appendChild(buildNameToken(tokData.name, tokData.color || '#7da7ff', !!tokData.custom, tokData.textColor));
-        } else if (tokData.type === 'image') {
-          drop.appendChild(buildImageToken(tokData.src, tokData.alt));
-        }
-      });
+      if (Array.isArray(rowData.tokens)) {
+        rowData.tokens.forEach(function(tokData){ restoreToken(drop, tokData); });
+      }
       board.appendChild(node);
     });
     uniformizeTierLabels();
     // Restore tray
-    data.tray.forEach(function(tokData){
-      if (tokData.type === 'name') {
-        tray.appendChild(buildNameToken(tokData.name, tokData.color || '#7da7ff', !!tokData.custom, tokData.textColor));
-      } else if (tokData.type === 'image') {
-        tray.appendChild(buildImageToken(tokData.src, tokData.alt));
-      }
-    });
+    if (Array.isArray(data.tray)) {
+      data.tray.forEach(function(tokData){ restoreToken(tray, tokData); });
+    }
     return true;
-  } catch(e){ return false; }
+  } catch(e){
+    if (typeof showSaveToast === 'function') showSaveToast('Saved board was corrupted — starting fresh', true);
+    return false;
+  }
 }
 
 // Auto-save on changes (debounced)
@@ -1808,21 +1897,42 @@ function updateTrayCount(){
       setTimeout(function(){ badge.classList.remove('glow'); }, 600);
     }
   }
+  updateEmptyHint();
 }
+
+// Show a gentle hint when the whole board (tray + every tier) is empty.
+function updateEmptyHint(){
+  var hint = $('#emptyHint');
+  if (!hint) return;
+  // Hide outside the default tier mode (battles/quadrant manage their own UI).
+  var inTierMode = !(typeof window.currentChartMode === 'function' && window.currentChartMode() !== 'tier');
+  var hasTokens = $$('.token').length > 0;
+  hint.hidden = hasTokens || !inTierMode;
+}
+window.updateEmptyHint = updateEmptyHint;
 
 // Hook into mutations for auto-save
 var _saveObserver = null;
+var _autoSaveTitleBound = false;
 function startAutoSave(){
   if (_saveObserver) return;
   var onMutate = function(){ scheduleSave(); updateTrayCount(); };
   _saveObserver = new MutationObserver(onMutate);
-  _saveObserver.observe(board, { childList: true, subtree: true, characterData: true });
+  // Watch structural changes only. Title edits save via the 'input' listener
+  // below; label-text edits route through code paths that call scheduleSave.
+  _saveObserver.observe(board, { childList: true, subtree: true });
   _saveObserver.observe(tray, { childList: true, subtree: true });
   var titleEl = $('.board-title');
-  if (titleEl) {
+  if (titleEl && !_autoSaveTitleBound) {
+    _autoSaveTitleBound = true;
     on(titleEl, 'input', scheduleSave);
   }
 }
+function stopAutoSave(){
+  if (_saveObserver){ _saveObserver.disconnect(); _saveObserver = null; }
+}
+window.startAutoSave = startAutoSave;
+window.stopAutoSave = stopAutoSave;
 
 /* ---------- Prompt suggestions with optional tier configs ---------- */
 var TIER_PROMPTS = [
@@ -2794,16 +2904,25 @@ document.addEventListener('DOMContentLoaded', function start(){
   });
 
   // Image upload with compression
+  var MAX_UPLOAD_BYTES = 25 * 1024 * 1024; // 25MB raw — reject huge files
   on($('#imageInput'),'change', function(e){
+    var rejected = 0;
     Array.prototype.forEach.call(e.target.files, function(file){
-      if(!file.type || file.type.indexOf('image/')!==0) return;
+      if(!file.type || file.type.indexOf('image/')!==0){ rejected++; return; }
+      if(file.size > MAX_UPLOAD_BYTES){
+        showSaveToast('"'+(file.name||'image')+'" is too large (max 25MB)', true);
+        return;
+      }
       compressImage(file, 200, function(dataUrl){
         if (dataUrl) {
           tray.insertBefore(buildImageToken(dataUrl, file.name), tray.firstChild);
           scheduleSave();
+        } else {
+          showSaveToast("Couldn't read \""+(file.name||'image')+'"', true);
         }
       });
     });
+    if (rejected) showSaveToast(rejected>1 ? rejected+' files skipped — images only' : 'That file isn’t an image', true);
     e.target.value = ''; // Reset so same file can be uploaded again
   });
 
@@ -2824,11 +2943,15 @@ document.addEventListener('DOMContentLoaded', function start(){
     probe.onload = function(){
       if (done) return; done = true;
       cleanup();
-      var token = buildImageToken(url, '');
-      tray.insertBefore(token, tray.firstChild);
+      // Inline so the image persists across refresh and exports cleanly;
+      // falls back to the raw URL when CORS blocks the fetch.
+      inlineImageSrc(url, function(finalSrc){
+        var token = buildImageToken(finalSrc, '');
+        tray.insertBefore(token, tray.firstChild);
+        scheduleSave();
+      });
       urlInput.value = '';
       if(imgDropdown) { imgDropdown.classList.add('hidden'); syncDropdownChevron(); }
-      scheduleSave();
     };
     probe.onerror = function(){
       if (done) return; done = true;

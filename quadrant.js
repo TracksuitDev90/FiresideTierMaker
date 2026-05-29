@@ -577,6 +577,13 @@
     var tierBoard = $('#tierBoard');
     if(!qBoard) return;
 
+    // Pause the tier-board autosave observer outside tier mode; resume in it.
+    if(mode === 'tier'){
+      if(typeof window.startAutoSave === 'function') window.startAutoSave();
+    } else {
+      if(typeof window.stopAutoSave === 'function') window.stopAutoSave();
+    }
+
     // Always hide battles when switching away
     if(typeof hideBattleMode === 'function') hideBattleMode();
 
@@ -674,7 +681,8 @@
       data.zones[pos] = pins;
       if(z.dataset.customColor) data.colors[pos] = z.dataset.customColor;
     });
-    try{localStorage.setItem(QUADRANT_STORAGE_KEY, JSON.stringify(data));}catch(e){}
+    if(typeof window.safeSetItem === 'function'){ window.safeSetItem(QUADRANT_STORAGE_KEY, JSON.stringify(data)); }
+    else { try{localStorage.setItem(QUADRANT_STORAGE_KEY, JSON.stringify(data));}catch(e){} }
   }
 
   function loadQuadrantData(){
@@ -706,8 +714,9 @@
       if(data.zones){
         Q_POSITIONS.forEach(function(pos,i){
           var zonePins = data.zones[pos];
-          if(!zonePins || !qZones[i]) return;
+          if(!Array.isArray(zonePins) || !qZones[i]) return;
           zonePins.forEach(function(td){
+            if(!td || typeof td !== 'object') return;
             var pin = null;
             if(td.type === 'image'){
               pin = buildQuadrantPin(td.alt || td.name, null, true, td.src, td.alt);
@@ -889,8 +898,8 @@
       if(typeof showSaveToast === 'function') showSaveToast('Saved!');
     }).catch(function(err){
       cloneWrap.remove();
-      if(typeof showSaveToast === 'function') showSaveToast('Export failed — try again');
-      console.error('Quadrant PNG export error:', err);
+      if(typeof showSaveToast === 'function') showSaveToast('Export failed — try again', true);
+      if(window.DEBUG) console.error('Quadrant PNG export error:', err);
     });
   }
 
