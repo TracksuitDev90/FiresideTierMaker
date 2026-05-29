@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#121212" />
+  <meta name="theme-color" content="#0a0a0a" />
   <meta name="description" content="Create and share custom tier lists. Drag and drop to rank your favorites, then save as PNG." />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <!-- Open Graph -->
@@ -23,7 +23,6 @@
 </head>
 <body>
   <div class="wrap">
-    <a class="skip-link" href="#boardPanel">Skip to tier board</a>
     <!-- Brand -->
     <header class="header">
       <div class="brand-wrap">
@@ -84,7 +83,7 @@
     </section>
 
     <!-- Tier board -->
-    <section class="panel" id="boardPanel" tabindex="-1" aria-label="Tier board">
+    <section class="panel" id="boardPanel" aria-label="Tier board">
       <!-- Swipe prompt cards -->
       <div class="prompt-stack-wrap" id="promptStack" role="group" aria-label="Prompt card suggestions — swipe right or press Enter to apply, swipe left or press ArrowLeft to skip">
         <div class="prompt-cards" id="promptCards" role="list" aria-label="Prompt cards"></div>
