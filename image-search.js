@@ -285,6 +285,7 @@
       card.setAttribute('role', 'listitem');
       card.setAttribute('tabindex', '0');
       card.dataset.full  = r.full;
+      card.dataset.thumb = r.thumb || r.full;
       card.dataset.title = r.title;
 
       var img = document.createElement('img');
@@ -315,7 +316,7 @@
       delete selected[src];
       card.classList.remove('selected');
     } else {
-      selected[src] = { title: card.dataset.title };
+      selected[src] = { title: card.dataset.title, thumb: card.dataset.thumb };
       card.classList.add('selected');
     }
     updateSelCount();
@@ -396,12 +397,13 @@
 
     srcs.forEach(function (src) {
       var info = selected[src];
-      // Inline external images so they persist + export cleanly; fall back to
-      // the raw URL if it can't be fetched.
+      // Inline the 600px thumbnail (plenty for a ~99px token, far smaller than
+      // full-res) so it persists + exports cleanly; fall back to the raw URL.
+      var toInline = info.thumb || src;
       if (typeof window.inlineImageSrc === 'function') {
-        window.inlineImageSrc(src, function (finalSrc) { addToken(finalSrc, info); });
+        window.inlineImageSrc(toInline, function (finalSrc) { addToken(finalSrc, info); });
       } else {
-        addToken(src, info);
+        addToken(toInline, info);
       }
     });
 
