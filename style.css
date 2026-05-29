@@ -680,6 +680,13 @@ body,.panel,.btn,.tier-drop,.tier-label,.tray-well,.action-bar,.action-icon,.act
 }
 .row-del svg{width:16px;height:16px;fill:currentColor}
 
+/* Touch devices have no hover — give the tier-label tools a resting
+   affordance so they're discoverable, then full strength once revealed. */
+@media (hover:none){
+  .color-pick-btn{opacity:.6;transform:scale(.9)}
+  .row-del{opacity:.6;pointer-events:auto}
+}
+
 /* Drops */
 .tier-drop{
   background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);
@@ -796,6 +803,18 @@ body.dragging-item #tray{
 
 /* ---------- A11y ---------- */
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap}
+/* Skip link — visually hidden until focused */
+.skip-link{
+  position:absolute;left:12px;top:-48px;z-index:100;
+  padding:10px 16px;border-radius:10px;
+  background:var(--surface-high);color:var(--text);
+  font-weight:800;border:1px solid var(--border);
+  box-shadow:var(--focus-ring);
+  transition:top var(--dur-short) var(--ease-standard);
+}
+.skip-link:focus{top:12px;outline:none}
+/* Don't show a focus ring on the board panel when reached via skip link */
+#boardPanel:focus{outline:none}
 
 /* ---------- Radial picker (mobile) ---------- */
 .radial{position:fixed;inset:0;z-index:60;pointer-events:auto;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}

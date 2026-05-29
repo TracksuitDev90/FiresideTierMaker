@@ -362,6 +362,7 @@ function createRow(cfg){
     chip.dataset.crestSrc = cfg.image;
   } else {
     chip.textContent = cfg.label;
+    chip.setAttribute('aria-label', 'Tier name');
   }
   applyTierColor(node, cfg.color);
 
@@ -1124,6 +1125,7 @@ var radialCloseBtn = radial?$('.radial-close', radial):null;
 var radialForToken = null;
 var _radialGeo = [];
 var _savedScrollY = null;
+var _radialLastFocus = null;
 
 function rowCount(){ return $$('.tier-row').length; }
 function refreshRadialOptions(){
@@ -1138,6 +1140,8 @@ function openRadial(token){
     radial.removeEventListener('pointerdown', radial._backdropHandler);
     delete radial._backdropHandler;
   }
+  // Remember the trigger so focus can return when the picker closes
+  if (!_radialLastFocus) _radialLastFocus = document.activeElement;
   radialForToken = token;
 
   // Save scroll position to prevent drift
@@ -1223,7 +1227,7 @@ function openRadial(token){
   radial.classList.add('visible', 'show');
   radial.setAttribute('aria-hidden', 'false');
   setTimeout(function(){ radial.classList.remove('show'); }, 160 + N * 20);
-  if (_radialGeo.length) updateHighlight(0);
+  if (_radialGeo.length){ updateHighlight(0); if(_radialGeo[0].btn) _radialGeo[0].btn.focus(); }
 }
 function updateHighlight(index){
   if(!_radialGeo.length) return;
@@ -1237,7 +1241,11 @@ if(radialCloseBtn){
 }
 function selectRadialTarget(row){
   if (!radialForToken || !row) return;
+  // The picker may have been open when its target tier was deleted — bail
+  // instead of moving the token into a detached row.
+  if (!document.contains(row)) { closeRadial(); return; }
   var zone = row.querySelector('.tier-drop');
+  if (!zone) { closeRadial(); return; }
   var fromId = ensureId(radialForToken.parentElement, 'zone');
   var origin = radialForToken.parentElement; ensureId(zone, 'zone');
   var originNext = radialForToken.nextElementSibling;
@@ -1249,6 +1257,7 @@ function selectRadialTarget(row){
   window.scrollTo(0, scrollSnap);
   radialForToken.classList.remove('selected');
   recordPlacement(radialForToken.id, fromId, zone.id, originBeforeId);
+  live('Moved "'+(radialForToken.innerText||'item')+'" to '+rowLabel(row));
   vib(7);
   closeRadial();
 }
@@ -1272,6 +1281,11 @@ function closeRadial(){
     window.scrollTo(0, scrollY);
     requestAnimationFrame(function(){ window.scrollTo(0, scrollY); });
   }
+  // Return focus to the element that opened the picker
+  if (_radialLastFocus && typeof _radialLastFocus.focus === 'function'){
+    try { _radialLastFocus.focus(); } catch(e){}
+  }
+  _radialLastFocus = null;
 }
 on(window, 'resize', refreshRadialOptions);
 
@@ -1577,6 +1591,7 @@ function showSaveToast(msg, isError){
   setTimeout(function(){ toast.classList.add('toast-out'); }, 1800);
   setTimeout(function(){ toast.remove(); }, 2200);
 }
+window.showSaveToast = showSaveToast;
 
 /* ---------- Dismiss delete overlay on outside click ---------- */
 on(document,'click', function(e){
@@ -1700,6 +1715,25 @@ function compressImage(file, maxSize, callback){
 /* ---------- LocalStorage persistence ---------- */
 var STORAGE_KEY = 'tm_tierlist';
 
+// Persist to localStorage, surfacing failures (quota exceeded, private mode)
+// instead of swallowing them. Toast is throttled so a failing autosave loop
+// doesn't spam the user.
+var _lastStorageToast = 0;
+function safeSetItem(key, value){
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch(e){
+    var now = Date.now();
+    if (now - _lastStorageToast > 10000 && typeof showSaveToast === 'function') {
+      _lastStorageToast = now;
+      showSaveToast("Couldn't save — storage may be full", true);
+    }
+    return false;
+  }
+}
+window.safeSetItem = safeSetItem;
+
 function saveTierList(){
   var data = { rows: [], tray: [], title: '' };
   // Save title
@@ -1738,45 +1772,58 @@ function saveTierList(){
       data.tray.push({ type: 'image', src: img.src, alt: img.alt, custom: true });
     }
   });
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch(e){}
+  safeSetItem(STORAGE_KEY, JSON.stringify(data));
 }
 
+// Append a single saved token to a zone, skipping malformed entries.
+function restoreToken(zone, tokData){
+  if (!tokData || typeof tokData !== 'object') return;
+  if (tokData.type === 'name') {
+    if (typeof tokData.name !== 'string') return;
+    zone.appendChild(buildNameToken(tokData.name, tokData.color || '#7da7ff', !!tokData.custom, tokData.textColor));
+  } else if (tokData.type === 'image') {
+    if (typeof tokData.src !== 'string' || !tokData.src) return;
+    zone.appendChild(buildImageToken(tokData.src, tokData.alt));
+  }
+}
 function loadTierList(){
+  var json;
+  try { json = localStorage.getItem(STORAGE_KEY); } catch(e){ return false; }
+  if (!json) return false;
+  var data;
+  try { data = JSON.parse(json); } catch(e){ data = null; }
+  // Validate top-level shape before touching the DOM.
+  if (!data || !Array.isArray(data.rows)) {
+    if (typeof showSaveToast === 'function') showSaveToast('Saved board was corrupted — starting fresh', true);
+    return false;
+  }
   try {
-    var json = localStorage.getItem(STORAGE_KEY);
-    if (!json) return false;
-    var data = JSON.parse(json);
-    if (!data || !data.rows) return false;
     // Restore title
     var titleEl = $('.board-title');
-    if (titleEl && data.title) titleEl.textContent = data.title;
+    if (titleEl && typeof data.title === 'string') titleEl.textContent = data.title;
     // Clear default rows and tray
     board.innerHTML = '';
     tray.innerHTML = '';
-    // Restore rows
+    // Restore rows (skip malformed rows/tokens rather than aborting)
     data.rows.forEach(function(rowData){
+      if (!rowData || typeof rowData !== 'object') return;
       var node = createRow({ label: rowData.label, color: rowData.color, image: rowData.image });
       var drop = node.querySelector('.tier-drop');
-      rowData.tokens.forEach(function(tokData){
-        if (tokData.type === 'name') {
-          drop.appendChild(buildNameToken(tokData.name, tokData.color || '#7da7ff', !!tokData.custom, tokData.textColor));
-        } else if (tokData.type === 'image') {
-          drop.appendChild(buildImageToken(tokData.src, tokData.alt));
-        }
-      });
+      if (Array.isArray(rowData.tokens)) {
+        rowData.tokens.forEach(function(tokData){ restoreToken(drop, tokData); });
+      }
       board.appendChild(node);
     });
     uniformizeTierLabels();
     // Restore tray
-    data.tray.forEach(function(tokData){
-      if (tokData.type === 'name') {
-        tray.appendChild(buildNameToken(tokData.name, tokData.color || '#7da7ff', !!tokData.custom, tokData.textColor));
-      } else if (tokData.type === 'image') {
-        tray.appendChild(buildImageToken(tokData.src, tokData.alt));
-      }
-    });
+    if (Array.isArray(data.tray)) {
+      data.tray.forEach(function(tokData){ restoreToken(tray, tokData); });
+    }
     return true;
-  } catch(e){ return false; }
+  } catch(e){
+    if (typeof showSaveToast === 'function') showSaveToast('Saved board was corrupted — starting fresh', true);
+    return false;
+  }
 }
 
 // Auto-save on changes (debounced)
@@ -1812,17 +1859,26 @@ function updateTrayCount(){
 
 // Hook into mutations for auto-save
 var _saveObserver = null;
+var _autoSaveTitleBound = false;
 function startAutoSave(){
   if (_saveObserver) return;
   var onMutate = function(){ scheduleSave(); updateTrayCount(); };
   _saveObserver = new MutationObserver(onMutate);
-  _saveObserver.observe(board, { childList: true, subtree: true, characterData: true });
+  // Watch structural changes only. Title edits save via the 'input' listener
+  // below; label-text edits route through code paths that call scheduleSave.
+  _saveObserver.observe(board, { childList: true, subtree: true });
   _saveObserver.observe(tray, { childList: true, subtree: true });
   var titleEl = $('.board-title');
-  if (titleEl) {
+  if (titleEl && !_autoSaveTitleBound) {
+    _autoSaveTitleBound = true;
     on(titleEl, 'input', scheduleSave);
   }
 }
+function stopAutoSave(){
+  if (_saveObserver){ _saveObserver.disconnect(); _saveObserver = null; }
+}
+window.startAutoSave = startAutoSave;
+window.stopAutoSave = stopAutoSave;
 
 /* ---------- Prompt suggestions with optional tier configs ---------- */
 var TIER_PROMPTS = [

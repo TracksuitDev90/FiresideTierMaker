@@ -15,6 +15,7 @@
 
   /* ---------- state ---------- */
   var overlay, grid, input, statusEl;
+  var _lastFocus = null;   // element to restore focus to on close
   var page       = 0;
   var query      = '';
   var loading    = false;
@@ -83,13 +84,31 @@
     });
 
     document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape' && !overlay.classList.contains('hidden')) close();
+      if (overlay.classList.contains('hidden')) return;
+      if (e.key === 'Escape') { close(); return; }
+      if (e.key === 'Tab') trapTab(e);
     });
+  }
+
+  /* Keep keyboard focus inside the modal while it's open. */
+  function trapTab(e) {
+    var focusables = qsa(
+      'a[href],button:not([disabled]),input,select,textarea,[tabindex]:not([tabindex="-1"])',
+      overlay
+    ).filter(function (el) { return el.offsetParent !== null; });
+    if (!focusables.length) return;
+    var first = focusables[0];
+    var last  = focusables[focusables.length - 1];
+    var active = document.activeElement;
+    if (e.shiftKey && active === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && active === last) { e.preventDefault(); first.focus(); }
+    else if (!overlay.contains(active)) { e.preventDefault(); first.focus(); }
   }
 
   /* ---------- open / close ---------- */
   function open() {
     if (!overlay) buildOverlay();
+    _lastFocus = document.activeElement;
     overlay.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
     setTimeout(function () { input.focus(); }, 60);
@@ -99,6 +118,11 @@
     if (!overlay) return;
     overlay.classList.add('hidden');
     document.body.style.overflow = '';
+    // Return focus to whatever opened the modal
+    if (_lastFocus && typeof _lastFocus.focus === 'function') {
+      try { _lastFocus.focus(); } catch (e) {}
+    }
+    _lastFocus = null;
   }
 
   function setStatus(msg) { if (statusEl) statusEl.textContent = msg; }

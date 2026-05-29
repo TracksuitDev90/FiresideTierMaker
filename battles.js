@@ -512,8 +512,9 @@
       if(typeof live === 'function') live('Bracket saved!');
     }).catch(function(err){
       cloneWrap.remove();
-      console.error('Bracket save failed:', err);
-      if(typeof live === 'function') live('Save failed. Try again.');
+      if(window.DEBUG) console.error('Bracket save failed:', err);
+      if(typeof window.showSaveToast === 'function') window.showSaveToast('Export failed — try again', true);
+      else if(typeof live === 'function') live('Save failed. Try again.');
     });
   }
 
