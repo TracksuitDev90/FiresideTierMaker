@@ -508,7 +508,13 @@
 
             if(dropZone !== originZone){
               var fromId2 = ensureId(originZone,'zone');
-              recordPlacement(pin.id, fromId2, dropZone.id, '');
+              // Record the pin's pre-move position so undo can restore it
+              // exactly (pins are absolutely positioned within their zone).
+              recordPlacement(pin.id, fromId2, dropZone.id, '', {
+                isQuadrant: true,
+                prevLeft: originLeft,
+                prevTop: originTop
+              });
               dropZone.appendChild(pin);
             }
             pin.style.position = 'absolute';

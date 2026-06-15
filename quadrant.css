@@ -166,9 +166,9 @@
   margin:0;
   padding:3px 9px 3px 3px;
   border-radius:16px;
-  background:rgba(0,0,0,.35);
-  backdrop-filter:blur(6px);
-  -webkit-backdrop-filter:blur(6px);
+  /* Solid translucent fill instead of per-pin backdrop-filter — N simultaneous
+     backdrop blurs are a serious GPU cost on mobile during pan/drag. */
+  background:rgba(0,0,0,.62);
   white-space:nowrap;
   max-width:140px;
   transition:transform .06s ease, box-shadow .12s ease, background .15s ease;
@@ -178,9 +178,7 @@
   user-select:none;
 }
 :root[data-theme="light"] .q-pin{
-  background:rgba(255,255,255,.7);
-  backdrop-filter:blur(6px);
-  -webkit-backdrop-filter:blur(6px);
+  background:rgba(255,255,255,.9);
 }
 .q-pin:hover{
   background:rgba(0,0,0,.5);
@@ -218,18 +216,22 @@
 .q-pin-del{
   display:none;
   position:absolute;
-  top:-6px;right:-6px;
-  width:16px;height:16px;
+  top:-8px;right:-8px;
+  width:20px;height:20px;
   border-radius:50%;
   background:var(--danger, #ef4444);
   color:#fff;
-  font-size:11px;line-height:16px;
+  font-size:13px;line-height:20px;
   text-align:center;
   border:none;cursor:pointer;
   padding:0;
   z-index:10;
 }
+/* Expand the tap target to ~44px without growing the visible button */
+.q-pin-del::before{content:'';position:absolute;inset:-12px;border-radius:50%;}
 .q-pin:hover .q-pin-del{display:block}
+/* Touch devices have no hover — reveal delete when the pin is selected (tap) */
+.q-pin.selected .q-pin-del{display:block}
 
 /* Tray token hidden when placed in quadrant */
 .q-placed-hidden{

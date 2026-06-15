@@ -32,7 +32,9 @@
   function isUseful(title, mime) {
     if (mime && mime.indexOf('image/') !== 0) return false;
     if (mime && mime.indexOf('image/svg') === 0) return false;
-    if (!EXT_OK.test(title) && mime && mime.indexOf('image/svg') === 0) return false;
+    // Require a recognised raster image extension — rejects svg/pdf/ogg/tif
+    // and other non-token-friendly assets that slip through the mime check.
+    if (!EXT_OK.test(title)) return false;
     if (NOISE_RE.test(title)) return false;
     return true;
   }
@@ -293,7 +295,12 @@
       img.alt = r.title;
       img.loading = 'lazy';
       img.draggable = false;
-      img.addEventListener('error', function () { card.classList.add('broken'); });
+      img.addEventListener('error', function () {
+        // Drop broken results entirely rather than leaving dim empty holes
+        // in the grid; clear selection if it had been picked.
+        if (selected[card.dataset.full]) { delete selected[card.dataset.full]; updateSelCount(); }
+        card.remove();
+      });
       card.appendChild(img);
 
       var check = document.createElement('span');

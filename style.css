@@ -38,6 +38,12 @@ a{color:inherit;text-decoration:none}
   --btn-red-bg:#f6afaf;     --btn-red-fg:#a51f1f;
   --btn-violet-bg:#c4bbfd;  --btn-violet-fg:#4233c0;
   --btn-theme-bg:#eae3d2;   --btn-theme-fg:#3d311d;
+  /* Semantic status / default colors */
+  --danger:#ef4444; --danger-strong:#f87171; --success:#22c55e;
+  --token-default:#7da7ff; --label-default:#ff6b6b;
+  --tray-well-bg:#0e0e0e; --tray-well-border:rgba(255,255,255,.06);
+  --input-bg:var(--card);
+  --dot-color:#fff;
 }
 :root[data-theme="light"]{
   --surface:#f7f8fb; --surface-raised:#fff; --card:#f0f3f8;
@@ -51,6 +57,12 @@ a{color:inherit;text-decoration:none}
   --btn-red-bg:#f8bfbf;     --btn-red-fg:#b42626;
   --btn-violet-bg:#cfc5ff;  --btn-violet-fg:#4b3cd6;
   --btn-theme-bg:#1c2a3b;   --btn-theme-fg:#d9e3f0;
+  /* Semantic status / default colors (light) */
+  --danger:#dc2626; --danger-strong:#e5564b; --success:#16a34a;
+  --token-default:#5b86e0; --label-default:#e5564b;
+  --tray-well-bg:#edf0f5; --tray-well-border:rgba(0,0,0,.06);
+  --input-bg:#e8ecf2;
+  --dot-color:#fff;
 }
 
 /* ---------- Layout ---------- */
@@ -58,7 +70,7 @@ a{color:inherit;text-decoration:none}
 .header{display:flex;align-items:center;gap:16px;margin-bottom:16px}
 .brand-wrap{position:sticky;top:14px;z-index:20}
 @media (max-width:1024px){.brand-wrap{position:static}}
-.brand{font-family:'Bowlby One',sans-serif;font-weight:400;letter-spacing:1px;color:var(--brand);font-size:clamp(31px,5.5vw,51px);line-height:1}
+.brand{font-family:'Bowlby One',sans-serif;font-weight:400;letter-spacing:1px;color:var(--brand);font-size:clamp(31px,5.5vw,51px);line-height:1;margin:0}
 .brand-sub{
   font-size:clamp(10px,1.2vw,13px);font-weight:800;letter-spacing:2.5px;
   text-transform:lowercase;color:#f5f5f5;margin-top:2px;
@@ -307,7 +319,7 @@ body,.panel,.btn,.tier-drop,.tier-label,.tray-well,.action-bar,.action-icon,.act
 }
 .input:focus{border-color:var(--accent);outline:none}
 .input::placeholder{color:var(--muted);opacity:.7}
-:root[data-theme="light"] .input{background:#e8ecf2}
+:root[data-theme="light"] .input{background:var(--input-bg)}
 
 /* Add Image dropdown */
 .img-btn-wrap{position:relative;flex:0 0 auto}
@@ -365,9 +377,9 @@ body,.panel,.btn,.tier-drop,.tier-label,.tray-well,.action-bar,.action-icon,.act
 .help-drawer.open .help-handle-label{opacity:0;transform:translateY(-4px)}
 .help-tray{
   height:0;overflow:hidden;
-  will-change:height;
 }
 .help-drawer.animating .help-tray{
+  will-change:height;
   transition:height .45s cubic-bezier(.34,1.4,.64,1);
 }
 .help-tips{
@@ -424,7 +436,6 @@ body,.panel,.btn,.tier-drop,.tier-label,.tray-well,.action-bar,.action-icon,.act
   padding:0 20px;
   cursor:grab;user-select:none;-webkit-user-select:none;
   touch-action:none;
-  will-change:transform,opacity;
   /* #1 Material elevation — layered outward shadows (resting: level 1) */
   box-shadow:
     0 1px 3px rgba(0,0,0,.12),
@@ -443,6 +454,7 @@ body,.panel,.btn,.tier-drop,.tier-label,.tray-well,.action-bar,.action-icon,.act
 }
 /* #1 Drag elevation — raised to level 3 with lift */
 .prompt-card.md-dragging{
+  will-change:transform,opacity;
   box-shadow:
     0 8px 10px rgba(0,0,0,.20),
     0 3px 14px rgba(0,0,0,.12),
@@ -551,6 +563,7 @@ body,.panel,.btn,.tier-drop,.tier-label,.tray-well,.action-bar,.action-icon,.act
 .prompt-list-sheet{
   width:min(96%,440px);
   max-height:70vh;
+  max-height:70dvh;
   background:var(--card);
   border-radius:20px 20px 0 0;
   box-shadow:0 -4px 24px rgba(0,0,0,.25);
@@ -609,7 +622,7 @@ body,.panel,.btn,.tier-drop,.tier-label,.tray-well,.action-bar,.action-icon,.act
   white-space:nowrap;
 }
 @media(max-width:480px){
-  .prompt-list-sheet{max-height:75vh;width:100%;border-radius:16px 16px 0 0}
+  .prompt-list-sheet{max-height:75vh;max-height:75dvh;width:100%;border-radius:16px 16px 0 0}
   .prompt-list-item{padding:10px 14px}
   .prompt-list-item-text{font-size:13px}
 }
@@ -624,7 +637,7 @@ body,.panel,.btn,.tier-drop,.tier-label,.tray-well,.action-bar,.action-icon,.act
   padding:0; display:grid; place-items:stretch; min-height:99px; overflow:hidden;
 }
 .label-chip{
-  position:relative;width:100%;height:100%;border-radius:inherit;background:#ff6b6b;color:#111;
+  position:relative;width:100%;height:100%;border-radius:inherit;background:var(--label-default);color:#111;
   display:flex;align-items:center;justify-content:center;
   font-family:'Bowlby One',sans-serif;font-weight:400;font-size:clamp(12px,4vw,48px);
   text-transform:uppercase;letter-spacing:.5px;user-select:none;
@@ -712,11 +725,12 @@ body,.panel,.btn,.tier-drop,.tier-label,.tray-well,.action-bar,.action-icon,.act
 
 /* ---------- Tokens ---------- */
 .token{
-  position:relative;width:99px;height:99px;border-radius:999px;background:#7da7ff;
+  position:relative;width:99px;height:99px;border-radius:999px;background:var(--token-default);
   display:flex;align-items:center;justify-content:center;
-  user-select:none;cursor:pointer;transform:translateZ(0);transition:transform .08s ease;
+  user-select:none;cursor:grab;transform:translateZ(0);transition:transform .08s ease;
 }
 .token:hover{transform:translateY(-1px)}
+.token:active,.token.dragging{cursor:grabbing}
 .token:active{transform:translateY(0)}
 .token:focus-visible{outline:3px solid var(--accent);outline-offset:4px}
 .token .label{
@@ -794,11 +808,11 @@ body.dragging-item #tray{
 /* ---------- Image Storage ---------- */
 .tray-well{
   border-radius:16px;padding:4px;
-  background:#0e0e0e;
-  border:1px solid rgba(255,255,255,.06);
+  background:var(--tray-well-bg);
+  border:1px solid var(--tray-well-border);
 }
 :root[data-theme="light"] .tray-well{
-  background:#edf0f5;
+  background:var(--tray-well-bg);
   box-shadow:
     inset 0 2px 6px rgba(0,0,0,.1),
     inset 0 -1px 2px rgba(255,255,255,.8),
@@ -828,7 +842,7 @@ body.dragging-item #tray{
   width:100%;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;
   font-family:'Bowlby One',sans-serif;font-weight:400;font-size:22px;
   text-transform:uppercase;letter-spacing:.5px;line-height:1.1;
-  background:#fff;color:#fff;
+  background:var(--dot-color);color:#fff;
   border:2px solid transparent;
   transform:scale(.7);opacity:0;transition:transform .18s ease,opacity .18s ease,border-color .12s ease;
 }
@@ -903,13 +917,13 @@ body.dragging-item #tray{
 /* ---------- Toast notification ---------- */
 .toast{
   position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
-  background:#22c55e;color:#fff;padding:12px 24px;border-radius:12px;
+  background:var(--success);color:#fff;padding:12px 24px;border-radius:12px;
   font-weight:700;z-index:9999;
   box-shadow:0 4px 20px rgba(0,0,0,.3);
   animation:toast-in .3s cubic-bezier(.34,1.4,.64,1) forwards;
   transition:opacity .25s ease,transform .25s ease;
 }
-.toast.toast-error{background:#ef4444}
+.toast.toast-error{background:var(--danger)}
 .toast.toast-out{
   opacity:0;transform:translateX(-50%) translateY(12px);
   pointer-events:none;
@@ -945,6 +959,26 @@ body.dragging-item #tray{
   background:var(--card);color:var(--text);border:1px solid var(--border);
 }
 .confirm-ok{
-  background:#F87171;color:#fff;border:1px solid rgba(0,0,0,.1);
+  background:var(--danger-strong);color:#fff;border:1px solid rgba(0,0,0,.1);
   box-shadow:0 2px 8px rgba(248,113,113,.3);
+}
+
+/* ---------- Windows High Contrast / forced-colors ---------- */
+/* Borderless buttons and box-shadow focus rings disappear in forced-colors
+   mode; restore explicit borders and a real outline so affordances survive. */
+@media (forced-colors:active){
+  .btn, .action-icon, .action-input, .input, .token, .tier-label,
+  .panel, .confirm-card, .img-search-modal, .radial-option .dot,
+  .prompt-card, .q-pin{
+    border:1px solid CanvasText;
+  }
+  :focus-visible{
+    outline:2px solid Highlight;
+    outline-offset:2px;
+    box-shadow:none;
+  }
+  .tier-drop.drag-over, .dropzone.drag-over, .q-zone.drag-over{
+    outline:2px solid Highlight;
+    outline-offset:-2px;
+  }
 }
