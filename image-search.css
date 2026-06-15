@@ -15,7 +15,7 @@
 
 /* ---------- Modal ---------- */
 .img-search-modal{
-  width:min(96vw, 720px);max-height:min(92vh, 800px);
+  width:min(96vw, 720px);max-height:min(92vh, 800px);max-height:min(92dvh, 800px);
   display:flex;flex-direction:column;
   background:var(--surface-high);border:1px solid var(--border);
   border-radius:18px;
@@ -182,7 +182,7 @@
 
 /* ---------- Responsive ---------- */
 @media (max-width:600px){
-  .img-search-modal{border-radius:14px 14px 0 0;max-height:95vh;margin-top:auto}
+  .img-search-modal{border-radius:14px 14px 0 0;max-height:95vh;max-height:95dvh;margin-top:auto}
   .img-search-grid{grid-template-columns:repeat(2, 1fr);gap:8px}
   .img-search-header{padding:14px 16px 10px}
   .img-search-footer{padding:10px 16px}

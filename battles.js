@@ -391,42 +391,93 @@
     resultsEl.classList.remove('hidden');
 
     var w = battleState.winner;
-    var html = '';
+
+    // Build results with DOM nodes (never innerHTML) so user-supplied token
+    // names/URLs can't inject markup or script.
+    resultsEl.textContent = '';
+
+    function makeCircle(tok, circleClass){
+      var circle = document.createElement('div');
+      circle.className = circleClass;
+      if(tok.type === 'image'){
+        var img = document.createElement('img');
+        img.src = tok.src;
+        img.alt = tok.alt || '';
+        img.draggable = false;
+        circle.appendChild(img);
+      } else {
+        circle.style.background = tok.bg;
+        var lbl = document.createElement('div');
+        lbl.className = 'battle-label';
+        lbl.style.color = tok.textColor || '#fff';
+        lbl.textContent = tok.name;
+        circle.appendChild(lbl);
+      }
+      return circle;
+    }
 
     // Champion banner
-    html += '<div class="battle-champion">';
-    html += '  <div class="champion-title">' + battleState.category + '</div>';
-    html += '  <div class="champion-token">';
-    if(w.type === 'image'){
-      html += '    <div class="champion-circle"><img src="' + w.src + '" alt="' + (w.alt||'') + '" draggable="false" /></div>';
-    } else {
-      html += '    <div class="champion-circle" style="background:' + w.bg + '"><div class="battle-label" style="color:' + (w.textColor||'#fff') + '">' + w.name + '</div></div>';
-    }
-    html += '    <div class="champion-name">' + (w.name || w.alt || '') + '</div>';
-    html += '    <div class="champion-subtitle">ULTIMATE WINNER</div>';
-    html += '  </div>';
-    html += '</div>';
+    var champion = document.createElement('div');
+    champion.className = 'battle-champion';
+
+    var champTitle = document.createElement('div');
+    champTitle.className = 'champion-title';
+    champTitle.textContent = battleState.category;
+    champion.appendChild(champTitle);
+
+    var champToken = document.createElement('div');
+    champToken.className = 'champion-token';
+    champToken.appendChild(makeCircle(w, 'champion-circle'));
+
+    var champName = document.createElement('div');
+    champName.className = 'champion-name';
+    champName.textContent = w.name || w.alt || '';
+    champToken.appendChild(champName);
+
+    var champSub = document.createElement('div');
+    champSub.className = 'champion-subtitle';
+    champSub.textContent = 'ULTIMATE WINNER';
+    champToken.appendChild(champSub);
+
+    champion.appendChild(champToken);
+    resultsEl.appendChild(champion);
 
     // Bracket grid
-    html += '<div class="bracket-grid">';
-    html += '  <div class="bracket-title">BRACKET RESULTS</div>';
+    var grid = document.createElement('div');
+    grid.className = 'bracket-grid';
+    var gridTitle = document.createElement('div');
+    gridTitle.className = 'bracket-title';
+    gridTitle.textContent = 'BRACKET RESULTS';
+    grid.appendChild(gridTitle);
+
     for(var i = 0; i < battleState.rounds.length; i++){
       var r = battleState.rounds[i];
       var isWinnerLeft = (r.winner === r.left);
-      html += '<div class="bracket-round">';
-      html += '  <div class="bracket-round-header">';
-      html += '    <span class="bracket-round-num">Round ' + r.round + '</span>';
-      html += '  </div>';
-      html += '  <div class="bracket-matchup">';
-      html += renderBracketToken(r.left, isWinnerLeft);
-      html += '    <span class="bracket-vs">VS</span>';
-      html += renderBracketToken(r.right, !isWinnerLeft);
-      html += '  </div>';
-      html += '</div>';
-    }
-    html += '</div>';
 
-    resultsEl.innerHTML = html;
+      var round = document.createElement('div');
+      round.className = 'bracket-round';
+
+      var header = document.createElement('div');
+      header.className = 'bracket-round-header';
+      var num = document.createElement('span');
+      num.className = 'bracket-round-num';
+      num.textContent = 'Round ' + r.round;
+      header.appendChild(num);
+      round.appendChild(header);
+
+      var matchup = document.createElement('div');
+      matchup.className = 'bracket-matchup';
+      matchup.appendChild(renderBracketToken(r.left, isWinnerLeft));
+      var vs = document.createElement('span');
+      vs.className = 'bracket-vs';
+      vs.textContent = 'VS';
+      matchup.appendChild(vs);
+      matchup.appendChild(renderBracketToken(r.right, !isWinnerLeft));
+      round.appendChild(matchup);
+
+      grid.appendChild(round);
+    }
+    resultsEl.appendChild(grid);
 
     // Bracket circle labels use CSS-only sizing (clamp + word-break)
     // Also fit champion label if text-only
@@ -437,16 +488,33 @@
   }
 
   function renderBracketToken(tok, isWinner){
-    var cls = 'bracket-token' + (isWinner ? ' bracket-winner' : ' bracket-loser');
-    var html = '<div class="' + cls + '">';
+    var wrap = document.createElement('div');
+    wrap.className = 'bracket-token' + (isWinner ? ' bracket-winner' : ' bracket-loser');
+
+    var circle = document.createElement('div');
+    circle.className = 'bracket-circle';
     if(tok.type === 'image'){
-      html += '<div class="bracket-circle"><img src="' + tok.src + '" alt="' + (tok.alt||'') + '" draggable="false" /></div>';
+      var img = document.createElement('img');
+      img.src = tok.src;
+      img.alt = tok.alt || '';
+      img.draggable = false;
+      circle.appendChild(img);
     } else {
-      html += '<div class="bracket-circle" style="background:' + tok.bg + '"><div class="battle-label" style="color:' + (tok.textColor||'#fff') + '">' + tok.name + '</div></div>';
+      circle.style.background = tok.bg;
+      var lbl = document.createElement('div');
+      lbl.className = 'battle-label';
+      lbl.style.color = tok.textColor || '#fff';
+      lbl.textContent = tok.name;
+      circle.appendChild(lbl);
     }
-    html += '<div class="bracket-token-name">' + (tok.name || tok.alt || '') + '</div>';
-    html += '</div>';
-    return html;
+    wrap.appendChild(circle);
+
+    var name = document.createElement('div');
+    name.className = 'bracket-token-name';
+    name.textContent = tok.name || tok.alt || '';
+    wrap.appendChild(name);
+
+    return wrap;
   }
 
   /* ---------- Save Bracket as PNG ---------- */

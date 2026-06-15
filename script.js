@@ -131,7 +131,10 @@ function desaturate(hex, amount){
     if(toggle){
       var icon=$('.theme-icon',toggle), text=$('.theme-text',toggle);
       if(text) text.textContent = target;
-      toggle.setAttribute('aria-pressed', mode==='light' ? 'true' : 'false');
+      // This is an action button (switches theme), not a pressed/unpressed
+      // state toggle — an explicit action label is clearer than aria-pressed.
+      toggle.removeAttribute('aria-pressed');
+      toggle.setAttribute('aria-label', 'Switch to ' + target.toLowerCase() + ' theme');
       if(icon) icon.innerHTML = (target==='Light' ? SUN_HTML : MOON_HTML);
     }
     var isLight = mode==='light';
@@ -675,7 +678,7 @@ function buildNameToken(name, bgColor, isCustom, textColor){
 }
 function buildImageToken(src, alt){
   var el = buildTokenBase(true); // images are always custom
-  var img = document.createElement('img'); img.src=src; img.alt=alt||''; img.draggable=false; el.appendChild(img);
+  var img = document.createElement('img'); if(src) img.src=src; img.alt=alt||''; img.draggable=false; el.appendChild(img);
   return el;
 }
 
@@ -706,9 +709,11 @@ function pushHistory(entry){
   if (historyStack.length > HISTORY_MAX) historyStack.shift();
   var u = $('#undoBtn'); if (u) u.disabled = historyStack.length===0;
 }
-function recordPlacement(itemId, fromId, toId, originBeforeId){
+function recordPlacement(itemId, fromId, toId, originBeforeId, extra){
   if (!fromId || !toId || fromId===toId) return;
-  pushHistory({itemId:itemId, fromId:fromId, toId:toId, originBeforeId: originBeforeId||''});
+  var entry = {itemId:itemId, fromId:fromId, toId:toId, originBeforeId: originBeforeId||''};
+  if (extra) for (var k in extra) if (Object.prototype.hasOwnProperty.call(extra, k)) entry[k] = extra[k];
+  pushHistory(entry);
 }
 function recordDeletion(element, parentEl, nextSibling){
   var parentId = ensureId(parentEl, 'zone');
@@ -740,12 +745,22 @@ function undoLast(){
   flipZones([item.parentElement, origin], function(){
     if (last.originBeforeId){
       var before = document.getElementById(last.originBeforeId);
-      if (before && before.parentElement === origin){ origin.insertBefore(item, before); return; }
+      if (before && before.parentElement === origin){ origin.insertBefore(item, before); }
+      else { origin.appendChild(item); }
+    } else {
+      origin.appendChild(item);
     }
-    origin.appendChild(item);
+    // Quadrant pins are absolutely positioned within their zone — restore the
+    // exact left/top they had before the move, otherwise they land in the
+    // wrong spot using the drop coordinates.
+    if (last.prevLeft != null){ item.style.left = last.prevLeft; item.style.top = last.prevTop || ''; }
   });
   // Prevent viewport shift on mobile after DOM move
   if (isSmall()) window.scrollTo(0, scrollSnap);
+  if (last.isQuadrant){
+    if (typeof window.bringQTokenToFront === 'function') window.bringQTokenToFront(item);
+    if (typeof window.scheduleQuadrantSave === 'function') window.scheduleQuadrantSave();
+  }
   var u = $('#undoBtn'); if (u) u.disabled = historyStack.length===0;
 }
 
@@ -1147,8 +1162,17 @@ function enableRowReorder(labelArea, row){
     if (isSmall() && (('ontouchstart' in window)||navigator.maxTouchPoints>0)) return;
     row.setAttribute('draggable','true');
   }
+  function disarm(){
+    // A native dragstart never fired (plain click/release) — clear the
+    // draggable flag so it can't hijack later text selection or editing.
+    if (!_rowPlaceholder) row.removeAttribute('draggable');
+  }
   on(labelArea,'mousedown', arm);
   on(labelArea,'touchstart', arm, _supportsPassive?{passive:true}:false);
+  on(labelArea,'mouseup', disarm);
+  on(labelArea,'mouseleave', disarm);
+  on(labelArea,'touchend', disarm);
+  on(labelArea,'touchcancel', disarm);
 
   on(row,'dragstart', function(){
     document.body.classList.add('dragging-item');
@@ -1776,6 +1800,126 @@ function compressImage(file, maxSize, callback){
 /* ---------- LocalStorage persistence ---------- */
 var STORAGE_KEY = 'tm_tierlist';
 
+/* ---------- IndexedDB image store ----------
+   Image tokens can carry large base64 data URLs. Storing them inline in the
+   single tm_tierlist localStorage key blows past the ~5MB quota and silently
+   drops the ENTIRE save (titles + placements included). Instead we keep image
+   bytes in IndexedDB keyed by id and store only a lightweight "idb:<id>"
+   reference in the tier-list JSON, so the JSON stays tiny and never overflows.
+   Falls back to inlining when IndexedDB is unavailable (e.g. some private
+   modes), preserving the old behaviour for small boards. */
+var IDB_NAME = 'tm_images';
+var IDB_STORE = 'images';
+var IDB_REF_PREFIX = 'idb:';
+var _idbAvailable = !!window.indexedDB;
+var _idbPromise = null;
+var _imgKeySeq = 0;
+
+function idbOpen(){
+  if (_idbPromise) return _idbPromise;
+  _idbPromise = new Promise(function(resolve, reject){
+    if (!_idbAvailable){ reject(new Error('no-idb')); return; }
+    var req;
+    try { req = indexedDB.open(IDB_NAME, 1); } catch(e){ reject(e); return; }
+    req.onupgradeneeded = function(){
+      var db = req.result;
+      if (!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE);
+    };
+    req.onsuccess = function(){ resolve(req.result); };
+    req.onerror = function(){ reject(req.error || new Error('idb-open')); };
+  });
+  return _idbPromise;
+}
+function idbPut(key, value){
+  return idbOpen().then(function(db){
+    return new Promise(function(resolve, reject){
+      var tx = db.transaction(IDB_STORE, 'readwrite');
+      tx.objectStore(IDB_STORE).put(value, key);
+      tx.oncomplete = function(){ resolve(true); };
+      tx.onerror = function(){ reject(tx.error); };
+      tx.onabort = function(){ reject(tx.error); };
+    });
+  });
+}
+function idbGet(key){
+  return idbOpen().then(function(db){
+    return new Promise(function(resolve, reject){
+      var tx = db.transaction(IDB_STORE, 'readonly');
+      var rq = tx.objectStore(IDB_STORE).get(key);
+      rq.onsuccess = function(){ resolve(rq.result); };
+      rq.onerror = function(){ reject(rq.error); };
+    });
+  });
+}
+function idbDeleteKeys(keys){
+  if (!keys || !keys.length) return Promise.resolve(true);
+  return idbOpen().then(function(db){
+    return new Promise(function(resolve, reject){
+      var tx = db.transaction(IDB_STORE, 'readwrite');
+      var store = tx.objectStore(IDB_STORE);
+      keys.forEach(function(k){ store['delete'](k); });
+      tx.oncomplete = function(){ resolve(true); };
+      tx.onerror = function(){ reject(tx.error); };
+    });
+  });
+}
+function idbAllKeys(){
+  return idbOpen().then(function(db){
+    return new Promise(function(resolve, reject){
+      var tx = db.transaction(IDB_STORE, 'readonly');
+      var store = tx.objectStore(IDB_STORE);
+      if (store.getAllKeys){
+        var rq = store.getAllKeys();
+        rq.onsuccess = function(){ resolve(rq.result || []); };
+        rq.onerror = function(){ reject(rq.error); };
+      } else {
+        var keys = [];
+        var cur = store.openCursor();
+        cur.onsuccess = function(){ var c = cur.result; if(c){ keys.push(c.key); c['continue'](); } else resolve(keys); };
+        cur.onerror = function(){ reject(cur.error); };
+      }
+    });
+  });
+}
+function newImgKey(){
+  _imgKeySeq++;
+  return 'img_' + Date.now().toString(36) + '_' + _imgKeySeq + '_' + Math.random().toString(36).slice(2,8);
+}
+// Serialize an image token: persist data-URL bytes to IndexedDB and store only
+// a tiny reference. Remote URLs (and the no-IDB fallback) are stored inline.
+function serializeImageToken(tok, img){
+  var src = img.src;
+  if (_idbAvailable){
+    var key = tok.dataset.imgKey;
+    // Mint a key for a fresh data-URL image; existing keyed tokens reuse theirs.
+    if (!key && src && src.indexOf('data:') === 0){ key = newImgKey(); tok.dataset.imgKey = key; }
+    if (key){
+      // Only (re)write bytes when we actually have them — a token whose image
+      // is still loading back from IDB keeps src empty, but must NOT lose its
+      // reference, so we always re-emit the idb ref and mark it referenced.
+      if (src && src.indexOf('data:') === 0) idbPut(key, src)['catch'](function(){});
+      _referencedImgKeys[key] = true;
+      return { type:'image', src: IDB_REF_PREFIX + key, alt: img.alt, custom: true };
+    }
+  }
+  return { type:'image', src: src, alt: img.alt, custom: true };
+}
+// Drop IndexedDB entries no longer referenced by any token (e.g. deleted
+// tokens). Throttled so a busy autosave loop doesn't keyscan constantly.
+var _lastImgGc = 0;
+function gcImages(){
+  if (!_idbAvailable) return;
+  var now = Date.now();
+  if (now - _lastImgGc < 30000) return;
+  _lastImgGc = now;
+  var referenced = _referencedImgKeys;
+  idbAllKeys().then(function(keys){
+    var orphans = keys.filter(function(k){ return !referenced[k]; });
+    if (orphans.length) idbDeleteKeys(orphans)['catch'](function(){});
+  })['catch'](function(){});
+}
+var _referencedImgKeys = {};
+
 // Persist to localStorage, surfacing failures (quota exceeded, private mode)
 // instead of swallowing them. Toast is throttled so a failing autosave loop
 // doesn't spam the user.
@@ -1797,6 +1941,7 @@ window.safeSetItem = safeSetItem;
 
 function saveTierList(){
   var data = { rows: [], tray: [], title: '' };
+  _referencedImgKeys = {}; // rebuilt each save; drives image GC
   // Save title
   var titleEl = $('.board-title');
   if (titleEl) data.title = titleEl.textContent || '';
@@ -1817,7 +1962,7 @@ function saveTierList(){
       if (lbl) {
         rowData.tokens.push({ type: 'name', name: lbl.textContent, color: tok.style.background, textColor: lbl.style.color, custom: isCustom });
       } else if (img) {
-        rowData.tokens.push({ type: 'image', src: img.src, alt: img.alt, custom: true });
+        rowData.tokens.push(serializeImageToken(tok, img));
       }
     });
     data.rows.push(rowData);
@@ -1830,10 +1975,11 @@ function saveTierList(){
     if (lbl) {
       data.tray.push({ type: 'name', name: lbl.textContent, color: tok.style.background, textColor: lbl.style.color, custom: isCustom });
     } else if (img) {
-      data.tray.push({ type: 'image', src: img.src, alt: img.alt, custom: true });
+      data.tray.push(serializeImageToken(tok, img));
     }
   });
   safeSetItem(STORAGE_KEY, JSON.stringify(data));
+  gcImages();
 }
 
 // Append a single saved token to a zone, skipping malformed entries.
@@ -1844,7 +1990,20 @@ function restoreToken(zone, tokData){
     zone.appendChild(buildNameToken(tokData.name, tokData.color || '#7da7ff', !!tokData.custom, tokData.textColor));
   } else if (tokData.type === 'image') {
     if (typeof tokData.src !== 'string' || !tokData.src) return;
-    zone.appendChild(buildImageToken(tokData.src, tokData.alt));
+    if (tokData.src.indexOf(IDB_REF_PREFIX) === 0) {
+      // Image bytes live in IndexedDB — build the token now, fill the src in
+      // asynchronously, and keep the key so the next save reuses it.
+      var key = tokData.src.slice(IDB_REF_PREFIX.length);
+      var el = buildImageToken('', tokData.alt);
+      el.dataset.imgKey = key;
+      var imgEl = el.querySelector('img');
+      idbGet(key).then(function(dataUrl){
+        if (dataUrl && imgEl) imgEl.src = dataUrl;
+      })['catch'](function(){});
+      zone.appendChild(el);
+    } else {
+      zone.appendChild(buildImageToken(tokData.src, tokData.alt));
+    }
   }
 }
 function loadTierList(){
@@ -1945,6 +2104,30 @@ function startAutoSave(){
   if (titleEl && !_autoSaveTitleBound) {
     _autoSaveTitleBound = true;
     on(titleEl, 'input', scheduleSave);
+    // The title is contenteditable + aria-multiline="false": keep it a single
+    // plain-text line. Block Enter (which inserts <div>/<br>) and strip rich
+    // markup on paste so styled HTML/images can't leak into the title/export.
+    on(titleEl, 'keydown', function(e){
+      if (e.key === 'Enter'){ e.preventDefault(); titleEl.blur(); }
+    });
+    on(titleEl, 'paste', function(e){
+      e.preventDefault();
+      var text = (e.clipboardData || window.clipboardData).getData('text/plain') || '';
+      text = text.replace(/[\r\n]+/g, ' ');
+      if (document.queryCommandSupported && document.queryCommandSupported('insertText')){
+        document.execCommand('insertText', false, text);
+      } else {
+        // Fallback: insert at caret manually
+        var sel = window.getSelection();
+        if (sel && sel.rangeCount){
+          var range = sel.getRangeAt(0);
+          range.deleteContents();
+          range.insertNode(document.createTextNode(text));
+          range.collapse(false);
+        }
+      }
+      scheduleSave();
+    });
   }
 }
 function stopAutoSave(){
