@@ -1,12 +1,16 @@
 /* =====================================================
    Image Search Modal – Styles
-   Matches the existing FIRESIDE dark/light theme system
+   Matches the existing FIRESIDE dark/light theme system.
+   Mobile-first + fully responsive: a fluid auto-fill grid
+   on every width, and a full-screen sheet on phones with
+   safe-area insets.
    ===================================================== */
 
 /* ---------- Overlay ---------- */
 .img-search-overlay{
   position:fixed;inset:0;z-index:9999;
   display:flex;align-items:center;justify-content:center;
+  padding:16px;
   background:rgba(0,0,0,.65);
   backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
   opacity:1;transition:opacity .2s ease;
@@ -15,26 +19,38 @@
 
 /* ---------- Modal ---------- */
 .img-search-modal{
-  width:min(96vw, 720px);max-height:min(92vh, 800px);max-height:min(92dvh, 800px);
+  width:min(100%, 760px);
+  max-height:min(92vh, 880px);max-height:min(92dvh, 880px);
   display:flex;flex-direction:column;
   background:var(--surface-high);border:1px solid var(--border);
   border-radius:18px;
   overflow:hidden;
+  box-shadow:0 24px 64px rgba(0,0,0,.45);
   animation:imgSearchIn .25s ease;
 }
 @keyframes imgSearchIn{
   from{opacity:0;transform:translateY(24px) scale(.97)}
   to{opacity:1;transform:none}
 }
+@media (prefers-reduced-motion:reduce){
+  .img-search-modal{animation:none}
+  .img-search-overlay{transition:none}
+}
 
 /* ---------- Header ---------- */
-.img-search-header{padding:18px 20px 14px;border-bottom:1px solid var(--border)}
+.img-search-header{
+  padding:18px 20px 14px;border-bottom:1px solid var(--border);
+  flex:0 0 auto;
+}
 .img-search-title-row{display:flex;align-items:center;gap:10px;margin-bottom:12px}
 .img-search-title{margin:0;font-size:18px;font-weight:800;flex:1}
 .img-search-close{
-  font-size:28px;line-height:1;width:36px;height:36px;
+  font-size:28px;line-height:1;width:40px;height:40px;flex:0 0 auto;
   display:flex;align-items:center;justify-content:center;
-  border-radius:10px;transition:background .15s;
+  border-radius:10px;border:none;background:transparent;color:var(--text);
+  cursor:pointer;
+  transition:background .15s;
+  -webkit-tap-highlight-color:transparent;
 }
 .img-search-close:hover{background:rgba(255,255,255,.08)}
 :root[data-theme="light"] .img-search-close:hover{background:rgba(0,0,0,.06)}
@@ -42,11 +58,12 @@
 /* ---------- Search bar ---------- */
 .img-search-bar{display:flex;gap:8px}
 .img-search-input{
-  flex:1;
-  padding:10px 14px;border-radius:10px;
+  flex:1;min-width:0;
+  padding:11px 14px;border-radius:10px;
   border:1px solid var(--border);
   background:var(--surface);color:var(--text);
-  font-size:15px;outline:none;
+  font-size:16px;          /* 16px keeps iOS Safari from auto-zooming on focus */
+  outline:none;
   transition:border-color .15s, box-shadow .15s;
 }
 .img-search-input:focus{
@@ -54,24 +71,30 @@
   box-shadow:0 0 0 3px rgba(139,125,255,.2);
 }
 .img-search-go{
-  padding:10px 22px;border-radius:10px;
-  background:var(--accent);color:#fff;font-weight:700;font-size:14px;
+  flex:0 0 auto;
+  padding:11px 22px;border-radius:10px;
+  background:var(--accent);color:#fff;font-weight:700;font-size:15px;
   border:none;cursor:pointer;white-space:nowrap;
   transition:filter .15s;
+  -webkit-tap-highlight-color:transparent;
 }
 .img-search-go:hover{filter:brightness(1.15)}
 
 /* ---------- Status ---------- */
 .img-search-status{
   padding:6px 20px;font-size:13px;color:var(--muted);min-height:26px;
+  flex:0 0 auto;
 }
 
 /* ---------- Grid ---------- */
 .img-search-grid{
-  flex:1;overflow-y:auto;overflow-x:hidden;
+  flex:1 1 auto;min-height:0;
+  overflow-y:auto;overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;overscroll-behavior:contain;
   padding:8px 16px 16px;
   display:grid;
-  grid-template-columns:repeat(3, 1fr);
+  /* fluid columns: as many ~140px cells as fit, evenly stretched */
+  grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));
   gap:10px;
   align-content:start;
   scrollbar-width:thin;
@@ -83,15 +106,16 @@
 /* ---------- Card ---------- */
 .img-search-card{
   position:relative;
-  border-radius:10px;overflow:hidden;cursor:pointer;
+  border-radius:12px;overflow:hidden;cursor:pointer;
   border:2px solid transparent;
   background:var(--surface);
-  transition:border-color .15s, transform .12s, box-shadow .15s;
-  /* give every card a consistent size so images aren't tiny strips */
-  min-height:140px;
+  aspect-ratio:1 / 1;            /* uniform square cells, no tiny strips */
   display:flex;align-items:center;justify-content:center;
+  transition:border-color .15s, transform .12s, box-shadow .15s;
+  -webkit-tap-highlight-color:transparent;
 }
 .img-search-card:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.25)}
+.img-search-card:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .img-search-card.selected{
   border-color:var(--accent);
   box-shadow:0 0 0 3px rgba(139,125,255,.3);
@@ -110,9 +134,9 @@
 /* checkmark */
 .img-search-check{
   position:absolute;top:6px;right:6px;
-  width:24px;height:24px;border-radius:50%;
+  width:26px;height:26px;border-radius:50%;
   display:flex;align-items:center;justify-content:center;
-  background:var(--accent);color:#fff;font-size:14px;font-weight:700;
+  background:var(--accent);color:#fff;font-size:15px;font-weight:700;
   opacity:0;transform:scale(.6);
   transition:opacity .15s, transform .15s;
   pointer-events:none;
@@ -124,13 +148,15 @@
 .img-search-footer{
   display:flex;align-items:center;gap:12px;
   padding:12px 20px;border-top:1px solid var(--border);
+  flex:0 0 auto;
 }
 .img-search-sel-count{flex:1;font-size:13px;font-weight:600;color:var(--muted)}
 .img-search-add{
-  padding:8px 20px;border-radius:8px;
-  background:var(--accent);color:#fff;font-weight:700;font-size:13px;
+  padding:10px 20px;border-radius:8px;
+  background:var(--accent);color:#fff;font-weight:700;font-size:14px;
   border:none;cursor:pointer;
   transition:filter .15s, opacity .15s;
+  -webkit-tap-highlight-color:transparent;
 }
 .img-search-add:disabled{opacity:.4;cursor:default}
 .img-search-add:not(:disabled):hover{filter:brightness(1.15)}
@@ -148,10 +174,13 @@
   animation:imgSpin .6s linear infinite;
 }
 @keyframes imgSpin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){
+  .img-search-spinner{animation:none}
+}
 
 /* Skeleton placeholders for initial load */
 .img-search-skel{
-  min-height:140px;border-radius:10px;
+  aspect-ratio:1 / 1;border-radius:12px;
   background:linear-gradient(100deg, var(--surface) 25%, var(--card) 45%, var(--surface) 65%);
   background-size:200% 100%;
   animation:img-shimmer 1.2s linear infinite;
@@ -180,10 +209,32 @@
 .img-search-empty-title{font-size:15px;font-weight:800;color:var(--text);margin:0}
 .img-search-empty-sub{font-size:13px;margin:0;max-width:280px;line-height:1.45}
 
-/* ---------- Responsive ---------- */
-@media (max-width:600px){
-  .img-search-modal{border-radius:14px 14px 0 0;max-height:95vh;max-height:95dvh;margin-top:auto}
-  .img-search-grid{grid-template-columns:repeat(2, 1fr);gap:8px}
-  .img-search-header{padding:14px 16px 10px}
-  .img-search-footer{padding:10px 16px}
+/* ---------- Responsive: tablet ---------- */
+@media (max-width:640px){
+  .img-search-overlay{padding:0;align-items:stretch;justify-content:stretch}
+  .img-search-modal{
+    width:100%;
+    height:100vh;height:100dvh;max-height:none;
+    border-radius:0;border:none;
+  }
+  .img-search-header{
+    padding:max(14px, env(safe-area-inset-top)) 16px 10px;
+  }
+  .img-search-title{font-size:17px}
+  .img-search-status{padding:6px 16px}
+  .img-search-grid{
+    grid-template-columns:repeat(auto-fill, minmax(104px, 1fr));
+    gap:8px;
+    padding:8px 12px calc(12px + env(safe-area-inset-bottom));
+  }
+  .img-search-footer{
+    padding:10px 16px calc(10px + env(safe-area-inset-bottom));
+  }
+  .img-search-input{padding:13px 14px}
+  .img-search-go{padding:13px 18px}
+}
+
+/* ---------- Responsive: small phones ---------- */
+@media (max-width:380px){
+  .img-search-grid{grid-template-columns:repeat(auto-fill, minmax(92px, 1fr));gap:7px}
 }
