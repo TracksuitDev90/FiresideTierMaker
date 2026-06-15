@@ -3,8 +3,18 @@
    Self-contained search overlay that lets users find
    images from the web and add them to the tier-maker tray.
 
-   Uses a two-pass Wikipedia + Wikimedia Commons strategy
-   for relevant, high-quality image results.
+   Relevance strategy (keyless, CORS-friendly):
+     1. Wikipedia full-text search -> each matching article's
+        REPRESENTATIVE lead image (prop=pageimages). This is the
+        single most relevant picture for a subject, e.g. searching
+        "overwatch tracer" surfaces the Tracer (Overwatch) article's
+        hero art rather than random page icons. Ranked by search rank.
+     2. The single best-matching article's own content images
+        (filtered) for extra variety on the same subject.
+     3. Wikimedia Commons full-text as a fill for real-world
+        subjects (animals, food, places) that Commons covers well.
+   Wiki lead images come first so the top of the grid is always the
+   most on-topic; Commons noise (if any) sinks to the bottom.
    ===================================================== */
 
 (function () {
@@ -12,6 +22,9 @@
 
   var qs  = function (s, c) { return (c || document).querySelector(s); };
   var qsa = function (s, c) { return Array.prototype.slice.call((c || document).querySelectorAll(s)); };
+
+  var WIKI_API    = 'https://en.wikipedia.org/w/api.php';
+  var COMMONS_API = 'https://commons.wikimedia.org/w/api.php';
 
   /* ---------- state ---------- */
   var overlay, grid, input, statusEl;
@@ -21,12 +34,12 @@
   var loading    = false;
   var hasMore    = true;
   var selected   = {};   // src → {title}
-  var seenUrls   = {};   // dedup across pages
+  var seenKeys   = {};   // dedup across pages (by underlying file name)
 
   var BATCH = 40;
 
   /* ---------- filename noise filter ---------- */
-  var NOISE_RE = /flag[\s_]of|icon[\s_]|logo[\s_]|commons[\s_-]logo|wikinews|wiktionary|wikisource|wikiquote|wikibooks|wikiversity|wikidata|wikivoyage|mediawiki|nuvola|crystal[\s_]clear|edit[\s_-]clear|ambox|padlock|question[\s_]book|text[\s_]document|disambig|stub[\s_]|map[\s_]of|locator[\s_]|blank[\s_]map|increase2?\.svg|decrease2?\.svg|steady2?\.svg/i;
+  var NOISE_RE = /flag[\s_]of|icon[\s_]|logo[\s_]|commons[\s_-]logo|wikinews|wiktionary|wikisource|wikiquote|wikibooks|wikiversity|wikidata|wikivoyage|mediawiki|nuvola|crystal[\s_]clear|edit[\s_-]clear|ambox|padlock|question[\s_]book|text[\s_]document|disambig|stub[\s_]|map[\s_]of|locator[\s_]|blank[\s_]map|increase2?\.svg|decrease2?\.svg|steady2?\.svg|red[\s_]pog|symbol[\s_]|wiki[\s_]?letter|gnome-|oojs[\s_]ui|ic[\s_]/i;
   var EXT_OK = /\.(jpe?g|png|webp|gif)$/i;
 
   function isUseful(title, mime) {
@@ -39,11 +52,44 @@
     return true;
   }
 
+  /* Dedup key: the underlying Wikimedia file name, recovered from any
+     thumb or full URL so the same picture pulled by two passes (at
+     different sizes) collapses to one card. */
+  function fileKey(url) {
+    if (!url) return '';
+    try {
+      var afterThumb = url.split('/thumb/')[1];
+      if (afterThumb) {
+        var parts = afterThumb.split('/');
+        // .../thumb/a/ab/Name.jpg/500px-Name.jpg  →  parts[2] = "Name.jpg"
+        if (parts.length >= 3) return decodeURIComponent(parts[2]).toLowerCase();
+      }
+      var seg = url.split('/');
+      return decodeURIComponent(seg[seg.length - 1]).toLowerCase();
+    } catch (e) {
+      return url.toLowerCase();
+    }
+  }
+
+  /* ---------- tiny parallel runner (ES5, no Promise dependency) ---------- */
+  function runParallel(tasks, done) {
+    var results = new Array(tasks.length);
+    var remaining = tasks.length;
+    if (!remaining) { done([]); return; }
+    tasks.forEach(function (task, i) {
+      task(function (r) {
+        results[i] = r;
+        if (--remaining === 0) done(results);
+      });
+    });
+  }
+
   /* ---------- build DOM ---------- */
   function buildOverlay() {
     overlay = document.createElement('div');
     overlay.className = 'img-search-overlay hidden';
     overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
     overlay.setAttribute('aria-label', 'Image search');
 
     overlay.innerHTML =
@@ -54,11 +100,11 @@
             '<button class="img-search-close" type="button" aria-label="Close">&times;</button>' +
           '</div>' +
           '<div class="img-search-bar">' +
-            '<input class="img-search-input" type="search" placeholder="Search for images\u2026" autocomplete="off" />' +
+            '<input class="img-search-input" type="search" inputmode="search" enterkeyhint="search" placeholder="Games, characters, movies…" autocomplete="off" aria-label="Search for images" />' +
             '<button class="img-search-go" type="button">Search</button>' +
           '</div>' +
         '</div>' +
-        '<div class="img-search-status"></div>' +
+        '<div class="img-search-status" role="status" aria-live="polite"></div>' +
         '<div class="img-search-grid" role="list"></div>' +
         '<div class="img-search-footer">' +
           '<div class="img-search-sel-count"></div>' +
@@ -82,7 +128,7 @@
     grid.addEventListener('scroll', function () {
       if (loading || !hasMore) return;
       var remaining = grid.scrollHeight - grid.scrollTop - grid.clientHeight;
-      if (remaining < 200) doSearch(false);
+      if (remaining < 240) doSearch(false);
     });
 
     document.addEventListener('keydown', function (e) {
@@ -135,125 +181,187 @@
     if (!q) return;
     if (fresh) {
       page = 0; query = q; grid.innerHTML = ''; selected = {};
-      seenUrls = {}; updateSelCount(); hasMore = true;
+      seenKeys = {}; updateSelCount(); hasMore = true;
     }
     if (loading || !hasMore) return;
     loading = true;
-    setStatus('Searching\u2026');
+    setStatus('Searching…');
     if (fresh) showSkeletons(); else showSpinner();
 
-    /* First page: try Wikipedia article images for best relevance,
-       then fill remaining slots with Commons search.
-       Subsequent pages: Commons search only. */
+    var offset = page * BATCH;
+    var tasks = [];
+
+    // 1) Wikipedia representative lead images — highest relevance.
+    tasks.push(function (done) {
+      searchWikiLeadImages(query, offset, function (err, res, more) {
+        done({ key: 'wiki', err: err, res: res || [], more: !!more });
+      });
+    });
+
+    // 2) First page only: pull the top article's own images for variety.
     if (page === 0) {
-      searchWikipediaImages(query, function (wikiErr, wikiResults) {
-        searchCommons(query, 0, function (err, commonsResults, more) {
-          loading = false;
-          removeSkeletons();
-          removeSpinner();
-          // Show the error state only when both sources failed and we have
-          // nothing to render — a single source failing still yields results.
-          if (err && wikiErr && !wikiResults.length && !commonsResults.length) {
-            setStatus('Network error – please try again.');
-            showEmptyState(query, true);
-            return;
-          }
-          // Merge: wiki results first (higher relevance), then commons
-          var merged = dedup(wikiResults.concat(commonsResults));
-          renderResults(merged);
-          hasMore = more;
-          page++;
-          if (!merged.length) { setStatus(''); showEmptyState(query, false); }
-          else setStatus('');
+      tasks.push(function (done) {
+        searchTopArticleImages(query, function (err, res) {
+          done({ key: 'article', err: err, res: res || [], more: false });
         });
       });
-    } else {
-      searchCommons(query, page, function (err, results, more) {
-        loading = false;
-        removeSpinner();
-        if (err) { setStatus(err); return; }
-        var unique = dedup(results);
-        renderResults(unique);
-        hasMore = more;
-        page++;
-        if (!unique.length && !more) setStatus('No more results.');
-        else setStatus('');
-      });
     }
+
+    // 3) Commons full-text as a fill (real-world subjects).
+    tasks.push(function (done) {
+      searchCommons(query, page, function (err, res, more) {
+        done({ key: 'commons', err: err, res: res || [], more: !!more });
+      });
+    });
+
+    runParallel(tasks, function (out) {
+      loading = false;
+      removeSkeletons();
+      removeSpinner();
+
+      var byKey = {};
+      out.forEach(function (o) { byKey[o.key] = o; });
+      var wiki    = byKey.wiki    || { res: [], err: true,  more: false };
+      var article = byKey.article || { res: [], err: false, more: false };
+      var commons = byKey.commons || { res: [], err: true,  more: false };
+
+      // Merge order defines visual priority: lead images, then the top
+      // article's images, then Commons. dedup() drops cross-pass repeats.
+      var merged = dedup([].concat(wiki.res, article.res, commons.res));
+
+      var hadCardsBefore = !!grid.querySelector('.img-search-card');
+      var allFailed = wiki.err && commons.err && !article.res.length;
+
+      if (allFailed && !merged.length && !hadCardsBefore) {
+        setStatus('Network error – please try again.');
+        showEmptyState(query, true);
+        hasMore = false;
+        page++;
+        return;
+      }
+
+      renderResults(merged);
+      hasMore = wiki.more || commons.more;
+      page++;
+
+      var hasCards = !!grid.querySelector('.img-search-card');
+      if (!hasCards) {
+        setStatus('');
+        showEmptyState(query, false);
+      } else if (!hasMore && !merged.length) {
+        setStatus('No more results.');
+      } else {
+        setStatus('');
+      }
+    });
   }
 
   function dedup(results) {
     var out = [];
     results.forEach(function (r) {
-      if (seenUrls[r.full]) return;
-      seenUrls[r.full] = true;
+      var key = fileKey(r.full || r.thumb);
+      if (!key || seenKeys[key]) return;
+      seenKeys[key] = true;
       out.push(r);
     });
     return out;
   }
 
-  /* ---------- Wikipedia article image search ---------- */
-  /* Searches Wikipedia for articles matching the query, then pulls
-     the images used on those pages. This gives much more relevant
-     results for things like "Harry Potter" or "Overwatch characters". */
-  function searchWikipediaImages(q, cb) {
-    var url = 'https://en.wikipedia.org/w/api.php?' +
-      'action=query&generator=search&gsrsearch=' + encodeURIComponent(q) +
-      '&gsrlimit=5&prop=images&imlimit=50&format=json&origin=*';
+  /* ---------- 1) Wikipedia representative lead images ----------
+     generator=search finds articles matching the query; prop=pageimages
+     returns each article's single representative picture (the PageImages
+     extension's pick, normally the infobox/lead image). Results are
+     ordered by the search rank carried in each page's `index`. */
+  function searchWikiLeadImages(q, offset, cb) {
+    var url = WIKI_API + '?action=query' +
+      '&generator=search' +
+      '&gsrsearch=' + encodeURIComponent(q) +
+      '&gsrnamespace=0' +
+      '&gsrlimit=' + BATCH +
+      '&gsroffset=' + offset +
+      '&prop=pageimages' +
+      '&piprop=thumbnail' +
+      '&pithumbsize=500' +
+      '&pilimit=' + BATCH +
+      '&format=json&origin=*';
 
     fetch(url)
       .then(function (r) { return r.json(); })
       .then(function (data) {
-        if (!data.query || !data.query.pages) { cb(null, []); return; }
+        if (!data.query || !data.query.pages) { cb(null, [], false); return; }
         var pages = data.query.pages;
-        // Collect all image filenames from the article pages
-        var filenames = [];
+        var out = [];
         Object.keys(pages).forEach(function (k) {
-          var imgs = pages[k].images || [];
-          imgs.forEach(function (im) {
-            var t = im.title || '';
-            if (isUseful(t, null)) filenames.push(t);
+          var p = pages[k];
+          if (!p.thumbnail || !p.thumbnail.source) return;
+          // Drop obvious junk lead images (country flags, logos, icons).
+          if (p.pageimage && NOISE_RE.test(p.pageimage)) return;
+          out.push({
+            thumb: p.thumbnail.source,
+            full:  p.thumbnail.source,
+            title: p.title || '',
+            index: typeof p.index === 'number' ? p.index : 999
           });
         });
-        if (!filenames.length) { cb(null, []); return; }
+        out.sort(function (a, b) { return a.index - b.index; });
+        cb(null, out, !!data.continue);
+      })
+      .catch(function () { cb(true, [], false); });
+  }
 
-        // Now fetch actual image URLs for those filenames (batch of up to 50)
-        var titles = filenames.slice(0, 50).join('|');
-        var infoUrl = 'https://en.wikipedia.org/w/api.php?' +
-          'action=query&titles=' + encodeURIComponent(titles) +
-          '&prop=imageinfo&iiprop=url|thumbmime&iiurlwidth=600' +
+  /* ---------- 2) Top-matching article's own images ----------
+     Resolves the single best article for the query, then pulls the
+     images embedded in it (filtered) so a focused search like
+     "Tracer (Overwatch)" yields several on-topic pictures. */
+  function searchTopArticleImages(q, cb) {
+    var sUrl = WIKI_API + '?action=query&list=search' +
+      '&srsearch=' + encodeURIComponent(q) +
+      '&srnamespace=0&srlimit=1&format=json&origin=*';
+
+    fetch(sUrl)
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        var hits = d.query && d.query.search;
+        if (!hits || !hits.length) { cb(null, []); return; }
+        var title = hits[0].title;
+        var iUrl = WIKI_API + '?action=query' +
+          '&titles=' + encodeURIComponent(title) +
+          '&generator=images&gimlimit=40' +
+          '&prop=imageinfo&iiprop=url|thumbmime&iiurlwidth=500' +
           '&format=json&origin=*';
 
-        fetch(infoUrl)
+        fetch(iUrl)
           .then(function (r2) { return r2.json(); })
           .then(function (d2) {
-            if (!d2.query || !d2.query.pages) { cb(null, []); return; }
-            var results = [];
-            Object.keys(d2.query.pages).forEach(function (k) {
-              var p = d2.query.pages[k];
+            var pages = d2.query && d2.query.pages;
+            if (!pages) { cb(null, []); return; }
+            var out = [];
+            Object.keys(pages).forEach(function (k) {
+              var p = pages[k];
               if (!p.imageinfo || !p.imageinfo.length) return;
               var info = p.imageinfo[0];
               if (!isUseful(p.title || '', info.thumbmime)) return;
-              results.push({
+              out.push({
                 thumb: info.thumburl || info.url,
-                full: info.url,
+                full:  info.url,
                 title: (p.title || '').replace('File:', '').replace(/\.\w+$/, '')
               });
             });
-            cb(null, results);
+            cb(null, out);
           })
           .catch(function () { cb(true, []); });
       })
       .catch(function () { cb(true, []); });
   }
 
-  /* ---------- Wikimedia Commons search ---------- */
+  /* ---------- 3) Wikimedia Commons fill ---------- */
   function searchCommons(q, pg, cb) {
     var offset = pg * BATCH;
-    var url = 'https://commons.wikimedia.org/w/api.php?' +
-      'action=query&generator=search&gsrnamespace=6&gsrsearch=' + encodeURIComponent(q) +
+    var url = COMMONS_API + '?action=query' +
+      '&generator=search&gsrnamespace=6' +
+      '&gsrsearch=' + encodeURIComponent(q) +
       '&gsrlimit=' + BATCH + '&gsroffset=' + offset +
-      '&prop=imageinfo&iiprop=url|thumbmime|extmetadata&iiurlwidth=600' +
+      '&prop=imageinfo&iiprop=url|thumbmime&iiurlwidth=500' +
       '&format=json&origin=*';
 
     fetch(url)
@@ -270,13 +378,13 @@
           if (!isUseful(p.title || '', info.thumbmime)) return;
           results.push({
             thumb: info.thumburl || info.url,
-            full: info.url,
+            full:  info.url,
             title: (p.title || '').replace('File:', '').replace(/\.\w+$/, '')
           });
         });
-        cb(null, results, keys.length >= BATCH);
+        cb(null, results, !!data.continue || keys.length >= BATCH);
       })
-      .catch(function () { cb('Network error \u2013 please try again.', [], false); });
+      .catch(function () { cb('Network error – please try again.', [], false); });
   }
 
   /* ---------- render ---------- */
@@ -322,9 +430,11 @@
     if (selected[src]) {
       delete selected[src];
       card.classList.remove('selected');
+      card.setAttribute('aria-selected', 'false');
     } else {
       selected[src] = { title: card.dataset.title, thumb: card.dataset.thumb };
       card.classList.add('selected');
+      card.setAttribute('aria-selected', 'true');
     }
     updateSelCount();
   }
@@ -352,7 +462,7 @@
   }
   function showSkeletons() {
     removeSkeletons();
-    for (var i = 0; i < 9; i++) {
+    for (var i = 0; i < 12; i++) {
       var s = document.createElement('div');
       s.className = 'img-search-skel';
       grid.appendChild(s);
@@ -370,7 +480,7 @@
     wrap.innerHTML =
       '<div class="img-search-empty-icon">' + (isError ? '!' : '?') + '</div>' +
       '<h4 class="img-search-empty-title">' +
-        (isError ? 'Something went wrong' : 'No matches for \u201C' + safeQ + '\u201D') +
+        (isError ? 'Something went wrong' : 'No matches for “' + safeQ + '”') +
       '</h4>' +
       '<p class="img-search-empty-sub">' +
         (isError ? 'Check your connection and try again.' : 'Try a different spelling, a related term, or a broader query.') +
@@ -404,7 +514,7 @@
 
     srcs.forEach(function (src) {
       var info = selected[src];
-      // Inline the 600px thumbnail (plenty for a ~99px token, far smaller than
+      // Inline the 500px thumbnail (plenty for a ~99px token, far smaller than
       // full-res) so it persists + exports cleanly; fall back to the raw URL.
       var toInline = info.thumb || src;
       if (typeof window.inlineImageSrc === 'function') {
