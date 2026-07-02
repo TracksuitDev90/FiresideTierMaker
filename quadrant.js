@@ -21,12 +21,12 @@
   var qAxisLabels = {};     // {top, bottom, left, right} contenteditable elements
   var _qPlacedTokenIds = {}; // track which tray tokens are placed in quadrant (by token id)
 
-  /* Default quadrant colors */
+  /* Default quadrant colors — hues match the control-button palette */
   var Q_DEFAULTS = {
-    tl: { bg: 'rgba(239,68,68,.12)', solid: '#ef4444' },
-    tr: { bg: 'rgba(34,197,94,.12)',  solid: '#22c55e' },
-    bl: { bg: 'rgba(251,191,36,.12)', solid: '#fbbf24' },
-    br: { bg: 'rgba(59,130,246,.12)', solid: '#3b82f6' }
+    tl: { bg: 'hsla(2,78%,58%,.12)',    solid: '#e74640' },
+    tr: { bg: 'hsla(140,55%,48%,.12)',  solid: '#37be64' },
+    bl: { bg: 'hsla(42,92%,55%,.12)',   solid: '#f6b723' },
+    br: { bg: 'hsla(250,75%,64%,.12)',  solid: '#755ee8' }
   };
 
   var Q_POSITIONS = ['tl','tr','bl','br'];
@@ -78,6 +78,46 @@
     if(pos === 'tl' || pos === 'tr') maxY = h - 6;
     if(pos === 'bl' || pos === 'br') minY = -6;
     return { x: Math.max(minX, Math.min(x, maxX)), y: Math.max(minY, Math.min(y, maxY)) };
+  }
+
+  /* ---------- Nudge a placement off any pin already occupying that spot ---------- */
+  /* Vertical stagger keeps both labels readable (labels run horizontally, so a
+     pin-height offset fully clears the neighbor) while the dot stays close to
+     where the user aimed. Coordinates are px within the zone. */
+  function resolveQOverlap(zone, x, y, w, h, pinEl){
+    var all = $$('.q-pin', zone), pins = [];
+    for(var i=0;i<all.length;i++){ if(all[i] !== pinEl) pins.push(all[i]); }
+    if(!pins.length) return {x:x, y:y};
+    var stepY = Q_PIN_HEIGHT + 2;
+    function collides(cy){
+      for(var k=0;k<pins.length;k++){
+        var px = (parseFloat(pins[k].style.left)||0)/100*w;
+        var py = (parseFloat(pins[k].style.top)||0)/100*h;
+        if(Math.abs(px-x) < 40 && Math.abs(py-cy) < Q_PIN_HEIGHT-6) return true;
+      }
+      return false;
+    }
+    if(!collides(y)) return {x:x, y:y};
+    for(var t=1;t<=4;t++){
+      if(y+t*stepY <= h-Q_PIN_HEIGHT && !collides(y+t*stepY)) return {x:x, y:y+t*stepY};
+      if(y-t*stepY >= 0 && !collides(y-t*stepY)) return {x:x, y:y-t*stepY};
+    }
+    return {x:x, y:y};
+  }
+
+  /* Place a pin so its dot sits at a viewport point within a zone:
+     dot-anchor (the zone cursor is a crosshair) → clamp using the pin's true
+     width → step off any pin already occupying that spot. */
+  function placePinAtPoint(zone, pinEl, clientX, clientY){
+    var rect = zone.getBoundingClientRect();
+    var x = clientX - rect.left - (3 + Q_DOT_SIZE/2);
+    var y = clientY - rect.top - Q_PIN_HEIGHT/2;
+    var c = clampQPosition(x, y, rect.width, rect.height, Q_PIN_HEIGHT, zone, pinEl);
+    var s = resolveQOverlap(zone, c.x, c.y, rect.width, rect.height, pinEl);
+    pinEl.style.position = 'absolute';
+    pinEl.style.left = (s.x/rect.width*100)+'%';
+    pinEl.style.top = (s.y/rect.height*100)+'%';
+    bringToFront(pinEl);
   }
 
   /* ---------- Build quadrant DOM ---------- */
@@ -188,6 +228,8 @@
     pin.className = 'q-pin';
     pin.id = uid();
     pin.setAttribute('tabindex','0');
+    pin.setAttribute('role','button');
+    pin.setAttribute('aria-label', (name || imgAlt || 'item') + ' — quadrant pin');
     pin.style.touchAction = 'none';
 
     var dot = document.createElement('span');
@@ -226,8 +268,11 @@
       // Deselect all tokens and pins
       $$('.token.selected').forEach(function(t){ t.classList.remove('selected'); });
       $$('.q-pin.selected').forEach(function(p){ p.classList.remove('selected'); });
-      if(!already) pin.classList.add('selected');
+      if(!already){ pin.classList.add('selected'); bringToFront(pin); }
     });
+
+    // A buried pin becomes readable the moment it's focused (tab or tap)
+    on(pin,'focus',function(){ bringToFront(pin); });
 
     // Delete button
     var del = document.createElement('button');
@@ -237,15 +282,24 @@
     del.setAttribute('aria-label','Remove');
     on(del,'click',function(e){
       e.stopPropagation();
-      var srcId = pin.dataset.sourceTokenId;
-      pin.remove();
-      if(srcId) unhideTrayToken(srcId);
-      scheduleQuadrantSave();
+      removeQPin(pin);
     });
     pin.appendChild(del);
 
     enableQuadrantTokenDrag(pin);
     return pin;
+  }
+
+  /* ---------- Remove a pin (delete button, keyboard, drag-to-tray) ---------- */
+  function removeQPin(pin){
+    var zone = pin.closest('.q-zone');
+    // Record before detaching so Undo can re-insert it (tray visibility resyncs
+    // automatically via the zone MutationObserver on re-insert).
+    if(zone && typeof recordDeletion === 'function') recordDeletion(pin, zone, pin.nextElementSibling);
+    var srcId = pin.dataset.sourceTokenId;
+    pin.remove();
+    if(srcId) unhideTrayToken(srcId);
+    scheduleQuadrantSave();
   }
 
   /* ---------- Clone a tray token as a compact pin for quadrant ---------- */
@@ -317,9 +371,14 @@
   }
 
   /* ---------- Free-placement drag within quadrant zones ---------- */
+  // After a handled tap on a pin, the browser can retarget the tap's click to
+  // the zone underneath — guard so it doesn't instantly re-place the pin.
+  var _qTapClickGuard = 0;
+
   function enableQuadrantDrop(zone){
     // Click-to-place: if a token/pin is selected, place it at click position
     on(zone,'click',function(e){
+      if(Date.now() < _qTapClickGuard) return;
       if(e.target.closest('.q-pin') || e.target.closest('.token')) return;
       // Check for selected pin first, then selected token
       var selected = $('.q-pin.selected') || $('.token.selected');
@@ -327,31 +386,21 @@
 
       var isPin = selected.classList.contains('q-pin');
 
-      // If pin is already in a q-zone, update its position
+      // If pin is already in this zone, update its position
       if(isPin && selected.closest('.q-zone') === zone){
-        var rect = zone.getBoundingClientRect();
-        var sz = Q_PIN_HEIGHT;
-        var x = e.clientX - rect.left - 6;
-        var y = e.clientY - rect.top - sz/2;
-        var clamped = clampQPosition(x, y, rect.width, rect.height, sz, zone);
-        x = clamped.x; y = clamped.y;
-        selected.style.left = (x/rect.width*100)+'%';
-        selected.style.top = (y/rect.height*100)+'%';
+        recordPlacement(selected.id, zone.id, zone.id, '', {
+          isQuadrant: true,
+          prevLeft: selected.style.left,
+          prevTop: selected.style.top
+        });
+        placePinAtPoint(zone, selected, e.clientX, e.clientY);
         selected.classList.remove('selected');
-        bringToFront(selected);
         scheduleQuadrantSave();
         return;
       }
 
       var origin = selected.parentElement;
       var fromTray = (origin.id === 'tray');
-
-      var rect2 = zone.getBoundingClientRect();
-      var sz2 = Q_PIN_HEIGHT;
-      var nx = e.clientX - rect2.left - 6;
-      var ny = e.clientY - rect2.top - sz2/2;
-      var clamped2 = clampQPosition(nx, ny, rect2.width, rect2.height, sz2, zone);
-      nx = clamped2.x; ny = clamped2.y;
 
       var placed;
       if(fromTray){
@@ -361,18 +410,23 @@
         zone.appendChild(placed);
         hideTrayToken(selected.id);
       } else if(isPin){
-        // Moving pin between quadrant zones
+        // Moving pin between quadrant zones — undoable like a drag move
+        var fromZone = selected.closest('.q-zone');
+        if(fromZone){
+          recordPlacement(selected.id, ensureId(fromZone,'zone'), zone.id, '', {
+            isQuadrant: true,
+            prevLeft: selected.style.left,
+            prevTop: selected.style.top
+          });
+        }
         placed = selected;
         zone.appendChild(placed);
       } else {
         placed = selected;
         zone.appendChild(placed);
       }
-      placed.style.position = 'absolute';
-      placed.style.left = (nx/rect2.width*100)+'%';
-      placed.style.top = (ny/rect2.height*100)+'%';
+      placePinAtPoint(zone, placed, e.clientX, e.clientY);
       placed.classList.remove('selected');
-      bringToFront(placed);
 
       live('Placed "'+(placed.textContent||'item').trim()+'" on quadrant chart');
       vib(6);
@@ -397,6 +451,7 @@
       e.stopPropagation();
       pin.setPointerCapture(e.pointerId);
       bringToFront(pin);
+      vib(4); // pickup feels physical on touch
 
       // Lock viewport — prevent scroll/zoom on mobile
       document.body.classList.add('dragging-item','q-dragging');
@@ -424,6 +479,7 @@
       pin.style.willChange = 'transform';
 
       var lastDZ = null;
+      var _tapHandled = false;
       // Track last pointer position for direct 1:1 movement
       var _lastClientX = e.clientX;
       var _lastClientY = e.clientY;
@@ -472,14 +528,47 @@
         lastDZ = dz || null;
       }
 
-      function up(ev){
+      function detachDragListeners(){
         _dragging = false;
         cancelAnimationFrame(_rafId);
         document.removeEventListener('touchmove', blockTouch);
         try{ pin.releasePointerCapture(e.pointerId); }catch(_){}
         document.removeEventListener('pointermove', move);
         document.removeEventListener('pointerup', up);
-        document.removeEventListener('pointercancel', up);
+        document.removeEventListener('pointercancel', cancel);
+      }
+
+      function restoreOrigin(){
+        pin.style.position = 'absolute';
+        pin.style.left = originLeft;
+        pin.style.top = originTop;
+        pin.style.zIndex = savedZIndex;
+      }
+
+      function releaseDragChrome(){
+        document.body.classList.remove('dragging-item','q-dragging');
+        document.documentElement.classList.remove('q-dragging-lock');
+        qZones.forEach(function(z){ z.classList.remove('drag-over'); });
+        if(tray) tray.classList.remove('drag-over');
+        pin.classList.remove('q-dragging-token');
+        pin.style.transform = '';
+        pin.style.transition = '';
+        pin.style.willChange = '';
+        pin.style.pointerEvents = '';
+        // Suppress the click that follows a real drag or an already-handled
+        // tap (mouse fires it; touch doesn't) so selection isn't re-toggled.
+        pin._justDragged = _tapHandled || Math.abs(_offsetX) > 3 || Math.abs(_offsetY) > 3;
+      }
+
+      // A cancelled drag (incoming call, browser gesture takeover) must never
+      // commit a move — snap back to where the pin started.
+      function cancel(){
+        detachDragListeners();
+        try{ restoreOrigin(); } finally { releaseDragChrome(); }
+      }
+
+      function up(ev){
+        detachDragListeners();
 
         // Critical cleanup in finally block to prevent stuck state
         try{
@@ -491,20 +580,35 @@
           var dropZone = el ? el.closest('.q-zone') : null;
           var dropTray = el ? el.closest('#tray') : null;
 
-          if(dropTray){
-            var srcId = pin.dataset.sourceTokenId;
-            pin.remove();
-            if(srcId) unhideTrayToken(srcId);
+          var moved = Math.abs(_offsetX) > 3 || Math.abs(_offsetY) > 3;
+          if(!moved){
+            // Plain tap — never a move, even when the release point hovers a
+            // neighboring zone (pins can straddle the axes). Chrome never
+            // fires the tap 'click' when pointerdown was preventDefaulted on
+            // touch, so selection happens right here (and the mouse click
+            // that DOES follow gets suppressed below).
+            pin.style.zIndex = '';
+            bringToFront(pin);
+            var already = pin.classList.contains('selected');
+            $$('.token.selected').forEach(function(t){ t.classList.remove('selected'); });
+            $$('.q-pin.selected').forEach(function(p){ p.classList.remove('selected'); });
+            if(!already) pin.classList.add('selected');
+            _tapHandled = true;
+            // Touch retargets the tap's click to the zone under the pin —
+            // guard it. Mouse clicks target the pin itself, so no guard.
+            if(ev.pointerType !== 'mouse') _qTapClickGuard = Date.now() + 350;
+          } else if(dropTray){
             live('Removed from quadrant chart');
             vib(6);
-            scheduleQuadrantSave();
+            removeQPin(pin);
           } else if(dropZone){
             var dRect = dropZone.getBoundingClientRect();
             var pinH = Q_PIN_HEIGHT;
             var nx = dropX - dRect.left - grabOffX;
             var ny = dropY - dRect.top - grabOffY;
             var clampedDrop = clampQPosition(nx, ny, dRect.width, dRect.height, pinH, dropZone, pin);
-            nx = clampedDrop.x; ny = clampedDrop.y;
+            var spreadDrop = resolveQOverlap(dropZone, clampedDrop.x, clampedDrop.y, dRect.width, dRect.height, pin);
+            nx = spreadDrop.x; ny = spreadDrop.y;
 
             if(dropZone !== originZone){
               var fromId2 = ensureId(originZone,'zone');
@@ -516,6 +620,13 @@
                 prevTop: originTop
               });
               dropZone.appendChild(pin);
+            } else if(Math.abs(_offsetX) > 2 || Math.abs(_offsetY) > 2){
+              // In-zone repositions are undoable too (skip no-move taps)
+              recordPlacement(pin.id, dropZone.id, dropZone.id, '', {
+                isQuadrant: true,
+                prevLeft: originLeft,
+                prevTop: originTop
+              });
             }
             pin.style.position = 'absolute';
             pin.style.left = (nx/dRect.width*100)+'%';
@@ -526,31 +637,17 @@
             scheduleQuadrantSave();
           } else {
             // Snap back to original position
-            pin.style.position = 'absolute';
-            pin.style.left = originLeft;
-            pin.style.top = originTop;
-            pin.style.zIndex = savedZIndex;
+            restoreOrigin();
           }
         } finally {
-          // Always clean up — even if drop logic throws
-          document.body.classList.remove('dragging-item','q-dragging');
-          document.documentElement.classList.remove('q-dragging-lock');
-          qZones.forEach(function(z){ z.classList.remove('drag-over'); });
-          if(tray) tray.classList.remove('drag-over');
-          pin.classList.remove('q-dragging-token');
-          pin.style.transform = '';
-          pin.style.transition = '';
-          pin.style.willChange = '';
-          pin.style.pointerEvents = '';
-          // Suppress the click event that fires after pointerup
-          pin._justDragged = true;
+          releaseDragChrome();
         }
       }
 
       // Non-passive so preventDefault blocks scroll/zoom
       document.addEventListener('pointermove', move, {passive:false});
       document.addEventListener('pointerup', up, false);
-      document.addEventListener('pointercancel', up, false);
+      document.addEventListener('pointercancel', cancel, false);
     }, {passive:false,capture:false});
   }
 
@@ -748,6 +845,9 @@
 
   /* ---------- Clear quadrant zones in-place (no reload) ---------- */
   function clearQuadrants(){
+    // Snapshot the saved state so the toast can offer an Undo lifeline
+    var backup = null;
+    try{ backup = localStorage.getItem(QUADRANT_STORAGE_KEY); }catch(e){}
     // Remove all quadrant pins
     qZones.forEach(function(z){
       $$('.q-pin',z).forEach(function(pin){ pin.remove(); });
@@ -767,7 +867,16 @@
     });
     // Clear saved data
     try{ localStorage.removeItem(QUADRANT_STORAGE_KEY); }catch(e){}
-    if(typeof showSaveToast === 'function') showSaveToast('Quadrants cleared');
+    if(typeof showSaveToast === 'function'){
+      if(backup){
+        showSaveToast('Quadrants cleared', false, {label:'Undo', onClick:function(){
+          try{ localStorage.setItem(QUADRANT_STORAGE_KEY, backup); }catch(e){}
+          loadQuadrantData();
+        }});
+      } else {
+        showSaveToast('Quadrants cleared');
+      }
+    }
   }
 
   /* refitQToken is a no-op now — pins auto-size via CSS */
@@ -909,34 +1018,96 @@
     });
   }
 
-  /* ---------- Arrow-key nudge for precise pin positioning ---------- */
+  /* ---------- Keyboard control: nudge, cross-quadrant move, select, delete ---------- */
+  function isEditingTarget(t){
+    return !!(t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable));
+  }
+  var Q_ZONE_NAMES = {tl:'top left', tr:'top right', bl:'bottom left', br:'bottom right'};
+  var _lastNudge = {pin:null, at:0};
+
   on(document,'keydown',function(e){
     if(currentMode !== 'quadrant') return;
+    if(isEditingTarget(e.target)) return;
+
+    var focused = document.activeElement;
+    var focusPin = (focused && focused.classList && focused.classList.contains('q-pin') &&
+                    focused.closest('.q-zone')) ? focused : null;
+    var selPin = $('.q-pin.selected');
+    if(selPin && !selPin.closest('.q-zone')) selPin = null;
+    var pin = focusPin || selPin;
+    if(!pin) return;
+
+    // Enter/Space act as the pin's button behavior (focused pin only)
+    if((e.key === 'Enter' || e.key === ' ') && focusPin){
+      if(e.target.closest && e.target.closest('.q-pin-del')) return; // native button click
+      e.preventDefault();
+      var already = focusPin.classList.contains('selected');
+      $$('.q-pin.selected').forEach(function(p){ p.classList.remove('selected'); });
+      if(!already){ focusPin.classList.add('selected'); bringToFront(focusPin); }
+      return;
+    }
+    if(e.key === 'Delete' || e.key === 'Backspace'){
+      e.preventDefault();
+      live('Removed "'+(pin.dataset.pinName||'item')+'" from quadrant chart');
+      removeQPin(pin);
+      return;
+    }
+    if(e.key === 'Escape'){
+      $$('.q-pin.selected').forEach(function(p){ p.classList.remove('selected'); });
+      return;
+    }
+
     var arrows = {ArrowUp:1,ArrowDown:1,ArrowLeft:1,ArrowRight:1};
     if(!arrows[e.key]) return;
-    var pin = $('.q-pin.selected');
-    if(!pin || !pin.closest('.q-zone')) return;
     e.preventDefault();
 
     var zone = pin.closest('.q-zone');
     var rect = zone.getBoundingClientRect();
-    var sz = Q_PIN_HEIGHT;
     // Shift = 1px micro-nudge, normal = 5px
     var step = e.shiftKey ? 1 : 5;
 
-    var curLeft = parseFloat(pin.style.left) || 0;
-    var curTop = parseFloat(pin.style.top) || 0;
-    var curX = curLeft / 100 * rect.width;
-    var curY = curTop / 100 * rect.height;
+    var curX = (parseFloat(pin.style.left) || 0) / 100 * rect.width;
+    var curY = (parseFloat(pin.style.top) || 0) / 100 * rect.height;
 
     if(e.key === 'ArrowLeft')  curX -= step;
     if(e.key === 'ArrowRight') curX += step;
     if(e.key === 'ArrowUp')    curY -= step;
     if(e.key === 'ArrowDown')  curY += step;
 
-    var clamped = clampQPosition(curX, curY, rect.width, rect.height, sz, zone);
-    pin.style.left = (clamped.x / rect.width * 100) + '%';
-    pin.style.top = (clamped.y / rect.height * 100) + '%';
+    // One undo entry per burst of nudges (a fresh burst = new pin or >1s pause)
+    var now = Date.now();
+    if(_lastNudge.pin !== pin || now - _lastNudge.at > 1000){
+      recordPlacement(pin.id, zone.id, zone.id, '', {
+        isQuadrant: true,
+        prevLeft: pin.style.left,
+        prevTop: pin.style.top
+      });
+    }
+    _lastNudge.pin = pin; _lastNudge.at = now;
+
+    // Nudging past a center axis carries the pin into the adjacent quadrant
+    var pos = zone.id.replace('qzone-',''), targetPos = pos;
+    if(curX > rect.width - 10 && (pos === 'tl' || pos === 'bl')){ targetPos = (pos === 'tl' ? 'tr' : 'br'); curX -= rect.width; }
+    else if(curX < -10 && (pos === 'tr' || pos === 'br')){ targetPos = (pos === 'tr' ? 'tl' : 'bl'); curX += rect.width; }
+    else if(curY > rect.height - 6 && (pos === 'tl' || pos === 'tr')){ targetPos = (pos === 'tl' ? 'bl' : 'br'); curY -= rect.height; }
+    else if(curY < -6 && (pos === 'bl' || pos === 'br')){ targetPos = (pos === 'bl' ? 'tl' : 'tr'); curY += rect.height; }
+
+    var destZone = zone;
+    if(targetPos !== pos){
+      var t = document.getElementById('qzone-'+targetPos);
+      if(t){
+        destZone = t;
+        destZone.appendChild(pin);
+        // Moving a focused element in the DOM drops focus — restore it
+        if(focusPin){ try{ pin.focus({preventScroll:true}); }catch(_){} }
+        live('Moved "'+(pin.dataset.pinName||'item')+'" to '+Q_ZONE_NAMES[targetPos]+' quadrant');
+      }
+    }
+
+    var dRect = destZone === zone ? rect : destZone.getBoundingClientRect();
+    var clamped = clampQPosition(curX, curY, dRect.width, dRect.height, Q_PIN_HEIGHT, destZone, pin);
+    pin.style.left = (clamped.x / dRect.width * 100) + '%';
+    pin.style.top = (clamped.y / dRect.height * 100) + '%';
     scheduleQuadrantSave();
   });
 
@@ -1019,16 +1190,16 @@
 
           var rect = zone.getBoundingClientRect();
           var pinH = Q_PIN_HEIGHT;
+          var dotOff = 3 + Q_DOT_SIZE/2;
           var cx2, cy2;
           if(j === 2){
-            cx2 = rect.width - 40 + (Math.random()-0.5)*20;
-            cy2 = rect.height - pinH + (Math.random()-0.5)*20;
+            // True chart center: the TL zone's corner shared by all four zones
+            cx2 = rect.width - dotOff;
+            cy2 = rect.height - pinH/2;
           } else {
-            cx2 = (rect.width/2 - 20) + (Math.random()-0.5)*40;
+            cx2 = (rect.width/2 - dotOff) + (Math.random()-0.5)*40;
             cy2 = (rect.height/2 - pinH/2) + (Math.random()-0.5)*40;
           }
-          var clampedR = clampQPosition(cx2, cy2, rect.width, rect.height, pinH, zone);
-          cx2 = clampedR.x; cy2 = clampedR.y;
 
           var placed;
           if(fromTray){
@@ -1041,9 +1212,13 @@
             placed = token;
             zone.appendChild(placed);
           }
+          // Clamp with the real pin measured in the DOM, then step off any
+          // pin already sitting at that spot so both labels stay readable.
+          var clampedR = clampQPosition(cx2, cy2, rect.width, rect.height, pinH, zone, placed);
+          var spreadR = resolveQOverlap(zone, clampedR.x, clampedR.y, rect.width, rect.height, placed);
           placed.style.position = 'absolute';
-          placed.style.left = (cx2/rect.width*100)+'%';
-          placed.style.top = (cy2/rect.height*100)+'%';
+          placed.style.left = (spreadR.x/rect.width*100)+'%';
+          placed.style.top = (spreadR.y/rect.height*100)+'%';
           placed.classList.remove('selected');
 
           refitQToken(placed);
@@ -1192,7 +1367,8 @@
   window.scheduleQuadrantSave = function(){ scheduleQuadrantSave(); };
   window.refitQToken = function(tok){ refitQToken(tok); };
   window.bringQTokenToFront = function(tok){ bringToFront(tok); };
-  window.clampQPosition = function(x,y,w,h,sz,zone){ return clampQPosition(x,y,w,h,sz,zone); };
+  window.clampQPosition = function(x,y,w,h,sz,zone,pinEl){ return clampQPosition(x,y,w,h,sz,zone,pinEl); };
+  window.qPlacePinAt = function(zone,pinEl,clientX,clientY){ placePinAtPoint(zone,pinEl,clientX,clientY); };
   window.clearQuadrants = function(){ clearQuadrants(); };
   window.cloneTokenForQuadrant = function(tok){ return cloneTokenForQuadrant(tok); };
 
