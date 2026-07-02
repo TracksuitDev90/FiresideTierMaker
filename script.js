@@ -513,11 +513,11 @@ function applyTokenAura(el, bgColor, name){
   el.style.setProperty('--aura-rot', (seed%360)+'deg');
   el.style.setProperty('--aura-cx', (46+((seed>>>9)%9))+'%');
   el.style.setProperty('--aura-cy', (46+((seed>>>13)%9))+'%');
-  el.style.setProperty('--aura-c1', hslCss(h-45, fs, 56));                             // vivid cool drift
-  el.style.setProperty('--aura-c2', hslCss(h, Math.max(s-20,25), 92));                 // near-white hot fringe
-  el.style.setProperty('--aura-c3', hslCss(h+30, fs, 65));                             // vivid warm fringe
+  el.style.setProperty('--aura-c1', hslCss(h-45, fs, 54));                             // vivid cool drift
+  el.style.setProperty('--aura-c2', hslCss(h, Math.max(s-10,30), 72));                 // bright fringe (not white — avoids a specular look)
+  el.style.setProperty('--aura-c3', hslCss(h+30, fs, 62));                             // vivid warm fringe
   el.style.setProperty('--aura-c4', hslCss(h+90, fs-15, 52));                          // far prism drift
-  el.style.setProperty('--aura-c5', hslCss(h-20, Math.min(s+20,95), 24));              // deepened shade
+  el.style.setProperty('--aura-c5', hslCss(h-20, Math.min(s+20,95), 32));              // deepened shade
   el.classList.add('aura');
 }
 
