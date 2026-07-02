@@ -476,6 +476,51 @@ function pickTextColor(bgHex){
   return darken(bgHex, 0.50);
 }
 
+/* ---------- Chromatic-aberration aura ---------- */
+/* Parse #hex or rgb() to HSL (h 0-360, s/l 0-100); hexToRgb handles both forms */
+function colorToHsl(color){
+  var c = hexToRgb(color), r=c.r/255, g=c.g/255, b=c.b/255;
+  var max=Math.max(r,g,b), min=Math.min(r,g,b), d=max-min;
+  var h=0, s=0, l=(max+min)/2;
+  if(d!==0){
+    s = l>0.5 ? d/(2-max-min) : d/(max+min);
+    if(max===r) h=((g-b)/d+(g<b?6:0))/6;
+    else if(max===g) h=((b-r)/d+2)/6;
+    else h=((r-g)/d+4)/6;
+  }
+  return { h:h*360, s:s*100, l:l*100 };
+}
+function hslCss(h,s,l){
+  h=((h%360)+360)%360; s=Math.max(0,Math.min(100,s)); l=Math.max(0,Math.min(100,l));
+  return 'hsl('+h.toFixed(1)+','+s.toFixed(1)+'%,'+l.toFixed(1)+'%)';
+}
+/* FNV-1a string hash — deterministic per name so rings survive save/restore */
+function auraHash(str){
+  var h=2166136261;
+  for(var i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=(h*16777619)>>>0; }
+  return h;
+}
+/* Rim shades hue-shifted around the base color, plus per-token swirl rotation
+   and cover offset, exposed as custom props for .token.aura::before */
+function applyTokenAura(el, bgColor, name){
+  var hsl, seed;
+  try { hsl = colorToHsl(bgColor); } catch(e){ return; }
+  if(!isFinite(hsl.h)||!isFinite(hsl.s)||!isFinite(hsl.l)) return;
+  seed = auraHash(String(name||''));
+  var h=hsl.h, s=hsl.s, l=hsl.l;
+  var fs = Math.min(Math.max(s+35, 80), 100); // grayish bases still get a colorful fringe
+  el.style.setProperty('--aura-base', bgColor);
+  el.style.setProperty('--aura-rot', (seed%360)+'deg');
+  el.style.setProperty('--aura-cx', (46+((seed>>>9)%9))+'%');
+  el.style.setProperty('--aura-cy', (46+((seed>>>13)%9))+'%');
+  el.style.setProperty('--aura-c1', hslCss(h-45, fs, 56));                             // vivid cool drift
+  el.style.setProperty('--aura-c2', hslCss(h, Math.max(s-20,25), 92));                 // near-white hot fringe
+  el.style.setProperty('--aura-c3', hslCss(h+30, fs, 65));                             // vivid warm fringe
+  el.style.setProperty('--aura-c4', hslCss(h+90, fs-15, 52));                          // far prism drift
+  el.style.setProperty('--aura-c5', hslCss(h-20, Math.min(s+20,95), 24));              // deepened shade
+  el.classList.add('aura');
+}
+
 /* Fisher-Yates shuffle so tokens get different colors each page load */
 function shuffleArray(arr){
   for(var i=arr.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var tmp=arr[i]; arr[i]=arr[j]; arr[j]=tmp; }
@@ -670,6 +715,7 @@ function buildTokenBase(isCustom){
 function buildNameToken(name, bgColor, isCustom, textColor){
   var el = buildTokenBase(isCustom);
   el.style.background = bgColor;
+  applyTokenAura(el, bgColor, name);
   var label = document.createElement('div'); label.className='label'; label.textContent=name;
   label.style.color = textColor || pickTextColor(bgColor);
   el.appendChild(label);
