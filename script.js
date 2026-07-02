@@ -500,24 +500,26 @@ function auraHash(str){
   for(var i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=(h*16777619)>>>0; }
   return h;
 }
-/* Rim shades hue-shifted around the base color, plus per-token swirl rotation
-   and cover offset, exposed as custom props for .token.aura::before */
+/* Tonal rim: shades and tints of the base color itself (hue drift capped at
+   6°) so the ring reads as depth/texture in the same material, not a prism
+   fringe. Per-token swirl rotation and cover offset stay seeded by name. */
 function applyTokenAura(el, bgColor, name){
   var hsl, seed;
   try { hsl = colorToHsl(bgColor); } catch(e){ return; }
   if(!isFinite(hsl.h)||!isFinite(hsl.s)||!isFinite(hsl.l)) return;
   seed = auraHash(String(name||''));
   var h=hsl.h, s=hsl.s, l=hsl.l;
-  var fs = Math.min(Math.max(s+35, 80), 100); // grayish bases still get a colorful fringe
+  var rs = Math.min(Math.max(s, 20), 85); // stay near the base saturation; gray stays gray
+  function tl(dl){ return Math.min(Math.max(l+dl, 10), 90); }
   el.style.setProperty('--aura-base', bgColor);
   el.style.setProperty('--aura-rot', (seed%360)+'deg');
   el.style.setProperty('--aura-cx', (46+((seed>>>9)%9))+'%');
   el.style.setProperty('--aura-cy', (46+((seed>>>13)%9))+'%');
-  el.style.setProperty('--aura-c1', hslCss(h-45, fs, 54));                             // vivid cool drift
-  el.style.setProperty('--aura-c2', hslCss(h, Math.max(s-10,30), 72));                 // bright fringe (not white — avoids a specular look)
-  el.style.setProperty('--aura-c3', hslCss(h+30, fs, 62));                             // vivid warm fringe
-  el.style.setProperty('--aura-c4', hslCss(h+90, fs-15, 52));                          // far prism drift
-  el.style.setProperty('--aura-c5', hslCss(h-20, Math.min(s+20,95), 32));              // deepened shade
+  el.style.setProperty('--aura-c1', hslCss(h-5, rs, tl(-12)));                 // cool shade
+  el.style.setProperty('--aura-c2', hslCss(h, Math.max(rs-10,15), tl(9)));     // soft tint (kept gentle — a bright band reads as a specular sphere)
+  el.style.setProperty('--aura-c3', hslCss(h+6, rs, tl(5)));                   // warm tint
+  el.style.setProperty('--aura-c4', hslCss(h+3, Math.max(rs-6,15), tl(-16)));  // deep shade
+  el.style.setProperty('--aura-c5', hslCss(h-3, Math.min(rs+8,90), tl(-7)));   // mid shade
   el.classList.add('aura');
 }
 
@@ -756,7 +758,10 @@ function pushHistory(entry){
   var u = $('#undoBtn'); if (u) u.disabled = historyStack.length===0;
 }
 function recordPlacement(itemId, fromId, toId, originBeforeId, extra){
-  if (!fromId || !toId || fromId===toId) return;
+  if (!fromId || !toId) return;
+  // Quadrant pins can move meaningfully within one zone (position change),
+  // so same-zone entries are kept when the exact prior coords are recorded.
+  if (fromId===toId && !(extra && extra.isQuadrant)) return;
   var entry = {itemId:itemId, fromId:fromId, toId:toId, originBeforeId: originBeforeId||''};
   if (extra) for (var k in extra) if (Object.prototype.hasOwnProperty.call(extra, k)) entry[k] = extra[k];
   pushHistory(entry);
@@ -887,19 +892,32 @@ function enablePointerDrag(node){
     if (e.button!==0) return;
     e.preventDefault();
     node.setPointerCapture(e.pointerId);
-    document.body.classList.add('dragging-item');
 
     originParent = node.parentElement; originNext = node.nextElementSibling;
     var r=node.getBoundingClientRect(); offsetX=e.clientX-r.left; offsetY=e.clientY-r.top; x=e.clientX; y=e.clientY;
 
-    ghost = node.cloneNode(true); ghost.classList.add('drag-ghost'); document.body.appendChild(ghost);
-    node.classList.add('drag-hidden');
+    // Deferred drag start: the ghost/hide chrome only appears after real
+    // movement. Hiding the token on pointerdown set pointer-events:none, so a
+    // plain click's mouseup hit-tested to the tray and the click never
+    // reached the token — selection on desktop was dead.
+    var started = false;
+    function startDrag(){
+      started = true;
+      document.body.classList.add('dragging-item');
+      ghost = node.cloneNode(true); ghost.classList.add('drag-ghost'); document.body.appendChild(ghost);
+      node.classList.add('drag-hidden');
+      loop();
+    }
 
-    function move(ev){ x=ev.clientX; y=ev.clientY; }
+    function move(ev){
+      x=ev.clientX; y=ev.clientY;
+      if(!started && Math.hypot(x - e.clientX, y - e.clientY) > 4) startDrag();
+    }
     function up(){
       try{ node.releasePointerCapture(e.pointerId); }catch(_){}
       document.removeEventListener('pointermove', move, _supportsPassive?{passive:true}:false);
       document.removeEventListener('pointerup', up, false);
+      if (!started) return; // plain click — let the click event handle selection
       cancelAnimationFrame(raf);
       var target = document.elementFromPoint(x,y);
       var zonePreview = getDropZoneFromElement(target);
@@ -928,17 +946,19 @@ function enablePointerDrag(node){
           // Quadrant zone: clone token as pin, hide original in tray
           var qClone = typeof window.cloneTokenForQuadrant === 'function' ? window.cloneTokenForQuadrant(node) : null;
           var placed = qClone || node;
-          var rect = zone.getBoundingClientRect();
-          var pinH = 20;
-          var nx = x - rect.left - 6;
-          var ny = y - rect.top - pinH/2;
-          if(typeof window.clampQPosition==='function'){
-            var cl=window.clampQPosition(nx,ny,rect.width,rect.height,pinH,zone);nx=cl.x;ny=cl.y;
-          } else { nx=Math.max(0,Math.min(nx,rect.width-60));ny=Math.max(0,Math.min(ny,rect.height-pinH)); }
           zone.appendChild(placed);
-          placed.style.position = 'absolute';
-          placed.style.left = (nx/rect.width*100)+'%';
-          placed.style.top = (ny/rect.height*100)+'%';
+          if(typeof window.qPlacePinAt === 'function'){
+            // Shared placement: dot-anchor, clamp to true pin width, de-overlap
+            window.qPlacePinAt(zone, placed, x, y);
+          } else {
+            var rect = zone.getBoundingClientRect();
+            var pinH = 26;
+            var nx = Math.max(0,Math.min(x - rect.left - 11, rect.width-60));
+            var ny = Math.max(0,Math.min(y - rect.top - pinH/2, rect.height-pinH));
+            placed.style.position = 'absolute';
+            placed.style.left = (nx/rect.width*100)+'%';
+            placed.style.top = (ny/rect.height*100)+'%';
+          }
           if(typeof window.bringQTokenToFront==='function') window.bringQTokenToFront(placed);
           // Hide original in tray
           if(qClone){
@@ -975,7 +995,6 @@ function enablePointerDrag(node){
 
     document.addEventListener('pointermove', move, _supportsPassive?{passive:true}:false);
     document.addEventListener('pointerup', up, false);
-    loop();
 
     var _lhx=null, _lhy=null;
     function loop(){
@@ -1491,11 +1510,21 @@ on($('#trashClear'),'click', function(){
     ? 'This will remove all token placements from the quadrant chart and reset axis labels.'
     : 'This will remove all custom tokens, written titles, and placements. Everything resets to the default clean state.';
   showConfirm(title, msg, function(){
+    vib(10);
     if(isQ){
       // Quadrant-only clear: remove quadrant clones and data in-place
       if(typeof window.clearQuadrants === 'function') window.clearQuadrants();
     } else {
-      // Full clear: remove everything
+      // Full clear: remove everything — but stash a one-shot backup first so
+      // the post-reload toast can offer an Undo lifeline.
+      try {
+        localStorage.setItem('tm_clear_backup', JSON.stringify({
+          board: localStorage.getItem(STORAGE_KEY),
+          quadrant: localStorage.getItem('tm_quadrant'),
+          mode: localStorage.getItem('tm_mode'),
+          at: Date.now()
+        }));
+      } catch(e){}
       try { localStorage.removeItem(STORAGE_KEY); } catch(e){}
       try { localStorage.removeItem('tm_quadrant'); } catch(e){}
       try { localStorage.removeItem('tm_mode'); } catch(e){}
@@ -1510,7 +1539,9 @@ on($('#undoBtn'),'click', function(){
   if(typeof window.isBattleMode === 'function' && window.isBattleMode()){
     if(typeof window.battleUndo === 'function') window.battleUndo();
   } else {
+    var had = historyStack.length > 0;
     undoLast();
+    if(had){ vib(6); showSaveToast('Undone'); }
   }
 });
 
@@ -1710,19 +1741,55 @@ on($('#saveBtn'),'click', function(){
   });
 });
 
-/* ---------- Save toast feedback ---------- */
-function showSaveToast(msg, isError){
+/* ---------- Toast feedback ---------- */
+/* action: optional {label, onClick} — renders a tappable button (e.g. an
+   "Undo" lifeline) and keeps the toast up long enough to reach for it. */
+function showSaveToast(msg, isError, action){
   var existing = $('#saveToast');
   if (existing) existing.remove();
   var toast = document.createElement('div');
   toast.id = 'saveToast';
   toast.className = 'toast' + (isError ? ' toast-error' : '');
-  toast.textContent = msg;
+  toast.setAttribute('role','status');
+  var txt = document.createElement('span');
+  txt.textContent = msg;
+  toast.appendChild(txt);
+  var life = 1800;
+  if (action && action.label && typeof action.onClick === 'function'){
+    life = 5200;
+    var act = document.createElement('button');
+    act.type = 'button';
+    act.className = 'toast-action';
+    act.textContent = action.label;
+    act.addEventListener('click', function(){
+      toast.remove();
+      action.onClick();
+    });
+    toast.appendChild(act);
+  }
   document.body.appendChild(toast);
-  setTimeout(function(){ toast.classList.add('toast-out'); }, 1800);
-  setTimeout(function(){ toast.remove(); }, 2200);
+  setTimeout(function(){ toast.classList.add('toast-out'); }, life);
+  setTimeout(function(){ toast.remove(); }, life + 400);
 }
 window.showSaveToast = showSaveToast;
+
+/* One-shot "Board cleared — Undo" lifeline shown after the clear-board reload */
+(function(){
+  var raw = null;
+  try { raw = localStorage.getItem('tm_clear_backup'); localStorage.removeItem('tm_clear_backup'); } catch(e){ return; }
+  if (!raw) return;
+  var bak = null;
+  try { bak = JSON.parse(raw); } catch(e){ return; }
+  if (!bak || !bak.at || Date.now() - bak.at > 60000) return; // stale — ignore
+  showSaveToast('Board cleared', false, {label:'Undo', onClick:function(){
+    try {
+      if (bak.board != null) localStorage.setItem(STORAGE_KEY, bak.board);
+      if (bak.quadrant != null) localStorage.setItem('tm_quadrant', bak.quadrant);
+      if (bak.mode != null) localStorage.setItem('tm_mode', bak.mode);
+    } catch(e){}
+    location.reload();
+  }});
+})();
 
 /* ---------- Dismiss delete overlay on outside click ---------- */
 on(document,'click', function(e){

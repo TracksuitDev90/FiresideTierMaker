@@ -138,17 +138,19 @@
 .q-zone--bl{border-right:2px solid var(--q-line-color, rgba(255,255,255,.2));border-top:2px solid var(--q-line-color, rgba(255,255,255,.2));border-radius:0 0 0 13px}
 .q-zone--br{border-left:2px solid var(--q-line-color, rgba(255,255,255,.2));border-top:2px solid var(--q-line-color, rgba(255,255,255,.2));border-radius:0 0 13px 0}
 
-/* Default quadrant colors — dark mode */
-.q-zone--tl{background:rgba(239,68,68,.12)}   /* red tint */
-.q-zone--tr{background:rgba(34,197,94,.12)}    /* green tint */
-.q-zone--bl{background:rgba(251,191,36,.12)}   /* amber tint */
-.q-zone--br{background:rgba(59,130,246,.12)}   /* blue tint */
+/* Default quadrant colors — dark mode. Same hues as the control-button
+   palette (red 2°, green 140°, amber 42°, violet 250°) so the whole app
+   draws from one family. */
+.q-zone--tl{background:hsla(2,78%,58%,.12)}    /* red tint */
+.q-zone--tr{background:hsla(140,55%,48%,.12)}  /* green tint */
+.q-zone--bl{background:hsla(42,92%,55%,.12)}   /* amber tint */
+.q-zone--br{background:hsla(250,75%,64%,.12)}  /* violet tint */
 
 /* Default quadrant colors — light mode */
-:root[data-theme="light"] .q-zone--tl{background:rgba(239,68,68,.08)}
-:root[data-theme="light"] .q-zone--tr{background:rgba(34,197,94,.08)}
-:root[data-theme="light"] .q-zone--bl{background:rgba(251,191,36,.08)}
-:root[data-theme="light"] .q-zone--br{background:rgba(59,130,246,.08)}
+:root[data-theme="light"] .q-zone--tl{background:hsla(2,78%,58%,.08)}
+:root[data-theme="light"] .q-zone--tr{background:hsla(140,55%,48%,.08)}
+:root[data-theme="light"] .q-zone--bl{background:hsla(42,92%,55%,.08)}
+:root[data-theme="light"] .q-zone--br{background:hsla(250,75%,64%,.08)}
 
 /* ---------- Quadrant drag-over ---------- */
 .q-zone.drag-over{
@@ -184,12 +186,25 @@
   background:rgba(0,0,0,.5);
   transform:scale(1.04);
 }
+/* Depth: a buried pin surfaces on hover so its name is readable. !important
+   beats the inline z-index that placement order assigns; guarded off during a
+   drag so nothing can out-stack the dragged pin. */
+body:not(.q-dragging) .q-pin:hover{z-index:99990 !important}
 :root[data-theme="light"] .q-pin:hover{
   background:rgba(255,255,255,.9);
 }
 .q-pin:active{cursor:grabbing}
 .q-pin.selected{
   box-shadow:0 0 0 2px var(--accent), 0 2px 8px rgba(139,125,255,.4);
+}
+.q-pin:focus-visible{
+  outline:none;
+  box-shadow:0 0 0 2px var(--accent), 0 2px 8px rgba(139,125,255,.4);
+}
+/* Touch: grow the grab target ~9px past the visible pin (same trick as the
+   delete button below) — only where there's no hover to misfire. */
+@media (hover:none){
+  .q-pin::after{content:'';position:absolute;inset:-9px}
 }
 .q-pin-dot{
   width:16px;height:16px;
@@ -296,8 +311,9 @@ body.quadrant-mode .controls{grid-template-columns:repeat(4,minmax(0,1fr))}
   .q-grid-wrap{min-height:370px}
   .q-zone{min-height:175px}
   .q-pin{padding:2px 6px 2px 2px;gap:4px;max-width:120px}
-  .q-pin-label{font-size:10px;max-width:80px}
-  .q-pin-dot{width:12px;height:12px}
+  /* Keep dots/labels legible-and-grabbable — don't shrink below this */
+  .q-pin-label{font-size:11px;max-width:80px}
+  .q-pin-dot{width:14px;height:14px}
   .q-axis-label{font-size:10px;padding:2px 3px}
   .q-labels-col,.q-labels-col-right{min-width:20px}
   .mode-toggle-wrap{max-width:100%;gap:3px;padding:3px}

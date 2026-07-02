@@ -32,12 +32,14 @@ a{color:inherit;text-decoration:none}
   --dur-med:350ms;
   --dur-long:480ms;
   --focus-ring:0 0 0 3px rgba(139,125,255,.45);
-  /* Pastel status-badge tokens for control buttons */
-  --btn-green-bg:#aee5ba;   --btn-green-fg:#177638;
-  --btn-yellow-bg:#ffda83;  --btn-yellow-fg:#975d04;
-  --btn-red-bg:#f6afaf;     --btn-red-fg:#a51f1f;
-  --btn-violet-bg:#c4bbfd;  --btn-violet-fg:#4233c0;
-  --btn-theme-bg:#eae3d2;   --btn-theme-fg:#3d311d;
+  /* Pastel status-badge tokens for control buttons — one tonal family:
+     backgrounds sit at L 77-84%, foregrounds at L 25-46%, hue per action */
+  --btn-teal-bg:hsl(168,52%,78%);   --btn-teal-fg:hsl(172,64%,25%);
+  --btn-green-bg:hsl(140,55%,79%);  --btn-green-fg:hsl(142,64%,27%);
+  --btn-yellow-bg:hsl(42,88%,77%);  --btn-yellow-fg:hsl(38,82%,29%);
+  --btn-red-bg:hsl(2,70%,81%);      --btn-red-fg:hsl(2,62%,38%);
+  --btn-violet-bg:hsl(250,78%,84%); --btn-violet-fg:hsl(248,56%,46%);
+  --btn-theme-bg:hsl(42,36%,87%);   --btn-theme-fg:hsl(35,36%,18%);
   /* Semantic status / default colors */
   --danger:#ef4444; --danger-strong:#f87171; --success:#22c55e;
   --token-default:#7da7ff; --label-default:#ff6b6b;
@@ -51,12 +53,13 @@ a{color:inherit;text-decoration:none}
   --text:#0f1222; --muted:#465062; --border:rgba(10,10,20,.08);
   --shadow:0 10px 24px rgba(0,0,0,.08);
   --accent:#6b5fff; --brand:#191919; --neon:#191919;
-  /* Pastel status-badge tokens (light mode) */
-  --btn-green-bg:#beeac9;   --btn-green-fg:#1e8149;
-  --btn-yellow-bg:#ffdd97;  --btn-yellow-fg:#ae6606;
-  --btn-red-bg:#f8bfbf;     --btn-red-fg:#b42626;
-  --btn-violet-bg:#cfc5ff;  --btn-violet-fg:#4b3cd6;
-  --btn-theme-bg:#1c2a3b;   --btn-theme-fg:#d9e3f0;
+  /* Pastel status-badge tokens (light mode) — same family, a touch lighter */
+  --btn-teal-bg:hsl(168,50%,80%);   --btn-teal-fg:hsl(172,66%,23%);
+  --btn-green-bg:hsl(140,52%,81%);  --btn-green-fg:hsl(142,62%,26%);
+  --btn-yellow-bg:hsl(42,86%,79%);  --btn-yellow-fg:hsl(36,84%,27%);
+  --btn-red-bg:hsl(2,68%,84%);      --btn-red-fg:hsl(2,60%,40%);
+  --btn-violet-bg:hsl(250,76%,86%); --btn-violet-fg:hsl(248,58%,48%);
+  --btn-theme-bg:#1c2a3b;           --btn-theme-fg:#d9e3f0;
   /* Semantic status / default colors (light) */
   --danger:#dc2626; --danger-strong:#e5564b; --success:#16a34a;
   --token-default:#5b86e0; --label-default:#e5564b;
@@ -66,7 +69,11 @@ a{color:inherit;text-decoration:none}
 }
 
 /* ---------- Layout ---------- */
-.wrap{max-width:1200px;margin:0 auto;padding:clamp(16px,2.4vw,28px);display:flex;flex-direction:column}
+.wrap{
+  max-width:1200px;margin:0 auto;padding:clamp(16px,2.4vw,28px);display:flex;flex-direction:column;
+  /* Breathing room above the home indicator on notched phones */
+  padding-bottom:calc(clamp(16px,2.4vw,28px) + env(safe-area-inset-bottom,0px));
+}
 .header{display:flex;align-items:center;gap:16px;margin-bottom:16px}
 .brand-wrap{position:sticky;top:14px;z-index:20}
 @media (max-width:1024px){.brand-wrap{position:static}}
@@ -123,6 +130,17 @@ a{color:inherit;text-decoration:none}
 /* Flat pastel status buttons skip the glossy top highlight */
 #newBracketBtn::before, #addTierBtn::before, #undoBtn::before,
 #trashClear::before,    #saveBtn::before,    #themeToggle::before{ display:none; }
+/* Optical centering for the control row: 3-column grid (1fr | label | 1fr)
+   puts the label dead-center of every button while the icon hangs at a fixed
+   gap to its left — labels line up as centered no matter their length. */
+.controls .btn{display:grid;grid-template-columns:1fr auto 1fr;column-gap:10px}
+.controls .btn .ico{justify-self:end}
+@media (max-width:480px){
+  /* Narrow buttons: long mode-specific labels ("Clear Quadrants") can wrap,
+     so center icon+label as one group — the 3-col optical grid would pin the
+     icon to the edge and push wrapped text off-balance. */
+  .controls .btn{display:inline-flex;justify-content:center;gap:8px;font-size:14px;padding:0 10px}
+}
 .btn:hover{transform:translateY(-1px)}
 .btn:active{transform:translateY(0);filter:brightness(.95)}
 /* Pastel-friendly hover/active: subtle colored halo + gentle darken, instead of brightness wash */
@@ -175,7 +193,8 @@ a{color:inherit;text-decoration:none}
 #newBracketBtn,#addTierBtn,#undoBtn,#trashClear,#saveBtn,#themeToggle{
   border-color:color-mix(in srgb, currentColor 35%, transparent);
 }
-#newBracketBtn{background:var(--btn-green-bg);color:var(--btn-green-fg);box-shadow:none}
+/* New Matchup gets its own teal so it's distinct from Add Tier's green */
+#newBracketBtn{background:var(--btn-teal-bg);color:var(--btn-teal-fg);box-shadow:none}
 #addTierBtn{background:var(--btn-green-bg);color:var(--btn-green-fg);box-shadow:none}
 #undoBtn{background:var(--btn-yellow-bg);color:var(--btn-yellow-fg);box-shadow:none}
 #trashClear{background:var(--btn-red-bg);color:var(--btn-red-fg);box-shadow:none}
@@ -303,10 +322,12 @@ body,.panel,.btn,.tier-drop,.tier-label,.tray-well,.action-bar,.action-icon,.act
 .action-color:active{transform:scale(.9)}
 @media (max-width:480px){
   .action-bar{height:44px;border-radius:12px}
-  .action-icon{width:42px;height:42px;flex:0 0 42px;border-radius:11px}
+  /* Keep tap targets at the 44px minimum on small screens */
+  .action-icon{width:44px;height:44px;flex:0 0 44px;border-radius:11px}
   .action-icon svg{width:18px;height:18px}
   .action-input{font-size:14px;padding:0 8px}
-  .action-color{width:28px;height:28px;flex:0 0 28px;margin:0 5px}
+  /* Native color input can't grow a pseudo hit-area — keep it big enough */
+  .action-color{width:34px;height:34px;flex:0 0 34px;margin:0 5px}
   .action-divider{height:24px}
 }
 
@@ -534,6 +555,8 @@ body,.panel,.btn,.tier-drop,.tier-label,.tray-well,.action-bar,.action-icon,.act
 .prompt-card-btn svg{display:block}
 @media(max-width:480px){
   .prompt-card-btn{width:28px;height:28px}
+  /* Invisible hit-area extension keeps the visual small but the target ~44px */
+  .prompt-card-btn::before{content:'';position:absolute;inset:-8px;border-radius:999px}
   .prompt-card-skip{margin-right:4px}
   .prompt-card-use{margin-left:4px}
 }
@@ -733,20 +756,20 @@ body,.panel,.btn,.tier-drop,.tier-label,.tray-well,.action-bar,.action-icon,.act
 .token:active,.token.dragging{cursor:grabbing}
 .token:active{transform:translateY(0)}
 .token:focus-visible{outline:3px solid var(--accent);outline-offset:4px}
-/* Chromatic-aberration rim: conic swirl of base-color shades under chromatic
-   film grain, confined to the outer edge by a radial cover of the solid base
-   color that melts into the flat center. A faint base tint stays over the ring
-   all the way to the edge so it reads as aberration, not a glossy bevel.
-   Layers top→bottom: cover, grain, swirl. */
+/* Tonal rim: conic swirl of base-color shades/tints under a whisper of film
+   grain, confined to the outer edge by a radial cover of the solid base color
+   that melts into the flat center. A strong base tint stays over the ring all
+   the way to the edge so it reads as depth in the same material — not a
+   prism fringe, not a glossy bevel. Layers top→bottom: cover, grain, swirl. */
 .token.aura::before{
   content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
   background:
     radial-gradient(circle closest-side at var(--aura-cx,50%) var(--aura-cy,50%),
-      var(--aura-base) 0 76%,
-      color-mix(in srgb, var(--aura-base) 85%, transparent) 84%,
-      color-mix(in srgb, var(--aura-base) 40%, transparent) 91%,
-      color-mix(in srgb, var(--aura-base) 18%, transparent) 100%),
-    url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='120'%20height='120'%3E%3Cfilter%20id='n'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.9'%20numOctaves='3'%20stitchTiles='stitch'/%3E%3CfeComponentTransfer%3E%3CfeFuncA%20type='linear'%20slope='0.6'%20intercept='0'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect%20width='120'%20height='120'%20filter='url(%23n)'/%3E%3C/svg%3E"),
+      var(--aura-base) 0 80%,
+      color-mix(in srgb, var(--aura-base) 88%, transparent) 87%,
+      color-mix(in srgb, var(--aura-base) 48%, transparent) 94%,
+      color-mix(in srgb, var(--aura-base) 26%, transparent) 100%),
+    url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='120'%20height='120'%3E%3Cfilter%20id='n'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.9'%20numOctaves='3'%20stitchTiles='stitch'/%3E%3CfeComponentTransfer%3E%3CfeFuncA%20type='linear'%20slope='0.35'%20intercept='0'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect%20width='120'%20height='120'%20filter='url(%23n)'/%3E%3C/svg%3E"),
     conic-gradient(from var(--aura-rot,0deg),
       var(--aura-c1,transparent) 0deg,
       var(--aura-c2,transparent) 52deg,
@@ -940,14 +963,24 @@ body.dragging-item #tray{
 
 /* ---------- Toast notification ---------- */
 .toast{
-  position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  position:fixed;bottom:calc(24px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);
   background:var(--success);color:#fff;padding:12px 24px;border-radius:12px;
   font-weight:700;z-index:9999;
+  display:flex;align-items:center;gap:14px;white-space:nowrap;
   box-shadow:0 4px 20px rgba(0,0,0,.3);
   animation:toast-in .3s cubic-bezier(.34,1.4,.64,1) forwards;
   transition:opacity .25s ease,transform .25s ease;
 }
 .toast.toast-error{background:var(--danger)}
+/* Inline lifeline button (e.g. "Undo" after a clear) */
+.toast-action{
+  background:rgba(255,255,255,.16);color:#fff;
+  border:1px solid rgba(255,255,255,.4);border-radius:8px;
+  padding:6px 14px;margin:-4px -8px -4px 0;
+  font:inherit;font-weight:800;cursor:pointer;
+  transition:background .15s ease;
+}
+.toast-action:hover{background:rgba(255,255,255,.28)}
 .toast.toast-out{
   opacity:0;transform:translateX(-50%) translateY(12px);
   pointer-events:none;
