@@ -1,34 +1,3 @@
-/* ---------- Polyfills ---------- */
-(function () {
-  if (!String.prototype.padStart) {
-    String.prototype.padStart = function (t, p) {
-      t = t >> 0; p = String(p || ' ');
-      if (this.length >= t) return String(this);
-      t = t - this.length;
-      if (t > p.length) p += p.repeat(Math.ceil(t / p.length));
-      return p.slice(0, t) + String(this);
-    };
-  }
-  if (!Element.prototype.matches) {
-    Element.prototype.matches = Element.prototype.msMatchesSelector ||
-      Element.prototype.webkitMatchesSelector ||
-      function (s) {
-        var m = (this.document || this.ownerDocument).querySelectorAll(s), i = m.length;
-        while (--i >= 0 && m.item(i) !== this) {}
-        return i > -1;
-      };
-  }
-  if (!Element.prototype.closest) {
-    Element.prototype.closest = function (s) {
-      var el = this;
-      if (!document.documentElement.contains(el)) return null;
-      do { if (el.matches(s)) return el; el = el.parentElement || el.parentNode; }
-      while (el && el.nodeType === 1);
-      return null;
-    };
-  }
-})();
-
 /* ---------- Event helper ---------- */
 var _supportsPassive = false;
 try {
@@ -51,7 +20,9 @@ function cssVar(name){ return getComputedStyle(document.documentElement).getProp
 function isSmall(){ return window.matchMedia && window.matchMedia('(max-width: 768px)').matches; }
 function debounce(fn, ms){ var t; return function(){ clearTimeout(t); t=setTimeout(fn, ms); }; }
 function animateBtn(btn){ if(!btn) return; btn.classList.remove('animate'); void btn.offsetWidth; btn.classList.add('animate'); setTimeout(function(){ btn.classList.remove('animate'); }, 300); }
-function replayGif(btn){ var img=btn&&btn.querySelector('.btn-gif'); if(!img) return; var src=img.getAttribute('src').split('?')[0]; img.src=''; img.src=src+'?t='+Date.now(); }
+// True when the user is typing in an input/textarea/contenteditable —
+// global shortcuts must never fire mid-edit.
+function isTypingTarget(t){ return !!(t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)); }
 
 /* ---------- Color helpers ---------- */
 function hexToRgb(hex){ var m=hex.match(/rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/); if(m) return {r:parseInt(m[1],10),g:parseInt(m[2],10),b:parseInt(m[3],10)}; var h=hex.replace('#',''); if(h.length===3){ h=h.split('').map(function(x){return x+x;}).join(''); } var n=parseInt(h,16); return {r:(n>>16)&255,g:(n>>8)&255,b:n&255}; }
@@ -67,46 +38,27 @@ function mixHex(aHex,bHex,t){ var a=hexToRgb(aHex), b=hexToRgb(bHex);
     Math.round(a.b+(b.b-a.b)*t)
   );
 }
-/* Boost saturation: convert RGB→HSL, bump S, convert back */
-function boostSaturation(hex, amount){
-  var c=hexToRgb(hex), r=c.r/255, g=c.g/255, b=c.b/255;
-  var max=Math.max(r,g,b), min=Math.min(r,g,b), d=max-min;
-  var h=0, s=0, l=(max+min)/2;
-  if(d!==0){
-    s=l>0.5?d/(2-max-min):d/(max-min);
-    if(max===r) h=((g-b)/d+(g<b?6:0))/6;
-    else if(max===g) h=((b-r)/d+2)/6;
-    else h=((r-g)/d+4)/6;
-  }
-  s=Math.min(1, s+amount);
-  // HSL→RGB
+/* HSL→hex (h 0-360, s/l 0-100). Pairs with colorToHsl below so every
+   saturation/lightness tweak shares one correct RGB↔HSL implementation. */
+function hslToHex(h,s,l){
+  h=(((h%360)+360)%360)/360; s=Math.max(0,Math.min(100,s))/100; l=Math.max(0,Math.min(100,l))/100;
   function hue2rgb(p,q,t){ if(t<0)t+=1; if(t>1)t-=1; if(t<1/6)return p+(q-p)*6*t; if(t<1/2)return q; if(t<2/3)return p+(q-p)*(2/3-t)*6; return p; }
-  var rr,gg,bb;
-  if(s===0){ rr=gg=bb=l; } else {
-    var q2=l<0.5?l*(1+s):l+s-l*s, p2=2*l-q2;
-    rr=hue2rgb(p2,q2,h+1/3); gg=hue2rgb(p2,q2,h); bb=hue2rgb(p2,q2,h-1/3);
+  var r,g,b;
+  if(s===0){ r=g=b=l; } else {
+    var q=l<0.5?l*(1+s):l+s-l*s, p=2*l-q;
+    r=hue2rgb(p,q,h+1/3); g=hue2rgb(p,q,h); b=hue2rgb(p,q,h-1/3);
   }
-  return rgbToHex(Math.round(rr*255),Math.round(gg*255),Math.round(bb*255));
+  return rgbToHex(Math.round(r*255),Math.round(g*255),Math.round(b*255));
+}
+/* Boost saturation by amount (0-1) */
+function boostSaturation(hex, amount){
+  var c=colorToHsl(hex);
+  return hslToHex(c.h, c.s + amount*100, c.l);
 }
 /* Reduce saturation by amount (0-1) */
 function desaturate(hex, amount){
-  var c=hexToRgb(hex), r=c.r/255, g=c.g/255, b=c.b/255;
-  var max=Math.max(r,g,b), min=Math.min(r,g,b), d=max-min;
-  var h=0, s=0, l=(max+min)/2;
-  if(d!==0){
-    s=l>0.5?d/(2-max-min):d/(max-min);
-    if(max===r) h=((g-b)/d+(g<b?6:0))/6;
-    else if(max===g) h=((b-r)/d+2)/6;
-    else h=((r-g)/d+4)/6;
-  }
-  s=Math.max(0, s-amount);
-  function hue2rgb(p,q,t){ if(t<0)t+=1; if(t>1)t-=1; if(t<1/6)return p+(q-p)*6*t; if(t<1/2)return q; if(t<2/3)return p+(q-p)*(2/3-t)*6; return p; }
-  var rr,gg,bb;
-  if(s===0){ rr=gg=bb=l; } else {
-    var q2=l<0.5?l*(1+s):l+s-l*s, p2=2*l-q2;
-    rr=hue2rgb(p2,q2,h+1/3); gg=hue2rgb(p2,q2,h); bb=hue2rgb(p2,q2,h-1/3);
-  }
-  return rgbToHex(Math.round(rr*255),Math.round(gg*255),Math.round(bb*255));
+  var c=colorToHsl(hex);
+  return hslToHex(c.h, c.s - amount*100, c.l);
 }
 
 /* ---------- Theme (button shows TARGET mode) ---------- */
@@ -127,6 +79,9 @@ function desaturate(hex, amount){
 
   function setTheme(mode){
     root.setAttribute('data-theme', mode); localStorage.setItem('tm_theme', mode);
+    // Keep browser chrome (address bar / status bar) in step with the theme
+    var metaTheme = document.querySelector('meta[name="theme-color"]');
+    if(metaTheme) metaTheme.setAttribute('content', mode==='light' ? '#f7f8fb' : '#0a0a0a');
     var target = mode==='dark' ? 'Light' : 'Dark';
     if(toggle){
       var icon=$('.theme-icon',toggle), text=$('.theme-text',toggle);
@@ -146,6 +101,7 @@ function desaturate(hex, amount){
         var cCol = isLight ? boostSaturation(color, 0.12) : desaturate(color, 0.12);
         if(_s < 20) cCol = isLight ? '#636363' : '#7d7d7d';
         chip.style.background = cCol;
+        chip.style.color = contrastColor(cCol);
       }
       if (drop && drop.dataset.manual!=='true'){
         drop.style.background = tintFrom(color);
@@ -239,7 +195,7 @@ function rowLabel(row){ var chip=row?row.querySelector('.label-chip'):null; if(!
 
 /* ---------- Chip label auto-sizer ---------- */
 /* Canvas-based measurement with word-wrap simulation.
-   Binary-searches for the largest font (10-48 px) where the label
+   Binary-searches for the largest font (12-48 px) where the label
    text fits inside the chip, allowing word-wrap across multiple lines
    but never breaking a word. */
 function fitChipLabel(chip){
@@ -336,7 +292,9 @@ function applyTierColor(node, color){
   // Grays (like UNKNOWN tier) get explicit themed values
   var _rgb = hexToRgb(color), _s = Math.max(_rgb.r,_rgb.g,_rgb.b)-Math.min(_rgb.r,_rgb.g,_rgb.b);
   if(_s < 20) chipColor = isLight ? '#636363' : '#7d7d7d';
-  if(chip){ chip.dataset.color = color; chip.style.background = chipColor; chip.style.color = '#ffffff'; }
+  // Text color follows the chip's luminance so light tier colors (yellows,
+  // pastels) get dark text instead of unreadable white.
+  if(chip){ chip.dataset.color = color; chip.style.background = chipColor; chip.style.color = contrastColor(chipColor); }
   if(del) del.style.background = darken(color, 0.35);
   if(drop){ drop.style.background = tintFrom(color); drop.dataset.manual = 'false'; }
   if(colorBtn){ var dot = colorBtn.querySelector('.color-dot-indicator'); if(dot) dot.style.background = colorPickDotColor(color); }
@@ -415,6 +373,14 @@ function createRow(cfg){
 
   on(del,'click', function(){
     var tokens = $$('.token', drop);
+    // Record before detaching so Undo can bring the tier (and its tokens) back
+    var nextRow = node.nextElementSibling;
+    pushHistory({
+      type: 'deleteRow',
+      element: node,
+      beforeId: nextRow ? ensureId(nextRow, 'row') : '',
+      tokens: tokens
+    });
     flipZones([drop,tray], function(){ tokens.forEach(function(t){ tray.appendChild(t); }); });
     node.remove(); uniformizeTierLabels(); refreshRadialOptions();
     scheduleSave();
@@ -436,11 +402,7 @@ var defaultTiers = [
 ];
 
 /* Fresh colors for new tiers (avoids default S/A/B/C/D colors) */
-var NEW_TIER_COLORS = ['#06b6d4','#e11d48','#16a34a','#f97316','#0ea5e9','#8b5cf6','#ec4899','#14b8a6','#f59e0b','#6366f1','#84cc16','#ef4444'];
-function shuffleNewTierColors(){
-  for(var i=NEW_TIER_COLORS.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var tmp=NEW_TIER_COLORS[i]; NEW_TIER_COLORS[i]=NEW_TIER_COLORS[j]; NEW_TIER_COLORS[j]=tmp; }
-}
-shuffleNewTierColors();
+var NEW_TIER_COLORS = shuffleArray(['#06b6d4','#e11d48','#16a34a','#f97316','#0ea5e9','#8b5cf6','#ec4899','#14b8a6','#f59e0b','#6366f1','#84cc16','#ef4444']);
 var tierIdx = 0;
 function nextTierColor(){ var c=NEW_TIER_COLORS[tierIdx%NEW_TIER_COLORS.length]; tierIdx++; return c; }
 
@@ -574,8 +536,28 @@ function _preloadGoogleFont(url, familyName, weight, cb){
       });
     }).catch(function(){}); // silent fail — export will use fallback font
 }
-_preloadGoogleFont('https://fonts.googleapis.com/css2?family=Bowlby+One&display=swap', 'Bowlby One', '400', function(css){ _bowlbyFontFaceCSS = css; });
-_preloadGoogleFont('https://fonts.googleapis.com/css2?family=Montserrat:wght@900&display=swap', 'Montserrat', '900', function(css){ _montserratFontFaceCSS = css; });
+/* Fonts are only needed for PNG export — fetch them lazily on the first Save
+   instead of downloading + base64-encoding every subset on every page load.
+   Resolves after both fonts load, or after a 5s timeout so a slow/offline
+   font CDN can never wedge the Save button (export falls back gracefully). */
+var _exportFontsPromise = null;
+function ensureExportFonts(){
+  if (_exportFontsPromise) return _exportFontsPromise;
+  function loadOne(url, assign){
+    return new Promise(function(resolve){
+      var settled = false;
+      function finish(){ if(!settled){ settled = true; resolve(); } }
+      _preloadGoogleFont(url, '', '', function(css){ assign(css); finish(); });
+      setTimeout(finish, 5000);
+    });
+  }
+  _exportFontsPromise = Promise.all([
+    loadOne('https://fonts.googleapis.com/css2?family=Bowlby+One&display=swap', function(css){ _bowlbyFontFaceCSS = css; }),
+    loadOne('https://fonts.googleapis.com/css2?family=Montserrat:wght@900&display=swap', function(css){ _montserratFontFaceCSS = css; })
+  ]);
+  return _exportFontsPromise;
+}
+window.ensureExportFonts = ensureExportFonts;
 // Memoize text-width lookups — the label fitters call these in tight
 // binary-search loops with repeating (text, weight, px) tuples. Cleared when
 // a web font loads (metrics change once the real font is available).
@@ -645,7 +627,10 @@ on(window,'resize', debounce(refitAllLabels, 120));
 function buildTokenBase(isCustom){
   var el = document.createElement('div');
   el.className='token token-enter'; el.id = uid(); el.setAttribute('tabindex','0'); el.setAttribute('role','listitem');
-  el.style.touchAction='none'; el.setAttribute('draggable','false');
+  // touch-action lives in CSS: tokens in tiers block native panning (drag to
+  // reorder), but tray tokens on small screens allow pan-y so the page can
+  // still scroll from the tray grid.
+  el.setAttribute('draggable','false');
   if (isCustom) el.dataset.custom = 'true';
   setTimeout(function(){ el.classList.remove('token-enter'); }, 300);
 
@@ -773,6 +758,32 @@ function recordDeletion(element, parentEl, nextSibling){
 }
 function undoLast(){
   var last = historyStack.pop(); if (!last) return;
+  var u0;
+  // Handle tier-row deletion undo — re-insert the row and pull its tokens back
+  if (last.type === 'deleteRow') {
+    var beforeRow = last.beforeId ? document.getElementById(last.beforeId) : null;
+    if (beforeRow && beforeRow.parentElement === board) board.insertBefore(last.element, beforeRow);
+    else board.appendChild(last.element);
+    var rowDrop = last.element.querySelector('.tier-drop');
+    if (rowDrop && last.tokens && last.tokens.length) {
+      // Only reclaim tokens still sitting in the tray — anything the user has
+      // since re-placed or deleted stays where it is.
+      var back = last.tokens.filter(function(t){ return t && t.parentElement === tray; });
+      if (back.length) flipZones([tray, rowDrop], function(){ back.forEach(function(t){ rowDrop.appendChild(t); }); });
+    }
+    uniformizeTierLabels(); refreshRadialOptions(); scheduleSave();
+    u0 = $('#undoBtn'); if (u0) u0.disabled = historyStack.length===0;
+    live('Restored deleted tier');
+    return;
+  }
+  // Handle quadrant placement undo — remove the pin, unhide the tray token
+  if (last.type === 'qplace') {
+    var qpin = document.getElementById(last.pinId);
+    if (qpin && typeof window.qRemovePinSilent === 'function') window.qRemovePinSilent(qpin);
+    u0 = $('#undoBtn'); if (u0) u0.disabled = historyStack.length===0;
+    live('Removed pin from quadrant chart');
+    return;
+  }
   // Handle deletion undo — re-insert the removed element
   if (last.type === 'delete') {
     var parent = document.getElementById(last.parentId);
@@ -891,6 +902,9 @@ function enablePointerDrag(node){
     if (isSmall()) return;
     if (e.button!==0) return;
     e.preventDefault();
+    // preventDefault suppresses the browser's click-focus — restore it so
+    // keyboard users who mix in mouse clicks keep a sensible focus position.
+    try { node.focus({preventScroll:true}); } catch(_){ }
     node.setPointerCapture(e.pointerId);
 
     originParent = node.parentElement; originNext = node.nextElementSibling;
@@ -967,6 +981,7 @@ function enablePointerDrag(node){
               else originParent.appendChild(node);
             });
             node.classList.add('q-placed-hidden');
+            pushHistory({type:'qplace', pinId: placed.id});
           }
         } else {
           var beforeTok = insertBeforeForPoint(zone,x,y,node);
@@ -1076,6 +1091,7 @@ function enableMouseTouchDragFallback(node){
             else originParent.appendChild(node);
           });
           node.classList.add('q-placed-hidden');
+          pushHistory({type:'qplace', pinId: placed2.id});
         }
       } else {
         var beforeTok=insertBeforeForPoint(zone,x,y,node);
@@ -1150,10 +1166,7 @@ function enableMobileTouchDrag(node){
     ghost.style.transform='translate3d('+(x-offsetX)+'px,'+(y-offsetY)+'px,0)';
     var lastInsertZone=null, lastInsertBefore=null, moved=false;
 
-    function move(ev){
-      x=ev.clientX; y=ev.clientY;
-      ghost.style.transform='translate3d('+(x-offsetX)+'px,'+(y-offsetY)+'px,0)';
-
+    function updateTarget(){
       // Hit-test through the ghost
       ghost.style.pointerEvents='none';
       var el=document.elementFromPoint(x,y);
@@ -1173,7 +1186,26 @@ function enableMobileTouchDrag(node){
         }
       }
     }
+    // rAF loop drives edge auto-scroll (finger held near a screen edge fires
+    // no pointermove events) and re-hit-tests when the page scrolls under a
+    // stationary finger — matching the desktop drag loop.
+    var raf=null, _lhx=null, _lhy=null, _lsY=window.pageYOffset;
+    function loop(){
+      raf=requestAnimationFrame(loop);
+      autoScrollForDrag(y);
+      var sy=window.pageYOffset;
+      if(x===_lhx && y===_lhy && sy===_lsY) return;
+      _lhx=x; _lhy=y; _lsY=sy;
+      updateTarget();
+    }
+    loop();
+
+    function move(ev){
+      x=ev.clientX; y=ev.clientY;
+      ghost.style.transform='translate3d('+(x-offsetX)+'px,'+(y-offsetY)+'px,0)';
+    }
     function up(){
+      cancelAnimationFrame(raf);
       try{node.releasePointerCapture(e.pointerId);}catch(_){}
       document.removeEventListener('pointermove',move,_supportsPassive?{passive:true}:false);
       document.removeEventListener('pointerup',up,false);
@@ -1265,12 +1297,91 @@ function enableRowReorder(labelArea, row){
     });
     _rowDragoverAttached = true;
   }
+
+  /* Touch path — HTML5 drag-and-drop doesn't exist on mobile. Long-press the
+     tier label (350ms without moving) to lift the row, then drag vertically;
+     rows swap live with a small FLIP animation. */
+  if (window.PointerEvent) {
+    on(labelArea,'pointerdown', function(e){
+      if (!isSmall()) return;
+      if (e.pointerType !== 'touch' && e.pointerType !== 'pen') return;
+      var chip = $('.label-chip', row);
+      if (document.activeElement === chip) return;
+      if (e.target.closest('.row-del') || e.target.closest('.color-pick-btn')) return;
+
+      var startX = e.clientX, startY = e.clientY, lastY = e.clientY;
+      var armed = false, pid = e.pointerId, raf = null;
+      var timer = setTimeout(function(){
+        armed = true;
+        vib(12);
+        row.classList.add('row-lifted');
+        document.body.classList.add('dragging-item');
+        try { labelArea.setPointerCapture(pid); } catch(_){}
+        loop();
+      }, 350);
+
+      function flipRows(mutate){
+        var allRows = $$('.tier-row', board), prev = new Map();
+        allRows.forEach(function(r){ prev.set(r, r.getBoundingClientRect().top); });
+        mutate();
+        allRows.forEach(function(r){
+          if (r === row) return;
+          var dy = prev.get(r) - r.getBoundingClientRect().top;
+          if (dy){
+            r.style.transition = 'none'; r.style.transform = 'translateY('+dy+'px)';
+            requestAnimationFrame(function(){
+              r.style.transition = 'transform 160ms ease'; r.style.transform = '';
+              setTimeout(function(){ r.style.transition = ''; }, 220);
+            });
+          }
+        });
+      }
+      function loop(){
+        raf = requestAnimationFrame(loop);
+        autoScrollForDrag(lastY);
+      }
+      function move(ev){
+        lastY = ev.clientY;
+        if (!armed){
+          // Finger wandered before the long-press fired — treat as scroll/tap
+          if (Math.hypot(ev.clientX - startX, ev.clientY - startY) > 8){ clearTimeout(timer); cleanup(false); }
+          return;
+        }
+        ev.preventDefault();
+        var after = _rowAfterY(board, ev.clientY);
+        if (after === row || after === row.nextElementSibling) return;
+        flipRows(function(){
+          if (after) board.insertBefore(row, after); else board.appendChild(row);
+        });
+        vib(4);
+      }
+      function upOrCancel(){
+        clearTimeout(timer);
+        cleanup(armed);
+      }
+      function cleanup(commit){
+        cancelAnimationFrame(raf);
+        document.removeEventListener('pointermove', move, {passive:false});
+        document.removeEventListener('pointerup', upOrCancel);
+        document.removeEventListener('pointercancel', upOrCancel);
+        try { labelArea.releasePointerCapture(pid); } catch(_){}
+        row.classList.remove('row-lifted');
+        document.body.classList.remove('dragging-item');
+        if (commit){
+          scheduleSave(); vib(6);
+          live('Moved tier "'+rowLabel(row)+'"');
+        }
+      }
+      document.addEventListener('pointermove', move, {passive:false});
+      document.addEventListener('pointerup', upOrCancel);
+      document.addEventListener('pointercancel', upOrCancel);
+    });
+  }
 }
 
 /* ---------- Radial picker (mobile) ---------- */
 var radial = $('#radialPicker');
 var radialOpts = radial?$('.radial-options', radial):null;
-var radialHighlight = radial?$('.radial-highlight', radial):null;
 var radialCloseBtn = radial?$('.radial-close', radial):null;
 var radialForToken = null;
 var _radialGeo = [];
@@ -1305,22 +1416,10 @@ function openRadial(token){
   });
   var N = labels.length; if (!N) return;
 
-  // Fixed center of screen — no dependency on token position
-  var vw = window.innerWidth;
-  var vh = window.innerHeight;
-  var cx = vw / 2;
-  var cy = vh / 2;
-
-  // Layout: evenly spaced buttons in a vertical list centered on screen
-  var BTN_H = 52, GAP = 10;
-  var totalH = N * BTN_H + (N - 1) * GAP;
-  var startY = cy - totalH / 2;
-
   _radialGeo = [];
 
-  radialCloseBtn.style.left = cx + 'px';
-  radialCloseBtn.style.top  = (startY + totalH + GAP + 26) + 'px';
-
+  // The options container is a centered, scrollable column (CSS .radial-list)
+  // so boards with many tiers never push options off-screen — they scroll.
   radialOpts.innerHTML = '';
   for (var j = 0; j < N; j++){
     (function(j){
@@ -1328,20 +1427,18 @@ function openRadial(token){
       var btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'radial-option radial-btn';
-      btn.style.left = cx + 'px';
-      btn.style.top  = (startY + j * (BTN_H + GAP) + BTN_H / 2) + 'px';
       btn.style.transitionDelay = (j * 20) + 'ms';
 
       var dot = document.createElement('span');
       dot.className = 'dot';
       dot.textContent = labels[j];
       dot.style.background = colors[j];
-      dot.style.color = '#ffffff';
+      dot.style.color = contrastColor(colors[j] || '#8b7dff');
       btn.appendChild(dot);
 
       function makeHot(){ updateHighlight(j); }
       on(btn, 'pointerenter', makeHot);
-      on(btn, 'pointerdown', function(e){ e.preventDefault(); makeHot(); });
+      on(btn, 'pointerdown', function(e){ makeHot(); });
       on(btn, 'click', function(){ selectRadialTarget(row); });
 
       radialOpts.appendChild(btn);
@@ -1349,8 +1446,32 @@ function openRadial(token){
     })(j);
   }
 
+  // Custom tokens get an explicit Delete action here — native scrolling now
+  // owns vertical swipes in the tray, so the old swipe-up gesture is gone.
+  if (token && token.dataset && token.dataset.custom === 'true'){
+    var delBtn = document.createElement('button');
+    delBtn.type = 'button';
+    delBtn.className = 'radial-option radial-btn radial-delete';
+    delBtn.style.transitionDelay = (N * 20) + 'ms';
+    var ddot = document.createElement('span');
+    ddot.className = 'dot';
+    ddot.textContent = 'Delete';
+    delBtn.appendChild(ddot);
+    on(delBtn, 'click', function(){
+      var tok = radialForToken;
+      closeRadial();
+      if (!tok || !tok.parentElement) return;
+      recordDeletion(tok, tok.parentElement, tok.nextElementSibling);
+      tok.remove();
+      scheduleSave();
+      vib(10);
+      live('Deleted token');
+    });
+    radialOpts.appendChild(delBtn);
+  }
+
   function backdrop(ev){
-    if(ev.target.closest('.radial-option') || ev.target.closest('.radial-close')) return;
+    if(ev.target.closest('.radial-option') || ev.target.closest('.radial-close') || ev.target.closest('.radial-options')) return;
     var x = (ev.touches && ev.touches[0] ? ev.touches[0].clientX : ev.clientX);
     var y = (ev.touches && ev.touches[0] ? ev.touches[0].clientY : ev.clientY);
     var prevPE = radial.style.pointerEvents; radial.style.pointerEvents = 'none';
@@ -1384,7 +1505,6 @@ function updateHighlight(index){
   for(var i = 0; i < _radialGeo.length; i++){
     _radialGeo[i].btn.classList.toggle('is-hot', i === index);
   }
-  if(radialHighlight){ radialHighlight.hidden = true; radialHighlight.dataset.index = String(index); }
 }
 if(radialCloseBtn){
   on(radialCloseBtn, 'click', function(e){ e.stopPropagation(); closeRadial(); }, false);
@@ -1440,7 +1560,8 @@ function closeRadial(){
 on(window, 'resize', refreshRadialOptions);
 
 /* ---------- Custom confirm modal ---------- */
-function showConfirm(title, msg, onConfirm){
+/* okLabel names the destructive action ("Clear", "Use Prompt", ...) */
+function showConfirm(title, msg, onConfirm, okLabel){
   var overlay = document.createElement('div');
   overlay.className = 'confirm-overlay';
   var card = document.createElement('div');
@@ -1465,7 +1586,7 @@ function showConfirm(title, msg, onConfirm){
   var okBtn = document.createElement('button');
   okBtn.className = 'btn confirm-ok';
   okBtn.type = 'button';
-  okBtn.textContent = 'Clear';
+  okBtn.textContent = okLabel || 'Clear';
 
   actions.appendChild(cancelBtn);
   actions.appendChild(okBtn);
@@ -1475,15 +1596,16 @@ function showConfirm(title, msg, onConfirm){
   overlay.appendChild(card);
   document.body.appendChild(overlay);
 
-  function close(){ overlay.remove(); }
+  // Always detach the Escape listener on close — no matter how the modal was
+  // dismissed — so repeated confirms don't pile up document-level handlers.
+  function close(){ overlay.remove(); document.removeEventListener('keydown', onKey); }
+  function onKey(e){ if(e.key==='Escape') close(); }
   on(cancelBtn, 'click', close);
   on(overlay, 'click', function(e){ if(e.target === overlay) close(); });
   on(okBtn, 'click', function(){
     if (okBtn.classList.contains('arming')) return;
     close(); onConfirm();
   });
-  // Esc to cancel
-  function onKey(e){ if(e.key==='Escape'){ close(); document.removeEventListener('keydown', onKey); } }
   document.addEventListener('keydown', onKey);
   // Safety: destructive OK button is disabled for 400ms so a double-Enter can't nuke the board
   okBtn.classList.add('arming');
@@ -1498,7 +1620,6 @@ function showConfirm(title, msg, onConfirm){
 
 /* ---------- Clear / Undo ---------- */
 on($('#trashClear'),'click', function(){
-  replayGif(this);
   // Battles mode: restart same category from round 1
   if(typeof window.isBattleMode === 'function' && window.isBattleMode()){
     if(typeof window.restartBattle === 'function') window.restartBattle();
@@ -1554,9 +1675,26 @@ on($('#saveBtn'),'click', function(){
     if(typeof window.saveBracket === 'function') window.saveBracket();
     return;
   }
-  replayGif(this);
   $$('.token.selected').forEach(function(t){ t.classList.remove('selected'); });
   $$('.dropzone.drag-over').forEach(function(z){ z.classList.remove('drag-over'); });
+
+  // Busy state up-front: the first export also fetches fonts, so the button
+  // reflects work from the moment it's tapped (and blocks double-clicks).
+  var saveBtn = $('#saveBtn');
+  var saveLabel = saveBtn ? saveBtn.querySelector('span:not(.ico)') : null;
+  var savedLabelText = saveLabel ? saveLabel.textContent : '';
+  if (saveBtn) {
+    saveBtn.setAttribute('data-state', 'saving');
+    saveBtn.disabled = true;
+    if (saveLabel) saveLabel.textContent = 'Saving…';
+  }
+  function resetSaveBtn(){
+    if (!saveBtn) return;
+    saveBtn.removeAttribute('data-state');
+    saveBtn.disabled = false;
+    if (saveLabel) saveLabel.textContent = savedLabelText;
+  }
+  ensureExportFonts().then(function(){
 
   var panel = $('#boardPanel');
 
@@ -1636,7 +1774,8 @@ on($('#saveBtn'),'click', function(){
     '  letter-spacing:0.5px !important;',
     '  line-height:1.1 !important;',
     '  text-align:center !important;',
-    '  color:#ffffff !important;',
+    // color intentionally NOT forced — each chip carries a contrast-checked
+    // inline color (dark text on light tier colors)
     '  padding:6px 8px !important;',
     '  margin:0 !important;',
     '  white-space:normal !important;',
@@ -1694,6 +1833,7 @@ on($('#saveBtn'),'click', function(){
 
   if (typeof htmlToImage === 'undefined' || typeof htmlToImage.toPng !== 'function') {
     cloneWrap.remove();
+    resetSaveBtn();
     showSaveToast('Export library failed to load — check your connection');
     return;
   }
@@ -1708,21 +1848,6 @@ on($('#saveBtn'),'click', function(){
   };
   var _exportFontCSS = (_bowlbyFontFaceCSS || '') + (_montserratFontFaceCSS || '');
   if (_exportFontCSS) exportOpts.fontEmbedCSS = _exportFontCSS;
-  // Show export-in-progress state on the Save button
-  var saveBtn = $('#saveBtn');
-  var saveLabel = saveBtn ? saveBtn.querySelector('span:not(.ico)') : null;
-  var savedLabelText = saveLabel ? saveLabel.textContent : '';
-  if (saveBtn) {
-    saveBtn.setAttribute('data-state', 'saving');
-    saveBtn.disabled = true;
-    if (saveLabel) saveLabel.textContent = 'Saving\u2026';
-  }
-  function resetSaveBtn(){
-    if (!saveBtn) return;
-    saveBtn.removeAttribute('data-state');
-    saveBtn.disabled = false;
-    if (saveLabel) saveLabel.textContent = savedLabelText;
-  }
   htmlToImage.toPng(clone, exportOpts).then(function(dataUrl){
     var boardTitle = ($('.board-title') || {}).textContent || '';
     var slug = boardTitle.trim().replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase();
@@ -1739,6 +1864,8 @@ on($('#saveBtn'),'click', function(){
     showSaveToast('Export failed — try again', true);
     if (window.DEBUG) console.error('PNG export error:', err);
   });
+
+  }); // end ensureExportFonts().then
 });
 
 /* ---------- Toast feedback ---------- */
@@ -1798,6 +1925,8 @@ on(document,'click', function(e){
 
 /* ---------- Keyboard quick-jump (1..N) ---------- */
 on(document,'keydown',function(e){
+  // Never hijack digits while the user is typing (title, tier names, inputs)
+  if (isTypingTarget(e.target)) return;
   var selected=$('.token.selected'); if(!selected) return;
   var n=parseInt(e.key,10); if(isNaN(n)||n<1) return;
 
@@ -1824,6 +1953,7 @@ on(document,'keydown',function(e){
       selected.classList.remove('selected');
       qz.appendChild(placed);
       selected.classList.add('q-placed-hidden');
+      pushHistory({type:'qplace', pinId: placed.id});
     } else {
       placed=selected;
       qz.appendChild(placed);
@@ -2033,6 +2163,24 @@ function gcImages(){
 }
 var _referencedImgKeys = {};
 
+/* Quadrant pins reuse the same IndexedDB image store: mint/reuse the source
+   token's image key so pin data persists as a tiny "idb:<key>" reference
+   instead of inlining megabytes of base64 into the tm_quadrant localStorage
+   entry (which would silently blow the quota and drop the whole save). */
+window.ensureImageKey = function(tok){
+  if (!tok || !tok.querySelector) return '';
+  var img = tok.querySelector('img');
+  if (!img) return '';
+  var src = img.src || '';
+  if (!_idbAvailable || src.indexOf('data:') !== 0) return tok.dataset.imgKey || '';
+  var key = tok.dataset.imgKey;
+  if (!key){ key = newImgKey(); tok.dataset.imgKey = key; idbPut(key, src)['catch'](function(){}); }
+  return key;
+};
+window.idbGetImage = function(key, cb){
+  idbGet(key).then(function(v){ cb(v || ''); })['catch'](function(){ cb(''); });
+};
+
 // Persist to localStorage, surfacing failures (quota exceeded, private mode)
 // instead of swallowing them. Toast is throttled so a failing autosave loop
 // doesn't spam the user.
@@ -2173,7 +2321,8 @@ function scheduleSave(){
 function updateTrayCount(){
   var badge = $('#trayCount');
   if (!badge || !tray) return;
-  var count = $$('.token', tray).length;
+  // Tokens placed on the quadrant are hidden in the tray — don't count them
+  var count = $$('.token', tray).filter(function(t){ return !t.classList.contains('q-placed-hidden'); }).length;
   var prev = parseInt(badge.textContent, 10) || 0;
   badge.textContent = count;
   badge.setAttribute('data-count', count);
@@ -2661,6 +2810,8 @@ function setCardStackPos(card, pos, animate){
   /* #1 data-stack-pos drives CSS elevation per stack depth */
   card.dataset.stackPos = pos;
   card.style.zIndex = 10 - pos;
+  // Only the interactive top card is tabbable — back cards are visual filler
+  card.setAttribute('tabindex', pos === 0 ? '0' : '-1');
   card.style.opacity = '1';
   if(pos===0){ card.style.transform='scale(1) translateY(0)'; }
   else if(pos===1){ card.style.transform='scale(.98) translateY(8px)'; }
@@ -2735,12 +2886,42 @@ function flyOffCard(card, dir){
   card.style.opacity = '0';
   vib(6);
 }
+/* Applying a prompt that carries its own tier set rebuilds the board — when
+   tokens are already placed, confirm before wiping their placements. */
+function confirmPromptUse(prompt, proceed){
+  var hasPlacements = !!document.querySelector('.tier-drop .token');
+  if (prompt && prompt.tiers && hasPlacements){
+    showConfirm(
+      'Use this prompt?',
+      'This prompt has its own tiers. Your current tiers will be replaced and placed tokens moved back to Image Storage.',
+      proceed,
+      'Use Prompt'
+    );
+  } else {
+    proceed();
+  }
+}
+/* Shared "use this card" path for tap / swipe-right / keyboard / check button.
+   springBackForConfirm returns a mid-gesture card to rest while the dialog is up. */
+function usePromptCard(card, springBackForConfirm){
+  if(!card) return;
+  var idx = parseInt(card.dataset.promptIndex, 10);
+  var prompt = TIER_PROMPTS[idx];
+  var needsConfirm = prompt && prompt.tiers && !!document.querySelector('.tier-drop .token');
+  if(needsConfirm && springBackForConfirm){
+    card.style.transition = 'transform .3s cubic-bezier(.2,0,0,1), opacity .25s ease';
+    card.style.transform = 'scale(1) translateY(0)';
+    card.style.opacity = '1';
+  }
+  confirmPromptUse(prompt, function(){
+    flyOffCard(card, 1);
+    setTimeout(function(){ applyPrompt(prompt); }, 250);
+  });
+}
 /* Use this card's prompt (check button / tap / swipe-right) */
 function useCard(card){
   if(!card || card.dataset.stackPos !== '0') return;
-  var idx = parseInt(card.dataset.promptIndex, 10);
-  flyOffCard(card, 1);
-  setTimeout(function(){ applyPrompt(TIER_PROMPTS[idx]); }, 250);
+  usePromptCard(card, true);
 }
 /* Skip this card and advance to the next (x button / swipe-left) */
 function skipCard(card){
@@ -2824,31 +3005,20 @@ function enableCardSwipe(card){
 
       if(!dragging){
         // Tap = use prompt (right-swipe shortcut)
-        card.style.transition = 'transform .5s cubic-bezier(.2,0,0,1), opacity .3s ease';
-        card.style.transform = 'translateX(120%) rotate(10deg)';
-        card.style.opacity = '0';
-        var pIdx = parseInt(card.dataset.promptIndex, 10);
-        vib(6);
-        setTimeout(function(){ applyPrompt(TIER_PROMPTS[pIdx]); }, 250);
+        usePromptCard(card, true);
         return;
       }
 
       if(Math.abs(dx) >= threshold){
         // Commit swipe
         var dir = dx > 0 ? 1 : -1;
-        var flyX = dir * (cardW + 100);
-        var flyRotate = dir * 16;
-        card.style.transition = 'transform .5s cubic-bezier(.2,0,0,1), opacity .3s ease';
-        card.style.transform = 'translateX('+flyX+'px) rotate('+flyRotate+'deg)';
-        card.style.opacity = '0';
         vib(6);
-
         if(dir > 0){
-          // Right swipe = apply prompt
-          var pIdx2 = parseInt(card.dataset.promptIndex, 10);
-          setTimeout(function(){ applyPrompt(TIER_PROMPTS[pIdx2]); }, 250);
+          // Right swipe = apply prompt (confirms first when destructive)
+          usePromptCard(card, true);
         } else {
           // Left swipe = skip — promote existing cards smoothly
+          flyOffCard(card, -1);
           advanceCardStack();
         }
       } else {
@@ -2868,30 +3038,14 @@ function enableCardSwipe(card){
 
   /* #10 Keyboard support — Enter/Space to apply, ArrowLeft to skip */
   on(card, 'keydown', function(e){
-    if(e.key === 'Enter' || e.key === ' '){
+    if(e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowRight'){
       e.preventDefault();
-      var pIdx = parseInt(card.dataset.promptIndex, 10);
-      card.style.transition = 'transform .5s cubic-bezier(.2,0,0,1), opacity .3s ease';
-      card.style.transform = 'translateX(120%) rotate(10deg)';
-      card.style.opacity = '0';
       vib(6);
-      setTimeout(function(){ applyPrompt(TIER_PROMPTS[pIdx]); }, 250);
+      usePromptCard(card);
     } else if(e.key === 'ArrowLeft'){
       e.preventDefault();
-      var cardW2 = card.offsetWidth || 300;
-      card.style.transition = 'transform .5s cubic-bezier(.2,0,0,1), opacity .3s ease';
-      card.style.transform = 'translateX('+(-(cardW2 + 100))+'px) rotate(-16deg)';
-      card.style.opacity = '0';
-      vib(6);
+      flyOffCard(card, -1);
       advanceCardStack();
-    } else if(e.key === 'ArrowRight'){
-      e.preventDefault();
-      var pIdx3 = parseInt(card.dataset.promptIndex, 10);
-      card.style.transition = 'transform .5s cubic-bezier(.2,0,0,1), opacity .3s ease';
-      card.style.transform = 'translateX(120%) rotate(10deg)';
-      card.style.opacity = '0';
-      vib(6);
-      setTimeout(function(){ applyPrompt(TIER_PROMPTS[pIdx3]); }, 250);
     }
   });
 }
@@ -3009,7 +3163,7 @@ function openPromptList(){
 
       item.addEventListener('click', function(){
         closePromptList();
-        applyPrompt(prompt);
+        confirmPromptUse(prompt, function(){ applyPrompt(prompt); });
       });
       list.appendChild(item);
     })(sortedIndices[si]);
@@ -3296,9 +3450,14 @@ document.addEventListener('DOMContentLoaded', function start(){
         ? 'Tap a token to choose a row. Drag placed tokens to reorder.'
         : 'Drag tokens into rows to rank them. Drag back to Image Storage to unplace.',
       'Tap a tier label to rename it. ' + (isSmall() ? 'Tap' : 'Hover over') + ' a label to change its color.',
+      isSmall()
+        ? 'Hold a tier label, then drag up or down to reorder tiers.'
+        : 'Drag a tier label up or down to reorder tiers.',
       'Tap a suggestion card to use it as your title, or type your own directly.',
       'Add images via upload, paste a URL, or use the built-in image search.',
-      (isSmall() ? 'Swipe up on' : 'Double-click') + ' a custom token to delete it.',
+      isSmall()
+        ? 'Tap a custom token and choose Delete to remove it.'
+        : 'Double-click a custom token to delete it.',
       'Use Save Tierlist to download your board as a PNG image.'
     ];
     tips.innerHTML = tipData.map(function(t){ return '<div class="tip">' + t + '</div>'; }).join('');

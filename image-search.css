@@ -128,9 +128,6 @@
   display:block;
   background:var(--surface);
 }
-.img-search-card.broken{opacity:.3;pointer-events:none}
-.img-search-card.broken img{display:none}
-
 /* checkmark */
 .img-search-check{
   position:absolute;top:6px;right:6px;

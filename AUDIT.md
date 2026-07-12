@@ -1,5 +1,11 @@
 # FiresideTierMaker — Full Project Audit
 
+> **Status:** Items **1–19** and **21–28** were fixed in the follow-up commits on
+> this branch (verified with an automated Playwright pass covering both desktop
+> and mobile viewports). Item **20** (favicon / og:image / manifest) was
+> intentionally left unaddressed. Line references below describe the code as it
+> was **at audit time** and may have shifted.
+
 Line-by-line review of `script.js`, `quadrant.js`, `battles.js`, `image-search.js`,
 `index.html`, `style.css`, `quadrant.css`, `battles.css`, `image-search.css`, plus the
 asset inventory. Findings are ranked most → least important. Each item was verified

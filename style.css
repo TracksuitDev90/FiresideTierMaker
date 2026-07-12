@@ -204,6 +204,15 @@ a{color:inherit;text-decoration:none}
 #themeToggle{background:var(--btn-theme-bg);color:var(--btn-theme-fg);font-weight:700;box-shadow:none}
 #themeToggle.animate .ico svg{transform:rotate(180deg)}
 
+/* Keyboard focus ring for the pastel control buttons — their ID-level
+   box-shadow:none outranks the global :focus-visible rule, so restate the
+   ring at matching specificity or keyboard users get no focus indicator. */
+#newBracketBtn:focus-visible,#addTierBtn:focus-visible,#undoBtn:focus-visible,
+#trashClear:focus-visible,#saveBtn:focus-visible,#themeToggle:focus-visible{
+  outline:none;
+  box-shadow:var(--focus-ring);
+}
+
 .btn.small{height:42px;padding:0 12px;border-radius:12px;font-weight:700}
 
 /* Undo disabled state — keep the yellow but drain most of its saturation so
@@ -265,8 +274,8 @@ body,.panel,.btn,.tier-drop,.tier-label,.tray-well,.action-bar,.action-icon,.act
   0%,100%{transform:scale(1)}
   50%{transform:scale(1.12)}
 }
-/* Upload icon chevron — signals this opens a menu */
-.img-btn-wrap{position:relative}
+/* Upload icon chevron — signals this opens a menu.
+   (.img-btn-wrap's position/flex live with the dropdown rules below.) */
 .img-btn-wrap::after{
   content:'';position:absolute;right:8px;bottom:10px;
   width:0;height:0;
@@ -421,6 +430,7 @@ body,.panel,.btn,.tier-drop,.tier-label,.tray-well,.action-bar,.action-icon,.act
 .help-drawer.open .help-tips .tip:nth-child(4){transition-delay:.2s}
 .help-drawer.open .help-tips .tip:nth-child(5){transition-delay:.25s}
 .help-drawer.open .help-tips .tip:nth-child(6){transition-delay:.3s}
+.help-drawer.open .help-tips .tip:nth-child(7){transition-delay:.35s}
 @media (max-width:480px){
   .help-tips{padding:4px 12px 14px;font-size:13px}
   .help-tips .tip{padding:6px 0}
@@ -727,6 +737,17 @@ body,.panel,.btn,.tier-drop,.tier-label,.tray-well,.action-bar,.action-icon,.act
   .color-pick-btn{opacity:.6;transform:scale(.9)}
   .row-del{transition:opacity 1.1s var(--ease-out)}
   .tier-label.show-tools .row-del{transition:opacity .18s var(--ease-spring)}
+  /* Long-press-to-reorder needs pointer events to keep flowing; the label
+     column is narrow, so losing scroll-start there is a fair trade. */
+  .tier-label{touch-action:none}
+}
+
+/* Row lifted during touch reorder (long-press on the tier label) */
+.tier-row.row-lifted{
+  position:relative;z-index:30;
+  transform:scale(1.015);
+  box-shadow:0 10px 30px rgba(0,0,0,.35);
+  transition:transform var(--dur-micro) var(--ease-standard),box-shadow var(--dur-micro) var(--ease-standard);
 }
 
 /* Empty-board hint */
@@ -751,6 +772,13 @@ body,.panel,.btn,.tier-drop,.tier-label,.tray-well,.action-bar,.action-icon,.act
   position:relative;width:99px;height:99px;border-radius:999px;background:var(--token-default);
   display:flex;align-items:center;justify-content:center;
   user-select:none;cursor:grab;transform:translateZ(0);transition:transform .08s ease;
+  touch-action:none;
+}
+/* Small screens: tray tokens allow vertical panning so a scroll gesture that
+   starts on the (mostly token-covered) tray grid still scrolls the page.
+   Tokens inside tiers keep touch-action:none for drag-to-reorder. */
+@media (max-width:768px){
+  #tray .token{touch-action:pan-y}
 }
 .token:hover{transform:translateY(-1px)}
 .token:active,.token.dragging{cursor:grabbing}
@@ -780,7 +808,7 @@ body,.panel,.btn,.tier-drop,.tier-label,.tray-well,.action-bar,.action-icon,.act
       var(--aura-c1,transparent) 360deg);
 }
 .token .label{
-  padding:7px;text-align:center;font-family:'Rubik',ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-weight:600;font-size:22px;line-height:1.1;
+  padding:7px;text-align:center;font-family:'Montserrat',ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-weight:900;font-size:22px;line-height:1.1;
   white-space:nowrap;
   display:flex;align-items:center;justify-content:center;
   width:100%;height:100%;overflow:hidden;
@@ -882,9 +910,20 @@ body.dragging-item #tray{
 /* ---------- Radial picker (mobile) ---------- */
 .radial{position:fixed;inset:0;z-index:60;pointer-events:auto;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
 .radial.hidden{display:none}
-.radial-options{position:relative;width:100%;height:100%}
-.radial-option{position:absolute;transform:translate(-50%,-50%)}
-.radial-option.radial-btn{width:min(280px, 70vw);height:auto}
+/* Centered, scrollable option column — boards with many tiers scroll instead
+   of pushing options off-screen. */
+.radial-options{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  display:flex;flex-direction:column;align-items:stretch;gap:10px;
+  width:min(280px,70vw);
+  max-height:calc(100vh - 190px);
+  max-height:calc(100dvh - 190px);
+  overflow-y:auto;padding:4px;
+  overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
+  scrollbar-width:thin;
+}
+.radial-option{flex:0 0 auto}
+.radial-option.radial-btn{width:100%;height:auto;padding:0;border:0;background:none}
 .radial-option .dot{
   width:100%;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;
   font-family:'Bowlby One',sans-serif;font-weight:400;font-size:22px;
@@ -895,9 +934,12 @@ body.dragging-item #tray{
 }
 .radial.visible .dot,.radial.show .dot{opacity:1;transform:scale(1)}
 .radial-option.is-hot .dot{border-color:#fff;transform:scale(1.04)}
-.radial-highlight{position:absolute;width:1px;height:1px;opacity:0}
+/* Explicit Delete action for custom tokens (replaces the old swipe gesture) */
+.radial-delete{margin-top:8px}
+.radial-delete .dot{background:var(--danger);color:#fff;font-size:18px}
 .radial-close{
-  position:absolute;transform:translate(-50%,-50%);
+  position:absolute;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));
+  transform:translateX(-50%);
   width:52px;height:52px;border-radius:999px;border:1px solid var(--border);
   background:var(--surface-high);color:var(--text);display:grid;place-items:center;
 }
