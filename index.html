@@ -11,11 +11,22 @@
   <meta property="og:description" content="Create and share custom tier lists. Drag and drop to rank your favorites." />
   <meta property="og:type" content="website" />
   <title>FIRESIDE tier maker</title>
+  <!-- Apply the saved theme before first paint so light-mode users don't get a dark flash -->
+  <script>
+    (function(){
+      try {
+        var t = localStorage.getItem('tm_theme');
+        if (!t) t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', t);
+        var m = document.querySelector('meta[name="theme-color"]');
+        if (m) m.setAttribute('content', t === 'light' ? '#f7f8fb' : '#0a0a0a');
+      } catch (e) {}
+    })();
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Bowlby+One&display=swap" rel="stylesheet" />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@900&display=swap" rel="stylesheet" />
-  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="quadrant.css" />
   <link rel="stylesheet" href="image-search.css" />
@@ -104,7 +115,7 @@
       <div class="controls">
         <button id="newBracketBtn" class="btn" type="button">
           <span class="ico">
-            <img class="btn-icon" src="icons/tournament-bracket-svgrepo-com.svg" alt="" width="22" height="22" />
+            <svg viewBox="0 0 76 76" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M 17.4167,58.5833L 17.4167,53.8333L 22.1667,53.8333L 22.1667,45.9167L 17.4167,45.9167L 17.4167,41.1667L 26.9167,41.1667L 26.9167,47.5L 30.0833,47.5L 30.0833,28.5L 26.9167,28.5L 26.9167,34.8333L 17.4167,34.8334L 17.4167,30.0833L 22.1667,30.0833L 22.1667,22.1667L 17.4167,22.1667L 17.4167,17.4167L 26.9167,17.4167L 26.9167,23.75L 34.8333,23.75L 34.8333,34.8333L 41.1667,34.8333L 41.1667,23.75L 49.0833,23.75L 49.0833,17.4167L 58.5833,17.4167L 58.5833,22.1667L 53.8333,22.1667L 53.8333,30.0833L 58.5833,30.0833L 58.5833,34.8333L 49.0833,34.8333L 49.0833,28.5L 45.9167,28.5L 45.9167,47.5L 49.0833,47.5L 49.0833,41.1667L 58.5833,41.1666L 58.5833,45.9167L 53.8333,45.9167L 53.8333,53.8333L 58.5833,53.8333L 58.5833,58.5833L 49.0833,58.5833L 49.0833,52.25L 41.1667,52.25L 41.1667,41.1667L 34.8333,41.1667L 34.8333,52.25L 26.9167,52.25L 26.9167,58.5833L 17.4167,58.5833 Z"/></svg>
           </span>
           <span>New Matchup</span>
         </button>
@@ -156,8 +167,7 @@
 
     <!-- Mobile radial picker -->
     <div id="radialPicker" class="radial hidden" aria-hidden="true">
-      <div class="radial-options"></div>
-      <div class="radial-highlight" hidden></div>
+      <div class="radial-options radial-list"></div>
       <button class="radial-close" type="button" aria-label="Close">
         <svg viewBox="0 0 24 24"><path d="M18.3 5.71L12 12.01l-6.29-6.3-1.41 1.42L10.59 13.4l-6.3 6.3 1.42 1.41 6.29-6.29 6.29 6.29 1.41-1.41-6.3-6.3 6.3-6.29-1.41-1.42z"/></svg>
       </button>

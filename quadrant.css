@@ -32,10 +32,6 @@
   color:var(--text);
 }
 .mode-toggle-btn svg{width:16px;height:16px;flex-shrink:0}
-.mode-toggle-btn .mode-toggle-icon{width:20px;height:20px;flex-shrink:0;filter:invert(1);opacity:.55}
-.mode-toggle-btn.active .mode-toggle-icon{filter:invert(1);opacity:1}
-:root[data-theme="light"] .mode-toggle-btn:not(.active) .mode-toggle-icon{filter:none;opacity:.55}
-:root[data-theme="light"] .mode-toggle-btn.active .mode-toggle-icon{filter:invert(1);opacity:1}
 
 /* ---------- Quadrant board container ---------- */
 #quadrantBoard{display:none}
@@ -64,10 +60,6 @@
   opacity:.5;
 }
 
-.q-labels-row{
-  display:flex;align-items:center;justify-content:center;
-  gap:4px;
-}
 .q-labels-col{
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:4px;
@@ -100,8 +92,6 @@
 }
 .q-top-label{grid-column:2;grid-row:1;justify-self:center;padding-bottom:6px}
 .q-bottom-label{grid-column:2;grid-row:3;justify-self:center;padding-top:6px}
-.q-left-label{grid-column:1;grid-row:2;align-self:center;padding-right:6px}
-.q-right-label{grid-column:3;grid-row:2;align-self:center;padding-left:6px}
 
 .q-grid-wrap{
   grid-column:2;grid-row:2;

@@ -19,14 +19,27 @@
   var qBoard = null;        // #quadrantBoard element
   var qZones = [];          // the four .q-zone elements [tl, tr, bl, br]
   var qAxisLabels = {};     // {top, bottom, left, right} contenteditable elements
-  var _qPlacedTokenIds = {}; // track which tray tokens are placed in quadrant (by token id)
 
-  /* Default quadrant colors — hues match the control-button palette */
+  /* Stable content key linking a quadrant pin to its source tray token.
+     DOM ids are regenerated on every page load, so persistence must key on
+     content: the name for text tokens, the IndexedDB image key (or URL) for
+     image tokens. */
+  function trayTokenKey(tok){
+    if(!tok || !tok.querySelector) return '';
+    var lbl = tok.querySelector('.label');
+    if(lbl) return 'n:' + lbl.textContent;
+    var img = tok.querySelector('img');
+    if(img) return 'i:' + (tok.dataset.imgKey || img.src || img.alt || tok.id);
+    return tok.id || '';
+  }
+
+  /* Default quadrant accent colors — hues match the control-button palette.
+     (Zone background tints live in quadrant.css.) */
   var Q_DEFAULTS = {
-    tl: { bg: 'hsla(2,78%,58%,.12)',    solid: '#e74640' },
-    tr: { bg: 'hsla(140,55%,48%,.12)',  solid: '#37be64' },
-    bl: { bg: 'hsla(42,92%,55%,.12)',   solid: '#f6b723' },
-    br: { bg: 'hsla(250,75%,64%,.12)',  solid: '#755ee8' }
+    tl: { solid: '#e74640' },
+    tr: { solid: '#37be64' },
+    bl: { solid: '#f6b723' },
+    br: { solid: '#755ee8' }
   };
 
   var Q_POSITIONS = ['tl','tr','bl','br'];
@@ -296,9 +309,16 @@
     // Record before detaching so Undo can re-insert it (tray visibility resyncs
     // automatically via the zone MutationObserver on re-insert).
     if(zone && typeof recordDeletion === 'function') recordDeletion(pin, zone, pin.nextElementSibling);
-    var srcId = pin.dataset.sourceTokenId;
     pin.remove();
-    if(srcId) unhideTrayToken(srcId);
+    syncTrayVisibility();
+    scheduleQuadrantSave();
+  }
+
+  /* Remove a pin without recording history — used by Undo itself when it
+     rolls back a tray → quadrant placement. */
+  function removeQPinSilent(pin){
+    pin.remove();
+    syncTrayVisibility();
     scheduleQuadrantSave();
   }
 
@@ -310,64 +330,54 @@
     if(lbl){
       pin = buildQuadrantPin(lbl.textContent, original.style.background || '#7da7ff', false);
     } else if(img){
+      // Mint/reuse the token's IndexedDB image key so the pin can persist as
+      // a tiny reference instead of inlining base64 into localStorage.
+      if(typeof window.ensureImageKey === 'function') window.ensureImageKey(original);
       pin = buildQuadrantPin(img.alt, null, true, img.src, img.alt);
+      if(original.dataset.imgKey) pin.dataset.imgKey = original.dataset.imgKey;
     } else {
       return null;
     }
-    // Track source token for tray hiding
+    // Content key survives reloads (DOM ids don't); id kept for same-session use
+    pin.dataset.sourceKey = trayTokenKey(original);
     pin.dataset.sourceTokenId = original.id || '';
     return pin;
   }
 
-  /* ---------- Tray token hiding/showing ---------- */
-  function hideTrayToken(tokenId){
-    if(!tokenId) return;
-    _qPlacedTokenIds[tokenId] = true;
-    var tok = document.getElementById(tokenId);
-    if(tok && tok.closest('#tray')){
-      tok.classList.add('q-placed-hidden');
-    }
-    if(typeof updateTrayCount === 'function') updateTrayCount();
-  }
-
-  function unhideTrayToken(tokenId){
-    if(!tokenId) return;
-    delete _qPlacedTokenIds[tokenId];
-    var tok = document.getElementById(tokenId);
-    if(tok){
-      tok.classList.remove('q-placed-hidden');
-    }
-    if(typeof updateTrayCount === 'function') updateTrayCount();
-  }
-
+  /* ---------- Tray token hiding/showing ----------
+     One source of truth: count pins per source key, hide that many matching
+     tray tokens. Runs after any pin add/remove (also via MutationObserver),
+     so callers never juggle ids. Count-based so two same-named tokens only
+     hide as many copies as are actually placed. */
   function syncTrayVisibility(){
-    // Rebuild _qPlacedTokenIds from current quadrant pins
-    _qPlacedTokenIds = {};
+    var counts = {};
     qZones.forEach(function(z){
       $$('.q-pin',z).forEach(function(pin){
-        var srcId = pin.dataset.sourceTokenId;
-        if(srcId) _qPlacedTokenIds[srcId] = true;
+        var k = pin.dataset.sourceKey;
+        if(k) counts[k] = (counts[k]||0) + 1;
       });
     });
-    // Apply visibility
     if(tray){
       $$('.token',tray).forEach(function(tok){
-        if(_qPlacedTokenIds[tok.id]){
+        var k = trayTokenKey(tok);
+        if(counts[k] > 0){
+          counts[k]--;
           tok.classList.add('q-placed-hidden');
         } else {
           tok.classList.remove('q-placed-hidden');
         }
       });
     }
+    if(typeof updateTrayCount === 'function') updateTrayCount();
   }
 
   function clearAllTrayHiding(){
-    _qPlacedTokenIds = {};
     if(tray){
       $$('.token.q-placed-hidden',tray).forEach(function(tok){
         tok.classList.remove('q-placed-hidden');
       });
     }
+    if(typeof updateTrayCount === 'function') updateTrayCount();
   }
 
   /* ---------- Free-placement drag within quadrant zones ---------- */
@@ -408,7 +418,8 @@
         if(!placed) return;
         selected.classList.remove('selected');
         zone.appendChild(placed);
-        hideTrayToken(selected.id);
+        syncTrayVisibility();
+        if(typeof pushHistory === 'function') pushHistory({type:'qplace', pinId: placed.id});
       } else if(isPin){
         // Moving pin between quadrant zones — undoable like a drag move
         var fromZone = selected.closest('.q-zone');
@@ -743,6 +754,9 @@
     if(undoBtn){
       var undoTxt = undoBtn.querySelector('span:last-child');
       if(undoTxt) undoTxt.textContent = 'Undo';
+      // Battles manages its own undo state; tier/quadrant undo reflects the
+      // shared history stack — resync so a battle session's state doesn't stick.
+      if(!isB) undoBtn.disabled = !(window.historyStack && window.historyStack.length);
     }
     try{localStorage.setItem('tm_mode', mode);}catch(e){}
     if(typeof updateTrayCount === 'function') updateTrayCount();
@@ -769,11 +783,13 @@
           left: pin.style.left || '10%',
           top: pin.style.top || '10%',
           name: pin.dataset.pinName || '',
-          sourceTokenId: pin.dataset.sourceTokenId || ''
+          sourceKey: pin.dataset.sourceKey || ''
         };
         if(pin.dataset.pinType === 'image'){
           entry.type = 'image';
-          entry.src = pin.dataset.pinSrc || '';
+          // Persist a tiny IndexedDB reference when we have one — inlining
+          // base64 here can blow the localStorage quota and lose the save.
+          entry.src = pin.dataset.imgKey ? ('idb:' + pin.dataset.imgKey) : (pin.dataset.pinSrc || '');
           entry.alt = pin.dataset.pinAlt || '';
         } else {
           entry.type = 'name';
@@ -822,7 +838,30 @@
             if(!td || typeof td !== 'object') return;
             var pin = null;
             if(td.type === 'image'){
-              pin = buildQuadrantPin(td.alt || td.name, null, true, td.src, td.alt);
+              var src = td.src || '';
+              if(src.indexOf('idb:') === 0){
+                // Image bytes live in IndexedDB — build the pin now, fill the
+                // dot in asynchronously, keep the key for the next save.
+                var key = src.slice(4);
+                pin = buildQuadrantPin(td.alt || td.name, null, true, '', td.alt);
+                pin.dataset.imgKey = key;
+                (function(p){
+                  if(typeof window.idbGetImage === 'function'){
+                    window.idbGetImage(key, function(dataUrl){
+                      if(!dataUrl) return;
+                      var dot = p.querySelector('.q-pin-dot');
+                      if(dot){
+                        dot.style.backgroundImage = 'url(' + dataUrl + ')';
+                        dot.style.backgroundSize = 'cover';
+                        dot.style.backgroundPosition = 'center';
+                      }
+                      p.dataset.pinSrc = dataUrl;
+                    });
+                  }
+                })(pin);
+              } else {
+                pin = buildQuadrantPin(td.alt || td.name, null, true, src, td.alt);
+              }
             } else {
               pin = buildQuadrantPin(td.name, td.color || '#7da7ff', false);
             }
@@ -830,7 +869,12 @@
               pin.style.position = 'absolute';
               pin.style.left = td.left || '10%';
               pin.style.top = td.top || '10%';
-              if(td.sourceTokenId) pin.dataset.sourceTokenId = td.sourceTokenId;
+              // Content key links pin ↔ tray token across reloads. Derive it
+              // for saves from before sourceKey existed (name pins only —
+              // legacy image pins can't be matched reliably).
+              if(td.sourceKey) pin.dataset.sourceKey = td.sourceKey;
+              else if(td.type !== 'image' && td.name) pin.dataset.sourceKey = 'n:' + td.name;
+              else if(td.type === 'image' && pin.dataset.imgKey) pin.dataset.sourceKey = 'i:' + pin.dataset.imgKey;
               qZones[i].appendChild(pin);
               bringToFront(pin);
             }
@@ -917,7 +961,25 @@
   }
 
   function exportQuadrantPng(){
-    if(typeof replayGif === 'function') replayGif($('#saveBtn'));
+    // Busy state mirrors the tier export: blocks double-clicks and shows
+    // progress while fonts fetch (first export) and the PNG renders.
+    var saveBtn = $('#saveBtn');
+    if(saveBtn && saveBtn.getAttribute('data-state') === 'saving') return;
+    var saveLabel = saveBtn ? saveBtn.querySelector('span:not(.ico)') : null;
+    var savedLabelText = saveLabel ? saveLabel.textContent : '';
+    if(saveBtn){
+      saveBtn.setAttribute('data-state','saving');
+      saveBtn.disabled = true;
+      if(saveLabel) saveLabel.textContent = 'Saving…';
+    }
+    function resetSaveBtn(){
+      if(!saveBtn) return;
+      saveBtn.removeAttribute('data-state');
+      saveBtn.disabled = false;
+      if(saveLabel) saveLabel.textContent = savedLabelText;
+    }
+    var fontsReady = (typeof window.ensureExportFonts === 'function') ? window.ensureExportFonts() : Promise.resolve();
+    fontsReady.then(function(){
 
     var panel = $('#boardPanel');
     var cloneWrap = document.createElement('div');
@@ -987,6 +1049,7 @@
 
     if(typeof htmlToImage === 'undefined' || typeof htmlToImage.toPng !== 'function'){
       cloneWrap.remove();
+      resetSaveBtn();
       if(typeof showSaveToast === 'function') showSaveToast('Export library failed to load');
       return;
     }
@@ -1010,12 +1073,16 @@
       a.click();
       setTimeout(function(){a.remove();},300);
       cloneWrap.remove();
+      resetSaveBtn();
       if(typeof showSaveToast === 'function') showSaveToast('Saved!');
     }).catch(function(err){
       cloneWrap.remove();
+      resetSaveBtn();
       if(typeof showSaveToast === 'function') showSaveToast('Export failed — try again', true);
       if(window.DEBUG) console.error('Quadrant PNG export error:', err);
     });
+
+    }); // end fontsReady.then
   }
 
   /* ---------- Keyboard control: nudge, cross-quadrant move, select, delete ---------- */
@@ -1134,13 +1201,10 @@
       delete radial._backdropHandler;
     }
 
-    var vw = window.innerWidth;
-    var vh = window.innerHeight;
-    var cx = vw/2;
-    var cy = vh/2;
+    // Remember the trigger so focus can return when the picker closes
+    if(typeof _radialLastFocus !== 'undefined' && !_radialLastFocus) _radialLastFocus = document.activeElement;
 
     var radialOpts = $('.radial-options', radial);
-    var radialCloseBtn = $('.radial-close', radial);
     if(!radialOpts) return;
 
     var labels = ['Top Left','Top Right','Center','Bottom Left','Bottom Right'];
@@ -1154,30 +1218,21 @@
     });
 
     var N = 5;
-    var BTN_H = 52, GAP = 10;
-    var totalH = N*BTN_H + (N-1)*GAP;
-    var startY = cy - totalH/2;
 
-    if(radialCloseBtn){
-      radialCloseBtn.style.left = cx+'px';
-      radialCloseBtn.style.top = (startY + totalH + GAP + 26)+'px';
-    }
-
+    // Options render into the shared centered, scrollable column (.radial-list)
     radialOpts.innerHTML = '';
     for(var j=0;j<N;j++){
       (function(j){
         var btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'radial-option radial-btn';
-        btn.style.left = cx+'px';
-        btn.style.top = (startY + j*(BTN_H+GAP)+BTN_H/2)+'px';
         btn.style.transitionDelay = (j*20)+'ms';
 
         var dot = document.createElement('span');
         dot.className = 'dot';
         dot.textContent = labels[j];
         dot.style.background = colors[j];
-        dot.style.color = '#ffffff';
+        dot.style.color = (typeof contrastColor === 'function') ? contrastColor(colors[j]) : '#ffffff';
         btn.appendChild(dot);
 
         on(btn,'click',function(){
@@ -1207,7 +1262,8 @@
             if(!placed) return;
             token.classList.remove('selected');
             zone.appendChild(placed);
-            hideTrayToken(token.id);
+            syncTrayVisibility();
+            if(typeof pushHistory === 'function') pushHistory({type:'qplace', pinId: placed.id});
           } else {
             placed = token;
             zone.appendChild(placed);
@@ -1232,9 +1288,31 @@
       })(j);
     }
 
+    // Custom tokens get an explicit Delete action, matching the tier radial
+    if(token && token.dataset && token.dataset.custom === 'true'){
+      var delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'radial-option radial-btn radial-delete';
+      delBtn.style.transitionDelay = (N*20)+'ms';
+      var ddot = document.createElement('span');
+      ddot.className = 'dot';
+      ddot.textContent = 'Delete';
+      delBtn.appendChild(ddot);
+      on(delBtn,'click',function(){
+        if(typeof closeRadial === 'function') closeRadial();
+        if(!token || !token.parentElement) return;
+        if(typeof recordDeletion === 'function') recordDeletion(token, token.parentElement, token.nextElementSibling);
+        token.remove();
+        if(typeof scheduleSave === 'function') scheduleSave();
+        vib(10);
+        live('Deleted token');
+      });
+      radialOpts.appendChild(delBtn);
+    }
+
     // Backdrop handler
     function backdrop(ev){
-      if(ev.target.closest('.radial-option') || ev.target.closest('.radial-close')) return;
+      if(ev.target.closest('.radial-option') || ev.target.closest('.radial-close') || ev.target.closest('.radial-options')) return;
       if(typeof closeRadial === 'function') closeRadial();
     }
     radial.addEventListener('pointerdown', backdrop, {passive:false});
@@ -1317,7 +1395,7 @@
         '  <span>Quadrant</span>',
         '</button>',
         '<button class="mode-toggle-btn" data-mode="battles" type="button">',
-        '  <img class="mode-toggle-icon" src="icons/tournament-bracket-svgrepo-com.svg" alt="" width="20" height="20" />',
+        '  <svg viewBox="0 0 76 76" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M 17.4167,58.5833L 17.4167,53.8333L 22.1667,53.8333L 22.1667,45.9167L 17.4167,45.9167L 17.4167,41.1667L 26.9167,41.1667L 26.9167,47.5L 30.0833,47.5L 30.0833,28.5L 26.9167,28.5L 26.9167,34.8333L 17.4167,34.8334L 17.4167,30.0833L 22.1667,30.0833L 22.1667,22.1667L 17.4167,22.1667L 17.4167,17.4167L 26.9167,17.4167L 26.9167,23.75L 34.8333,23.75L 34.8333,34.8333L 41.1667,34.8333L 41.1667,23.75L 49.0833,23.75L 49.0833,17.4167L 58.5833,17.4167L 58.5833,22.1667L 53.8333,22.1667L 53.8333,30.0833L 58.5833,30.0833L 58.5833,34.8333L 49.0833,34.8333L 49.0833,28.5L 45.9167,28.5L 45.9167,47.5L 49.0833,47.5L 49.0833,41.1667L 58.5833,41.1666L 58.5833,45.9167L 53.8333,45.9167L 53.8333,53.8333L 58.5833,53.8333L 58.5833,58.5833L 49.0833,58.5833L 49.0833,52.25L 41.1667,52.25L 41.1667,41.1667L 34.8333,41.1667L 34.8333,52.25L 26.9167,52.25L 26.9167,58.5833L 17.4167,58.5833 Z"/></svg>',
         '  <span>Versus</span>',
         '</button>'
       ].join('');
@@ -1371,5 +1449,6 @@
   window.qPlacePinAt = function(zone,pinEl,clientX,clientY){ placePinAtPoint(zone,pinEl,clientX,clientY); };
   window.clearQuadrants = function(){ clearQuadrants(); };
   window.cloneTokenForQuadrant = function(tok){ return cloneTokenForQuadrant(tok); };
+  window.qRemovePinSilent = function(pin){ removeQPinSilent(pin); };
 
 })();

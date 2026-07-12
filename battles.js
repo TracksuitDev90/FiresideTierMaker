@@ -90,13 +90,9 @@
   var battleState = null; // { tokens:[], category:'', rounds:[], currentRound:0, left:null, right:null, winner:null }
 
   /* ---------- Helpers ---------- */
+  // Non-mutating shuffle — delegates to the shared Fisher-Yates in script.js
   function shuffle(arr){
-    var a = arr.slice();
-    for(var i=a.length-1;i>0;i--){
-      var j=Math.floor(Math.random()*(i+1));
-      var tmp=a[i]; a[i]=a[j]; a[j]=tmp;
-    }
-    return a;
+    return shuffleArray(arr.slice());
   }
 
   function pickCategory(){
@@ -520,9 +516,42 @@
   /* ---------- Save Bracket as PNG ---------- */
   function saveBracket(){
     var resultsEl = document.getElementById('battleResults');
-    if(!resultsEl || typeof htmlToImage === 'undefined') return;
+    if(!resultsEl) return;
 
-    var bgColor = getComputedStyle(document.documentElement).getPropertyValue('--surface').trim() || '#121212';
+    // The bracket only exists once a champion is crowned — exporting earlier
+    // would download a blank image.
+    if(!battleState || !battleState.winner){
+      if(typeof window.showSaveToast === 'function') window.showSaveToast('Finish all ' + TOTAL_ROUNDS + ' rounds first — then save the bracket', true);
+      else if(typeof live === 'function') live('Finish the battle before saving the bracket.');
+      return;
+    }
+
+    if(typeof htmlToImage === 'undefined' || typeof htmlToImage.toPng !== 'function'){
+      if(typeof window.showSaveToast === 'function') window.showSaveToast('Export library failed to load — check your connection', true);
+      return;
+    }
+
+    // Busy state mirrors the other exports: blocks double-clicks, shows progress
+    var saveBtn = document.getElementById('saveBtn');
+    if(saveBtn && saveBtn.getAttribute('data-state') === 'saving') return;
+    var saveLabel = saveBtn ? saveBtn.querySelector('span:not(.ico)') : null;
+    var savedLabelText = saveLabel ? saveLabel.textContent : '';
+    if(saveBtn){
+      saveBtn.setAttribute('data-state','saving');
+      saveBtn.disabled = true;
+      if(saveLabel) saveLabel.textContent = 'Saving…';
+    }
+    function resetSaveBtn(){
+      if(!saveBtn) return;
+      saveBtn.removeAttribute('data-state');
+      saveBtn.disabled = false;
+      if(saveLabel) saveLabel.textContent = savedLabelText;
+    }
+
+    var fontsReady = (typeof window.ensureExportFonts === 'function') ? window.ensureExportFonts() : Promise.resolve();
+    fontsReady.then(function(){
+
+    var bgColor = getComputedStyle(document.documentElement).getPropertyValue('--surface').trim() || '#0a0a0a';
 
     // Clone into an offscreen container for clean capture
     var cloneWrap = document.createElement('div');
@@ -549,12 +578,13 @@
       '.bracket-token-name{ font-size:13px !important; }',
       '.champion-circle{ box-shadow:none !important; border:4px solid #8b7dff !important; }',
       '.bracket-winner .bracket-circle{ box-shadow:none !important; }',
-      '.battle-label{ font-family:"Segoe UI",system-ui,-apple-system,sans-serif !important; font-weight:800 !important; }',
-      '.champion-title{ font-family:"Segoe UI",system-ui,-apple-system,sans-serif !important; font-weight:900 !important; }',
-      '.bracket-title{ font-family:"Segoe UI",system-ui,-apple-system,sans-serif !important; font-weight:700 !important; }',
-      '.bracket-round-num{ font-family:"Segoe UI",system-ui,-apple-system,sans-serif !important; font-weight:700 !important; }',
-      '.bracket-vs{ font-family:"Segoe UI",system-ui,-apple-system,sans-serif !important; font-weight:700 !important; }',
-      '.champion-subtitle{ font-family:"Segoe UI",system-ui,-apple-system,sans-serif !important; font-weight:700 !important; }'
+      // One typeface across the app: Montserrat everywhere tokens/names appear
+      '.battle-label{ font-family:"Montserrat",ui-sans-serif,system-ui,-apple-system,sans-serif !important; font-weight:800 !important; }',
+      '.champion-title{ font-family:"Montserrat",ui-sans-serif,system-ui,-apple-system,sans-serif !important; font-weight:900 !important; }',
+      '.bracket-title{ font-family:"Montserrat",ui-sans-serif,system-ui,-apple-system,sans-serif !important; font-weight:700 !important; }',
+      '.bracket-round-num{ font-family:"Montserrat",ui-sans-serif,system-ui,-apple-system,sans-serif !important; font-weight:700 !important; }',
+      '.bracket-vs{ font-family:"Montserrat",ui-sans-serif,system-ui,-apple-system,sans-serif !important; font-weight:700 !important; }',
+      '.champion-subtitle{ font-family:"Montserrat",ui-sans-serif,system-ui,-apple-system,sans-serif !important; font-weight:700 !important; }'
     ];
     if(typeof _bowlbyFontFaceCSS === 'string'){
       exportCSS.unshift(_bowlbyFontFaceCSS);
@@ -568,28 +598,37 @@
     cloneWrap.appendChild(clone);
     document.body.appendChild(cloneWrap);
 
-    htmlToImage.toPng(clone, {
+    var exportOpts = {
       backgroundColor: bgColor,
       pixelRatio: 2
-    }).then(function(dataUrl){
+    };
+    var _bFontCSS = (typeof _bowlbyFontFaceCSS === 'string' ? _bowlbyFontFaceCSS : '') + (typeof _montserratFontFaceCSS === 'string' ? _montserratFontFaceCSS : '');
+    if(_bFontCSS) exportOpts.fontEmbedCSS = _bFontCSS;
+    htmlToImage.toPng(clone, exportOpts).then(function(dataUrl){
       cloneWrap.remove();
+      resetSaveBtn();
       var link = document.createElement('a');
       link.download = 'bracket-results.png';
       link.href = dataUrl;
       link.click();
+      if(typeof window.showSaveToast === 'function') window.showSaveToast('Saved!');
       if(typeof live === 'function') live('Bracket saved!');
     }).catch(function(err){
       cloneWrap.remove();
+      resetSaveBtn();
       if(window.DEBUG) console.error('Bracket save failed:', err);
       if(typeof window.showSaveToast === 'function') window.showSaveToast('Export failed — try again', true);
       else if(typeof live === 'function') live('Save failed. Try again.');
     });
+
+    }); // end fontsReady.then
   }
 
   /* ---------- Undo (go back one round) ---------- */
   function battleUndo(){
     if(!battleState || battleState.currentRound <= 0) return;
-    if(battleState.winner){
+    var fromResults = !!battleState.winner;
+    if(fromResults){
       // Was showing results, go back to last matchup
       battleState.winner = null;
       document.getElementById('battleResults').classList.add('hidden');
@@ -599,7 +638,10 @@
 
     var lastRound = battleState.rounds.pop();
     battleState.currentRound--;
-    battleState.poolIndex--;
+    // The final pick never advanced poolIndex (no next opponent was drawn),
+    // so only rewind it when undoing a mid-battle round — otherwise the next
+    // opponent after replaying would repeat.
+    if(!fromResults) battleState.poolIndex--;
 
     // Restore previous matchup
     battleState.left = lastRound.left;
