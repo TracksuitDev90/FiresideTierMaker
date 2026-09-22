@@ -12,6 +12,21 @@ repeats a fixed item. Items are numbered continuously so you can pick them by nu
 
 **Legend:** ✅ reproduced in the browser · 📐 measured · 🔍 clear from code (not reproduced)
 
+> **Status:** Items **1–14, 16–30 and 33–41** are fixed on this branch. Each fix
+> was checked by re-running the original reproduction in Chromium, on desktop and
+> on iPhone-sized touch emulation, plus a desktop/phone regression pass.
+> Not addressed (not selected): **15, 31, 32, 42, 43, 44**. Line references below
+> describe the code at review time.
+>
+> Three more bugs turned up while fixing, and were fixed too:
+> - **Quadrant pin drags jumped the page to the top.** The drag lock set
+>   `overflow:hidden` on `<html>`/`<body>`, both `height:100%`. On phones this
+>   dropped pins in the wrong quadrant.
+> - **The desktop delete ✕ on custom tokens never worked.** Drag pointer capture
+>   swallowed its click. The same applied to the new adjust-image button.
+> - **Holding a token near a screen edge started auto-scrolling before the finger
+>   moved.** Touch auto-scroll now waits for movement and uses a slimmer edge.
+
 ---
 
 ## 🔴 Critical — data loss or a core flow broken

@@ -111,7 +111,6 @@
   width:100%;
   max-width:220px;
 }
-.battle-card:hover,
 .battle-card:focus-visible{
   border-color:var(--accent);
   background:rgba(139,125,255,.08);
@@ -153,10 +152,21 @@
   transition:border-color .2s ease, box-shadow .2s ease;
   position:relative;
 }
-.battle-card:hover .battle-circle,
 .battle-card:focus-visible .battle-circle{
   border-color:var(--accent);
   box-shadow:0 0 20px rgba(139,125,255,.35);
+}
+@media (hover:hover){
+  .battle-card:hover{
+    border-color:var(--accent);
+    background:rgba(139,125,255,.08);
+    transform:scale(1.05);
+    box-shadow:0 4px 24px rgba(139,125,255,.2);
+  }
+  .battle-card:hover .battle-circle{
+    border-color:var(--accent);
+    box-shadow:0 0 20px rgba(139,125,255,.35);
+  }
 }
 .battle-circle img{
   width:100%;height:100%;
@@ -166,7 +176,8 @@
 }
 .battle-label{
   font-family:'Montserrat',ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-  font-weight:800;
+  font-weight:900;
+  z-index:1; /* above the textured rim */
   font-size:20px;
   text-align:center;
   white-space:nowrap;
@@ -194,6 +205,24 @@
   white-space:nowrap;
 }
 
+/* Header / progress hide while the empty state shows */
+.battle-header.hidden,#battleProgress.hidden{display:none}
+
+/* ---------- Empty state (fewer than 2 people) ---------- */
+.battle-empty{
+  display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;
+  padding:36px 20px 28px;color:var(--muted);
+}
+.battle-empty.hidden{display:none}
+.battle-empty-icon{
+  width:64px;height:64px;border-radius:999px;display:grid;place-items:center;
+  font-family:'Bowlby One',sans-serif;font-size:22px;color:var(--accent);
+  background:color-mix(in srgb, var(--accent) 12%, transparent);
+  margin-bottom:6px;
+}
+.battle-empty-title{margin:0;font-size:18px;font-weight:900;color:var(--text)}
+.battle-empty-sub{margin:0;font-size:14px;max-width:320px;line-height:1.45}
+
 /* ---------- Actions ---------- */
 .battle-actions{
   display:flex;
@@ -215,7 +244,7 @@
   text-align:center;
   padding:20px 16px 16px;
   margin-bottom:16px;
-  background:linear-gradient(135deg, rgba(139,125,255,.1), rgba(216,255,63,.08));
+  background:linear-gradient(135deg, color-mix(in srgb, var(--accent) 10%, transparent), color-mix(in srgb, var(--neon) 8%, transparent));
   border-radius:20px;
   border:2px solid var(--accent);
 }

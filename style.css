@@ -39,13 +39,25 @@ a{color:inherit;text-decoration:none}
   --btn-yellow-bg:hsl(42,88%,77%);  --btn-yellow-fg:hsl(38,82%,29%);
   --btn-red-bg:hsl(2,70%,81%);      --btn-red-fg:hsl(2,62%,38%);
   --btn-violet-bg:hsl(250,78%,84%); --btn-violet-fg:hsl(248,56%,46%);
-  --btn-theme-bg:hsl(42,36%,87%);   --btn-theme-fg:hsl(35,36%,18%);
   /* Semantic status / default colors */
   --danger:#ef4444; --danger-strong:#f87171; --success:#22c55e;
   --token-default:#7da7ff; --label-default:#ff6b6b;
   --tray-well-bg:#0e0e0e; --tray-well-border:rgba(255,255,255,.06);
   --input-bg:var(--card);
   --dot-color:#fff;
+  /* Board sizing — tokens, tier label column and spacing. Phones shrink these
+     (see Layout) so a tier fits 3 people per row; exports force desktop sizes. */
+  --tok:99px; --tok-cell:105px;
+  --tier-label-w:180px; --tier-gap:12px;
+  --drop-pad:12px; --drop-gap:12px;
+}
+@media (max-width:768px){ :root{ --tier-label-w:130px } }
+@media (max-width:600px){
+  :root{
+    --tok:clamp(52px,15.5vw,72px); --tok-cell:var(--tok);
+    --tier-label-w:clamp(72px,24vw,96px); --tier-gap:8px;
+    --drop-pad:6px; --drop-gap:6px;
+  }
 }
 :root[data-theme="light"]{
   --surface:#f7f8fb; --surface-raised:#fff; --card:#f0f3f8;
@@ -59,7 +71,6 @@ a{color:inherit;text-decoration:none}
   --btn-yellow-bg:hsl(42,86%,79%);  --btn-yellow-fg:hsl(36,84%,27%);
   --btn-red-bg:hsl(2,68%,84%);      --btn-red-fg:hsl(2,60%,40%);
   --btn-violet-bg:hsl(250,76%,86%); --btn-violet-fg:hsl(248,58%,48%);
-  --btn-theme-bg:#1c2a3b;           --btn-theme-fg:#d9e3f0;
   /* Semantic status / default colors (light) */
   --danger:#dc2626; --danger-strong:#e5564b; --success:#16a34a;
   --token-default:#5b86e0; --label-default:#e5564b;
@@ -74,7 +85,19 @@ a{color:inherit;text-decoration:none}
   /* Breathing room above the home indicator on notched phones */
   padding-bottom:calc(clamp(16px,2.4vw,28px) + env(safe-area-inset-bottom,0px));
 }
-.header{display:flex;align-items:center;gap:16px;margin-bottom:16px}
+.header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px}
+/* Theme switch: a quiet round icon in the header, not a board action */
+.theme-toggle{
+  flex:0 0 auto;width:44px;height:44px;border-radius:999px;
+  display:grid;place-items:center;
+  background:var(--surface-raised);color:var(--text);
+  border:1px solid var(--border);box-shadow:var(--shadow);
+  transition:transform var(--dur-micro) var(--ease-standard),border-color var(--dur-short) var(--ease-standard),background var(--dur-short) var(--ease-standard);
+}
+.theme-toggle .ico{width:22px;height:22px;display:grid;place-items:center}
+.theme-toggle .ico svg{transition:transform .25s ease}
+@media (hover:hover){ .theme-toggle:hover{border-color:color-mix(in srgb, var(--accent) 45%, var(--border));transform:translateY(-1px)} }
+.theme-toggle:active{transform:scale(.94)}
 .brand-wrap{position:sticky;top:14px;z-index:20}
 @media (max-width:1024px){.brand-wrap{position:static}}
 .brand{font-family:'Bowlby One',sans-serif;font-weight:400;letter-spacing:1px;color:var(--brand);font-size:clamp(31px,5.5vw,51px);line-height:1;margin:0}
@@ -106,8 +129,7 @@ a{color:inherit;text-decoration:none}
 .tray-count[data-count="0"]{background:var(--muted);opacity:.5;box-shadow:none}
 
 /* ---------- Controls row ---------- */
-.controls{display:grid;gap:12px;grid-template-columns:repeat(5,minmax(0,1fr))}
-@media (max-width:900px){.controls{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.controls{display:grid;gap:12px;grid-template-columns:repeat(4,minmax(0,1fr))}
 @media (max-width:720px){
   .controls{grid-template-columns:1fr 1fr}
 }
@@ -129,27 +151,29 @@ a{color:inherit;text-decoration:none}
 }
 /* Flat pastel status buttons skip the glossy top highlight */
 #newBracketBtn::before, #addTierBtn::before, #undoBtn::before,
-#trashClear::before,    #saveBtn::before,    #themeToggle::before{ display:none; }
+#trashClear::before,    #saveBtn::before{ display:none; }
 /* Optical centering for the control row: 3-column grid (1fr | label | 1fr)
    puts the label dead-center of every button while the icon hangs at a fixed
    gap to its left — labels line up as centered no matter their length. */
 .controls .btn{display:grid;grid-template-columns:1fr auto 1fr;column-gap:10px}
 .controls .btn .ico{justify-self:end}
 @media (max-width:480px){
-  /* Narrow buttons: long mode-specific labels ("Clear Quadrants") can wrap,
+  /* Narrow buttons: long mode-specific labels ("Clear Bracket") can wrap,
      so center icon+label as one group — the 3-col optical grid would pin the
      icon to the edge and push wrapped text off-balance. */
   .controls .btn{display:inline-flex;justify-content:center;gap:8px;font-size:14px;padding:0 10px}
 }
-.btn:hover{transform:translateY(-1px)}
+@media (hover:hover){.btn:hover{transform:translateY(-1px)}}
 .btn:active{transform:translateY(0);filter:brightness(.95)}
 /* Pastel-friendly hover/active: subtle colored halo + gentle darken, instead of brightness wash */
-#newBracketBtn:hover,#addTierBtn:hover,#undoBtn:hover,
-#trashClear:hover,#saveBtn:hover,#themeToggle:hover{
-  box-shadow:0 0 0 2px color-mix(in srgb, currentColor 22%, transparent);
+@media (hover:hover){
+  #newBracketBtn:hover,#addTierBtn:hover,#undoBtn:hover,
+  #trashClear:hover,#saveBtn:hover{
+    box-shadow:0 0 0 2px color-mix(in srgb, currentColor 22%, transparent);
+  }
 }
 #newBracketBtn:active,#addTierBtn:active,#undoBtn:active,
-#trashClear:active,#saveBtn:active,#themeToggle:active{filter:brightness(.96)}
+#trashClear:active,#saveBtn:active{filter:brightness(.96)}
 .btn .ico{width:22px;height:22px;flex-shrink:0;display:grid;place-items:center}
 .btn .ico svg{width:22px;height:22px;fill:currentColor;transition:transform .25s ease,fill 0s}
 /* Colored-button icons inherit button's currentColor (pastel fg token) */
@@ -157,16 +181,11 @@ a{color:inherit;text-decoration:none}
 #undoBtn .ico svg,
 #trashClear .ico svg,
 #saveBtn .ico svg{fill:none;stroke:currentColor}
-/* Theme toggle icon: inherit pastel fg token */
-#themeToggle .ico svg{fill:currentColor}
 
 /* PNG button icons — fixed size, theme-aware color via filter */
 .btn-icon{width:22px;height:22px;pointer-events:none;object-fit:contain;transition:filter .2s ease}
-/* Theme toggle moon: warm dark tint for dark mode (on cream bg), yellow glow for light mode (on navy bg) */
-#themeToggle .moon-icon{filter:brightness(.15) sepia(.6) saturate(1.5) hue-rotate(-5deg)}
-:root[data-theme="light"] #themeToggle .moon-icon{
-  filter:brightness(0) invert(1) sepia(1) saturate(4) hue-rotate(3deg) brightness(.92);
-}
+/* Theme toggle moon (shown in light mode): a soft ink-colored glyph */
+#themeToggle .moon-icon{filter:brightness(0) opacity(.78)}
 #themeToggle .sun-svg{width:22px;height:22px}
 
 /* Sun shine animation — in dark mode when sun is visible, brighter than moon */
@@ -177,20 +196,13 @@ a{color:inherit;text-decoration:none}
 #themeToggle .sun-svg{animation:sun-shine 2.5s ease-in-out infinite}
 :root[data-theme="light"] #themeToggle .sun-svg{animation:none}
 
-/* Moon glow animation — only in light mode when moon is visible */
-@keyframes moon-glow{
-  0%,100%{filter:brightness(0) invert(1) sepia(1) saturate(4) hue-rotate(3deg) brightness(.92) drop-shadow(0 0 2px rgba(255,210,80,.0))}
-  50%{filter:brightness(0) invert(1) sepia(1) saturate(4) hue-rotate(3deg) brightness(.92) drop-shadow(0 0 6px rgba(255,210,80,.55))}
-}
-#themeToggle .moon-icon{animation:none}
-:root[data-theme="light"] #themeToggle .moon-icon{animation:moon-glow 3s ease-in-out infinite}
 
 /* Button icon animations on click */
 #undoBtn.animate .ico svg{transform:rotate(-360deg);transition:transform .4s ease}
 #addTierBtn.animate .ico svg{transform:scale(1.2)}
 
 /* Pastel status-badge color scheme — flat fills with matching-hue outline */
-#newBracketBtn,#addTierBtn,#undoBtn,#trashClear,#saveBtn,#themeToggle{
+#newBracketBtn,#addTierBtn,#undoBtn,#trashClear,#saveBtn{
   border-color:color-mix(in srgb, currentColor 35%, transparent);
 }
 /* New Matchup gets its own teal so it's distinct from Add Tier's green */
@@ -200,8 +212,6 @@ a{color:inherit;text-decoration:none}
 #trashClear{background:var(--btn-red-bg);color:var(--btn-red-fg);box-shadow:none}
 #saveBtn{background:var(--btn-violet-bg);color:var(--btn-violet-fg);box-shadow:none}
 
-/* Theme toggle: vibe varies per theme (warm cream in dark mode, deep navy in light mode) */
-#themeToggle{background:var(--btn-theme-bg);color:var(--btn-theme-fg);font-weight:700;box-shadow:none}
 #themeToggle.animate .ico svg{transform:rotate(180deg)}
 
 /* Keyboard focus ring for the pastel control buttons — their ID-level
@@ -215,11 +225,11 @@ a{color:inherit;text-decoration:none}
 
 .btn.small{height:42px;padding:0 12px;border-radius:12px;font-weight:700}
 
-/* Undo disabled state — keep the yellow but drain most of its saturation so
-   it reads as inactive without turning muddy brown. Full saturation returns
-   the moment it's enabled. */
+/* Undo disabled state — a clean outlined "nothing to undo" look instead of a
+   desaturated (muddy) yellow. Full color returns the moment it's enabled. */
 #undoBtn:disabled{
-  filter:saturate(.22);opacity:.72;cursor:not-allowed;pointer-events:none;
+  background:transparent;color:var(--muted);border-color:var(--border);
+  opacity:.75;cursor:not-allowed;pointer-events:none;
 }
 #undoBtn:disabled:hover{transform:none;box-shadow:none}
 
@@ -323,11 +333,19 @@ body,.panel,.btn,.tier-drop,.tier-label,.tray-well,.action-bar,.action-icon,.act
 .action-input::placeholder{color:var(--muted);opacity:.6}
 .action-color{
   width:40px;height:40px;flex:0 0 40px;
+  -webkit-appearance:none;appearance:none;
+  padding:0;background:transparent;overflow:hidden;
   border-radius:999px;border:2px solid var(--border);
   cursor:pointer;margin:0 6px;
   transition:transform .1s ease,border-color .15s ease;
 }
-.action-color:hover{transform:scale(1.1);border-color:var(--accent)}
+/* Render the chosen color as a clean inset circle (the native control is a
+   square swatch inside a box) */
+.action-color::-webkit-color-swatch-wrapper{padding:3px}
+.action-color::-webkit-color-swatch{border:none;border-radius:999px}
+.action-color::-moz-color-swatch{border:none;border-radius:999px}
+.action-color::-moz-focus-inner{border:0}
+@media (hover:hover){.action-color:hover{transform:scale(1.1);border-color:var(--accent)}}
 .action-color:active{transform:scale(.9)}
 @media (max-width:480px){
   .action-bar{height:44px;border-radius:12px}
@@ -450,14 +468,22 @@ body,.panel,.btn,.tier-drop,.tier-label,.tray-well,.action-bar,.action-icon,.act
 
 /* Prompt card stack */
 .prompt-stack-wrap{
-  display:flex;justify-content:center;
-  margin:6px 0 28px;
-  padding-bottom:18px;
+  display:flex;flex-direction:column;align-items:center;
+  margin:6px 0 20px;
 }
+.prompt-stack-wrap .prompt-cards{margin-bottom:26px}
+.prompt-browse{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:8px 14px;min-height:36px;border-radius:999px;
+  font-size:13px;font-weight:700;color:var(--muted);
+  background:transparent;border:1px solid var(--border);
+  transition:color var(--dur-micro) var(--ease-standard),border-color var(--dur-micro) var(--ease-standard),background var(--dur-micro) var(--ease-standard);
+}
+@media (hover:hover){ .prompt-browse:hover{color:var(--text);border-color:color-mix(in srgb, var(--accent) 45%, var(--border));background:color-mix(in srgb, var(--accent) 8%, transparent)} }
 .prompt-stack-wrap.hidden{display:none}
 .prompt-cards{
   position:relative;
-  width:min(92%,420px);height:64px;
+  width:min(92%,440px);height:72px;
 }
 .prompt-card{
   position:absolute;top:0;left:0;width:100%;height:100%;
@@ -466,7 +492,8 @@ body,.panel,.btn,.tier-drop,.tier-label,.tray-well,.action-bar,.action-icon,.act
   display:flex;align-items:center;justify-content:center;gap:8px;
   padding:0 20px;
   cursor:grab;user-select:none;-webkit-user-select:none;
-  touch-action:none;
+  /* Vertical swipes scroll the page; horizontal swipes are ours (skip/use) */
+  touch-action:pan-y;
   /* #1 Material elevation — layered outward shadows (resting: level 1) */
   box-shadow:
     0 1px 3px rgba(0,0,0,.12),
@@ -503,7 +530,7 @@ body,.panel,.btn,.tier-drop,.tier-label,.tray-well,.action-bar,.action-icon,.act
   pointer-events:none;z-index:1;
 }
 /* #5 Hover — 8% state layer */
-.prompt-card:hover::before{opacity:.08}
+@media (hover:hover){.prompt-card:hover::before{opacity:.08}}
 /* #5 Press / active — 12% state layer */
 .prompt-card:active::before{opacity:.12}
 .prompt-card:active{cursor:grabbing}
@@ -530,8 +557,10 @@ body,.panel,.btn,.tier-drop,.tier-label,.tray-well,.action-bar,.action-icon,.act
 
 .prompt-card-text{
   position:relative;z-index:2;
-  font-size:17px;font-weight:700;color:var(--text);
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  font-size:16px;font-weight:700;color:var(--text);line-height:1.2;
+  /* Wrap onto up to two lines (three on phones) instead of truncating */
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;
+  overflow:hidden;overflow-wrap:break-word;
   text-align:center;flex:1;min-width:0;
 }
 .prompt-card-badge{
@@ -542,7 +571,7 @@ body,.panel,.btn,.tier-drop,.tier-label,.tray-well,.action-bar,.action-icon,.act
 /* Explicit skip / use buttons on the top card — additive to swipe + keyboard */
 .prompt-card-btn{
   position:relative;z-index:3;flex:0 0 auto;
-  width:30px;height:30px;border-radius:999px;
+  width:34px;height:34px;border-radius:999px;
   display:inline-flex;align-items:center;justify-content:center;
   background:color-mix(in srgb, currentColor 14%, transparent);
   color:currentColor;opacity:0;
@@ -555,18 +584,21 @@ body,.panel,.btn,.tier-drop,.tier-label,.tray-well,.action-bar,.action-icon,.act
   -webkit-tap-highlight-color:transparent;
 }
 .prompt-card[data-stack-pos="0"] .prompt-card-btn{opacity:.75}
-.prompt-card[data-stack-pos="0"] .prompt-card-btn:hover{
-  opacity:1;transform:scale(1.08);
-  background:color-mix(in srgb, currentColor 22%, transparent);
+@media (hover:hover){
+  .prompt-card[data-stack-pos="0"] .prompt-card-btn:hover{
+    opacity:1;transform:scale(1.08);
+    background:color-mix(in srgb, currentColor 22%, transparent);
+  }
 }
 .prompt-card[data-stack-pos="0"] .prompt-card-btn:active{transform:scale(.94)}
 .prompt-card-skip{margin-right:6px}
 .prompt-card-use{margin-left:6px}
 .prompt-card-btn svg{display:block}
+/* Invisible hit-area extension: visual stays compact, the target is ~44px */
+.prompt-card-btn::before{content:'';position:absolute;inset:-5px;border-radius:999px}
 @media(max-width:480px){
-  .prompt-card-btn{width:28px;height:28px}
-  /* Invisible hit-area extension keeps the visual small but the target ~44px */
-  .prompt-card-btn::before{content:'';position:absolute;inset:-8px;border-radius:999px}
+  .prompt-card-btn{width:32px;height:32px}
+  .prompt-card-btn::before{inset:-6px}
   .prompt-card-skip{margin-right:4px}
   .prompt-card-use{margin-left:4px}
 }
@@ -578,9 +610,9 @@ body,.panel,.btn,.tier-drop,.tier-label,.tray-well,.action-bar,.action-icon,.act
 }
 .prompt-card.hint{animation:card-hint .8s ease-in-out}
 @media(max-width:480px){
-  .prompt-cards{width:96%;height:58px}
-  .prompt-card{padding:0 14px;border-radius:var(--md-sys-shape-corner-medium)}
-  .prompt-card-text{font-size:16px}
+  .prompt-cards{width:96%;height:80px}
+  .prompt-card{padding:0 10px;gap:6px;border-radius:var(--md-sys-shape-corner-medium)}
+  .prompt-card-text{font-size:14.5px;line-height:1.18;-webkit-line-clamp:3;line-clamp:3}
 }
 
 /* ---------- Scrollable prompt list overlay (long-press) ---------- */
@@ -641,9 +673,11 @@ body,.panel,.btn,.tier-drop,.tier-label,.tray-well,.action-bar,.action-icon,.act
   box-shadow:0 1px 3px rgba(0,0,0,.12), 0 1px 2px rgba(0,0,0,.24);
   transition:transform .15s ease, box-shadow .15s ease;
 }
-.prompt-list-item:hover{
-  transform:scale(1.01);
-  box-shadow:0 2px 6px rgba(0,0,0,.18), 0 2px 4px rgba(0,0,0,.12);
+@media (hover:hover){
+  .prompt-list-item:hover{
+    transform:scale(1.01);
+    box-shadow:0 2px 6px rgba(0,0,0,.18), 0 2px 4px rgba(0,0,0,.12);
+  }
 }
 .prompt-list-item:active{
   transform:scale(.98);
@@ -660,15 +694,15 @@ body,.panel,.btn,.tier-drop,.tier-label,.tray-well,.action-bar,.action-icon,.act
   .prompt-list-item-text{font-size:13px}
 }
 
-#tierBoard{display:grid;gap:12px;margin-top:4px}
-.tier-row{display:grid;grid-template-columns:180px 1fr;gap:12px;align-items:stretch}
-@media (max-width:768px){.tier-row{grid-template-columns:130px 1fr}}
+#tierBoard{display:grid;gap:var(--tier-gap);margin-top:4px}
+.tier-row{display:grid;grid-template-columns:var(--tier-label-w) 1fr;gap:var(--tier-gap);align-items:stretch}
 
 .tier-label{
   position:relative;
   border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow);
-  padding:0; display:grid; place-items:stretch; min-height:99px; overflow:hidden;
+  padding:0; display:grid; place-items:stretch; min-height:calc(var(--tok) + 2 * var(--drop-pad)); overflow:hidden;
 }
+@media (max-width:600px){ .tier-label{border-radius:12px} }
 .label-chip{
   position:relative;width:100%;height:100%;border-radius:inherit;background:var(--label-default);color:#111;
   display:flex;align-items:center;justify-content:center;
@@ -677,6 +711,9 @@ body,.panel,.btn,.tier-drop,.tier-label,.tray-well,.action-bar,.action-icon,.act
   line-height:1.1;white-space:normal;word-break:normal;overflow-wrap:break-word;
   text-align:center;padding:6px 8px;overflow:hidden;
 }
+
+/* A single word too long for a narrow (phone) label may break as a last resort */
+.label-chip.chip-wrap-any{overflow-wrap:anywhere;word-break:break-word}
 
 /* Image-based tier label crest */
 .label-chip.has-crest{
@@ -729,17 +766,16 @@ body,.panel,.btn,.tier-drop,.tier-label,.tray-well,.action-bar,.action-icon,.act
 }
 .row-del svg{width:14px;height:14px;stroke:currentColor;fill:none}
 
-/* Touch devices have no hover — give the color tool a resting affordance so
-   it's discoverable. The delete button's visibility is driven by show-tools
-   (see JS pokeTierTools): visible on load, then slowly fades after 30s idle,
-   and pops straight back in on any interaction with the tier. */
+/* Touch devices have no hover — give the color tool a quiet resting
+   affordance so it's discoverable. The delete button appears only after the
+   tier label is touched (JS pokeTierTools) and fades after a few idle seconds. */
 @media (hover:none){
-  .color-pick-btn{opacity:.6;transform:scale(.9)}
-  .row-del{transition:opacity 1.1s var(--ease-out)}
+  .color-pick-btn{opacity:.55;transform:scale(.85)}
+  .row-del{transition:opacity .6s var(--ease-out)}
   .tier-label.show-tools .row-del{transition:opacity .18s var(--ease-spring)}
-  /* Long-press-to-reorder needs pointer events to keep flowing; the label
-     column is narrow, so losing scroll-start there is a fair trade. */
-  .tier-label{touch-action:none}
+  /* Scroll from the label like anywhere else; long-press still lifts the row
+     (JS cancels panning only once the row is lifted). */
+  .tier-label{touch-action:pan-y}
 }
 
 /* Row lifted during touch reorder (long-press on the tier label) */
@@ -761,26 +797,26 @@ body,.panel,.btn,.tier-drop,.tier-label,.tray-well,.action-bar,.action-icon,.act
 /* Drops */
 .tier-drop{
   background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);
-  padding:12px;display:grid;grid-auto-flow:row;grid-template-columns:repeat(auto-fill,minmax(105px,1fr));
-  align-content:start;gap:12px;min-height:99px;
+  padding:var(--drop-pad);display:grid;grid-auto-flow:row;grid-template-columns:repeat(auto-fill,minmax(var(--tok-cell),1fr));
+  align-content:start;gap:var(--drop-gap);min-height:calc(var(--tok) + 2 * var(--drop-pad));
 }
+@media (max-width:600px){ .tier-drop{border-radius:12px;justify-items:center} }
 .tier-drop:focus-visible{box-shadow:0 0 0 3px rgba(139,125,255,.35),var(--shadow)}
 .dropzone.drag-over{box-shadow:0 0 0 3px rgba(139,125,255,.35),var(--shadow)}
 
 /* ---------- Tokens ---------- */
 .token{
-  position:relative;width:99px;height:99px;border-radius:999px;background:var(--token-default);
+  position:relative;width:var(--tok);height:var(--tok);border-radius:999px;background:var(--token-default);
   display:flex;align-items:center;justify-content:center;
   user-select:none;cursor:grab;transform:translateZ(0);transition:transform .08s ease;
   touch-action:none;
 }
-/* Small screens: tray tokens allow vertical panning so a scroll gesture that
-   starts on the (mostly token-covered) tray grid still scrolls the page.
-   Tokens inside tiers keep touch-action:none for drag-to-reorder. */
+/* Small screens: every token allows vertical panning so the page scrolls from
+   anywhere. Placed tokens are dragged with a short press-and-hold instead. */
 @media (max-width:768px){
-  #tray .token{touch-action:pan-y}
+  .token{touch-action:pan-y}
 }
-.token:hover{transform:translateY(-1px)}
+@media (hover:hover){.token:hover{transform:translateY(-1px)}}
 .token:active,.token.dragging{cursor:grabbing}
 .token:active{transform:translateY(0)}
 .token:focus-visible{outline:3px solid var(--accent);outline-offset:4px}
@@ -789,7 +825,8 @@ body,.panel,.btn,.tier-drop,.tier-label,.tray-well,.action-bar,.action-icon,.act
    that melts into the flat center. A strong base tint stays over the ring all
    the way to the edge so it reads as depth in the same material — not a
    prism fringe, not a glossy bevel. Layers top→bottom: cover, grain, swirl. */
-.token.aura::before{
+.token.aura::before,
+.battle-circle.aura::before,.bracket-circle.aura::before,.champion-circle.aura::before{
   content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
   background:
     radial-gradient(circle closest-side at var(--aura-cx,50%) var(--aura-cy,50%),
@@ -830,14 +867,53 @@ body,.panel,.btn,.tier-drop,.tier-label,.tray-well,.action-bar,.action-icon,.act
 .token-del svg{width:16px;height:16px;fill:currentColor}
 .token-del:hover{background:rgba(239,68,68,.9)}
 .token.show-del .token-del{transform:translate(-50%,-50%) scale(1);pointer-events:auto}
+/* Image tokens: the crop transform zooms the <img>, the circle clips it */
+.token.img-token{overflow:hidden}
+.token.img-token img{transform-origin:50% 50%}
+/* "Adjust image" sits beside delete on image tokens (desktop double-click) */
+.token-crop{
+  position:absolute;top:50%;left:30%;width:36px;height:36px;border-radius:999px;
+  transform:translate(-50%,-50%) scale(0);
+  background:rgba(0,0,0,.72);color:#fff;border:2px solid rgba(255,255,255,.35);
+  display:grid;place-items:center;z-index:10;cursor:pointer;pointer-events:none;
+  box-shadow:0 2px 12px rgba(0,0,0,.4);
+  transition:transform .18s cubic-bezier(.34,1.56,.64,1),background .15s ease;
+}
+.token-crop svg{width:16px;height:16px}
+.token-crop:hover{background:color-mix(in srgb, var(--accent) 85%, #000)}
+.token.img-token .token-del{left:70%}
+.token.show-del .token-crop{transform:translate(-50%,-50%) scale(1);pointer-events:auto}
+/* Image still being saved locally in the background */
+.token.img-pending img{animation:img-pending 1.4s ease-in-out infinite}
+@keyframes img-pending{0%,100%{opacity:1}50%{opacity:.72}}
+
+/* ---------- Crop editor ---------- */
+.crop-card{max-width:340px;text-align:center}
+.crop-hint{margin-bottom:16px}
+.crop-stage{
+  position:relative;width:min(240px,62vw);aspect-ratio:1;margin:0 auto 16px;
+  border-radius:999px;overflow:hidden;cursor:grab;touch-action:none;
+  background:var(--card);
+  box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 55%, transparent),0 10px 30px rgba(0,0,0,.35);
+}
+.crop-stage.dragging{cursor:grabbing}
+.crop-stage:focus-visible{box-shadow:0 0 0 3px var(--accent),0 0 0 7px color-mix(in srgb, var(--accent) 30%, transparent),0 10px 30px rgba(0,0,0,.35)}
+.crop-stage img{width:100%;height:100%;object-fit:cover;pointer-events:none;user-select:none;transform-origin:50% 50%}
+.crop-zoom{display:flex;align-items:center;gap:10px;margin:0 4px 20px;color:var(--muted)}
+.crop-zoom svg{width:20px;height:20px;flex:0 0 20px}
+.crop-zoom input{flex:1;accent-color:var(--accent)}
+.crop-card .confirm-actions{align-items:center}
+.crop-spacer{flex:1}
+.crop-reset{background:transparent;color:var(--muted);border:1px solid var(--border)}
+.crop-save{background:var(--accent);color:#fff;border:1px solid transparent}
 
 /* FLIP animation */
 .token.flip-anim{transition:transform 180ms ease}
-.drag-ghost{position:fixed;left:0;top:0;z-index:50;pointer-events:none;width:99px;height:99px;border-radius:999px;opacity:.92;transform:translate3d(0,0,0) scale(1.08) rotate(2deg);filter:saturate(1.1);box-shadow:0 14px 36px rgba(0,0,0,.45),0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent)}
+.drag-ghost{position:fixed;left:0;top:0;z-index:50;pointer-events:none;width:var(--tok);height:var(--tok);border-radius:999px;opacity:.92;transform:translate3d(0,0,0) scale(1.08) rotate(2deg);filter:saturate(1.1);box-shadow:0 14px 36px rgba(0,0,0,.45),0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent)}
 .drag-hidden{opacity:0;pointer-events:none}
 /* During drag reorder, animate sibling tokens sliding into new positions */
 .reorder-active .token:not(.drag-hidden){transition:transform 150ms ease,margin 150ms ease}
-.reorder-active .drag-hidden{width:99px;height:99px;border:3px dashed rgba(139,125,255,.35);border-radius:999px;background:rgba(139,125,255,.06);opacity:1}
+.reorder-active .drag-hidden{width:var(--tok);height:var(--tok);border:3px dashed rgba(139,125,255,.35);border-radius:999px;background:rgba(139,125,255,.06);opacity:1}
 body.dragging-item{cursor:grabbing;user-select:none;-webkit-user-select:none}
 /* All drop zones get an idle tint while dragging so eligibility is visible before hover */
 body.dragging-item .tier-drop{
@@ -896,11 +972,12 @@ body.dragging-item #tray{
 }
 #tray{
   background:transparent;border:none;border-radius:12px;box-shadow:none;
-  padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(105px,1fr));gap:12px;
+  padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--tok-cell),1fr));gap:12px;
 }
-@media (max-width:480px){
-  #tray{grid-template-columns:repeat(2,1fr);gap:10px;padding:10px}
-  #tray .token{width:100%;height:auto;aspect-ratio:1}
+/* Phones: storage tokens match the size of placed tokens (4 per row), so the
+   tray is a compact grid instead of a 2-column wall of huge circles. */
+@media (max-width:600px){
+  #tray{padding:10px;gap:8px;justify-items:center}
 }
 
 
@@ -915,7 +992,7 @@ body.dragging-item #tray{
 .radial-options{
   position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
   display:flex;flex-direction:column;align-items:stretch;gap:10px;
-  width:min(280px,70vw);
+  width:min(320px,84vw);
   max-height:calc(100vh - 190px);
   max-height:calc(100dvh - 190px);
   overflow-y:auto;padding:4px;
@@ -925,18 +1002,55 @@ body.dragging-item #tray{
 .radial-option{flex:0 0 auto}
 .radial-option.radial-btn{width:100%;height:auto;padding:0;border:0;background:none}
 .radial-option .dot{
-  width:100%;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;
-  font-family:'Bowlby One',sans-serif;font-weight:400;font-size:22px;
-  text-transform:uppercase;letter-spacing:.5px;line-height:1.1;
-  background:var(--dot-color);color:#fff;
+  width:100%;min-height:52px;height:auto;padding:8px 18px;border-radius:14px;
+  display:flex;align-items:center;justify-content:center;text-align:center;
+  font-family:'Bowlby One',sans-serif;font-weight:400;font-size:20px;
+  text-transform:uppercase;letter-spacing:.5px;line-height:1.15;
+  overflow-wrap:anywhere;
+  background:var(--dot-color);color:#111;
   border:2px solid transparent;
   transform:scale(.7);opacity:0;transition:transform .18s ease,opacity .18s ease,border-color .12s ease;
 }
 .radial.visible .dot,.radial.show .dot{opacity:1;transform:scale(1)}
-.radial-option.is-hot .dot{border-color:#fff;transform:scale(1.04)}
-/* Explicit Delete action for custom tokens (replaces the old swipe gesture) */
-.radial-delete{margin-top:8px}
-.radial-delete .dot{background:var(--danger);color:#fff;font-size:18px}
+.radial-option.is-hot .dot{border-color:#fff;transform:scale(1.03)}
+/* The tier the token already sits in: ringed and tagged, tapping it just closes */
+.radial-option.is-current .dot{box-shadow:inset 0 0 0 3px rgba(17,17,17,.55);position:relative}
+.radial-option.is-current .dot::after{
+  content:'NOW';position:absolute;right:10px;top:50%;transform:translateY(-50%);
+  font:800 10px/1 ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;letter-spacing:1px;
+  padding:4px 6px;border-radius:6px;background:rgba(17,17,17,.75);color:#fff;
+}
+/* Header: which token the picker is acting on */
+.radial-head{
+  display:flex;align-items:center;gap:12px;flex:0 0 auto;
+  padding:10px 12px;margin-bottom:2px;border-radius:14px;
+  background:color-mix(in srgb, var(--surface-high) 92%, transparent);
+  border:1px solid var(--border);color:var(--text);
+}
+.radial-head-token{
+  width:44px;height:44px;flex:0 0 44px;border-radius:999px;overflow:hidden;
+  display:grid;place-items:center;
+  font:900 15px/1 'Montserrat',ui-sans-serif,-apple-system,sans-serif;
+  background:var(--token-default);
+}
+.radial-head-token img{width:100%;height:100%;object-fit:cover}
+.radial-head-text{display:flex;flex-direction:column;min-width:0;line-height:1.2}
+.radial-head-verb{font-size:11px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)}
+.radial-head-text strong{font-size:17px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Secondary actions (Back to storage / Adjust image / Delete) */
+.radial-action:first-of-type{margin-top:0}
+.radial-back,.radial-adjust{margin-top:6px}
+.radial-back .dot,.radial-adjust .dot{
+  background:var(--surface-high);color:var(--text);border-color:var(--border);
+  font-family:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  font-weight:800;font-size:15px;letter-spacing:.3px;text-transform:none;min-height:46px;
+}
+.radial-delete{margin-top:6px}
+.radial-delete .dot{
+  background:var(--danger);color:#fff;min-height:46px;
+  font-family:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  font-weight:800;font-size:15px;letter-spacing:.3px;text-transform:none;
+}
 .radial-close{
   position:absolute;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));
   transform:translateX(-50%);
@@ -1061,6 +1175,21 @@ body.dragging-item #tray{
   background:var(--danger-strong);color:#fff;border:1px solid rgba(0,0,0,.1);
   box-shadow:0 2px 8px rgba(248,113,113,.3);
 }
+
+/* ---------- Export result sheet (phones) ---------- */
+.export-card{max-width:420px;padding:22px 18px 18px}
+.export-preview{
+  max-height:52vh;max-height:52dvh;overflow:auto;margin:6px 0 10px;
+  border-radius:12px;border:1px solid var(--border);background:var(--card);
+  -webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+}
+/* Long-press → "Save to Photos" must work here (the page disables callouts) */
+.export-preview img{width:100%;height:auto;display:block;-webkit-touch-callout:default;-webkit-user-select:auto;user-select:auto}
+.export-hint{margin:0 0 14px;font-size:13px}
+.export-actions{display:flex;flex-direction:column;gap:8px}
+.export-actions .btn{height:48px;width:100%;font-size:15px;border-radius:12px}
+.export-share,.export-download{background:var(--accent);color:#fff;border:1px solid transparent}
+.export-download.secondary{background:var(--card);color:var(--text);border:1px solid var(--border)}
 
 /* ---------- Windows High Contrast / forced-colors ---------- */
 /* Borderless buttons and box-shadow focus rings disappear in forced-colors

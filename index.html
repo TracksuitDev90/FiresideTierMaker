@@ -5,7 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#0a0a0a" />
   <meta name="description" content="Create and share custom tier lists. Drag and drop to rank your favorites, then save as PNG." />
+  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="FIRESIDE" />
+  <link rel="icon" href="icons/app/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="icons/app/favicon-32.png" sizes="32x32" type="image/png" />
+  <link rel="apple-touch-icon" href="icons/app/apple-touch-icon.png" />
+  <link rel="manifest" href="manifest.webmanifest" />
   <!-- Open Graph -->
   <meta property="og:title" content="FIRESIDE Tier Maker" />
   <meta property="og:description" content="Create and share custom tier lists. Drag and drop to rank your favorites." />
@@ -40,6 +46,12 @@
         <h1 class="brand">FIRESIDE</h1>
         <div class="brand-sub">tier maker</div>
       </div>
+      <button id="themeToggle" class="theme-toggle" type="button" aria-label="Switch theme">
+        <span class="ico theme-icon">
+          <img class="btn-icon moon-icon" src="icons/moon.png" alt="" width="22" height="22" />
+        </span>
+        <span class="theme-text sr">Light</span>
+      </button>
     </header>
 
     <!-- Create custom items -->
@@ -98,6 +110,10 @@
       <!-- Swipe prompt cards -->
       <div class="prompt-stack-wrap" id="promptStack" role="group" aria-label="Prompt card suggestions — swipe right or press Enter to apply, swipe left or press ArrowLeft to skip">
         <div class="prompt-cards" id="promptCards" role="list" aria-label="Prompt cards"></div>
+        <button type="button" class="prompt-browse" id="promptBrowseBtn">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+          Browse all prompts
+        </button>
       </div>
       <div class="board-title-wrap">
         <span class="title-pen" aria-hidden="true">
@@ -147,13 +163,6 @@
           </span>
           <span>Save Tierlist</span>
         </button>
-
-        <button id="themeToggle" class="btn" type="button" aria-label="Switch theme">
-          <span class="ico theme-icon">
-            <img class="btn-icon moon-icon" src="icons/moon.png" alt="" width="22" height="22" />
-          </span>
-          <span class="theme-text">Light</span>
-        </button>
       </div>
     </section>
 
@@ -177,11 +186,8 @@
     <div id="live" class="sr" aria-live="polite"></div>
   </div>
 
-  <!-- Export library. If the primary CDN is unreachable, fall back to unpkg;
-       script.js also guards at call time and toasts if neither loads. To make
-       Save fully offline-proof, drop a local copy at vendor/html-to-image.min.js
-       and point the src here. -->
-  <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.min.js" crossorigin="anonymous" onerror="this.onerror=null;var s=document.createElement('script');s.src='https://unpkg.com/html-to-image@1.11.11/dist/html-to-image.min.js';s.crossOrigin='anonymous';document.head.appendChild(s);"></script>
+  <!-- The PNG export library (vendor/html-to-image.min.js) is loaded on
+       demand by script.js on the first Save, so it never delays start-up. -->
   <script src="script.js"></script>
   <script src="image-search.js"></script>
   <script src="battles.js"></script>

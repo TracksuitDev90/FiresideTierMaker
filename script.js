@@ -23,6 +23,45 @@ function animateBtn(btn){ if(!btn) return; btn.classList.remove('animate'); void
 // True when the user is typing in an input/textarea/contenteditable —
 // global shortcuts must never fire mid-edit.
 function isTypingTarget(t){ return !!(t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)); }
+// Storage access can throw outright (Safari "Block All Cookies", strict
+// privacy modes, some in-app browsers). Never let that take the app down.
+function lsGet(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
+function lsSet(k, v){ try { localStorage.setItem(k, v); return true; } catch(e){ return false; } }
+function lsRemove(k){ try { localStorage.removeItem(k); } catch(e){} }
+// Saved JSON blobs whose image references must survive image GC even though
+// the live board doesn't use them — e.g. the "Board cleared → Undo" backup.
+// (Declared up here because the clear-backup check runs during script parse.)
+var _gcProtectedJson = [];
+// Human-readable name for a token (text label, image alt, or a fallback) —
+// used in screen-reader announcements instead of innerText, which is empty
+// for image tokens.
+function tokenName(el){
+  if (!el) return 'item';
+  var lbl = el.querySelector && el.querySelector('.label');
+  if (lbl && lbl.textContent.trim()) return lbl.textContent.trim();
+  var img = el.querySelector && el.querySelector('img');
+  if (img && img.alt) return img.alt;
+  return img ? 'image' : 'item';
+}
+// Insert pasted content as plain text only (no markup, images or line
+// breaks) — shared by every contenteditable label in the app.
+function pastePlainText(e){
+  e.preventDefault();
+  var cd = e.clipboardData || window.clipboardData;
+  var text = (cd && cd.getData('text/plain')) || '';
+  text = text.replace(/[\r\n]+/g, ' ');
+  if (document.queryCommandSupported && document.queryCommandSupported('insertText')){
+    document.execCommand('insertText', false, text);
+  } else {
+    var sel = window.getSelection();
+    if (sel && sel.rangeCount){
+      var range = sel.getRangeAt(0);
+      range.deleteContents();
+      range.insertNode(document.createTextNode(text));
+      range.collapse(false);
+    }
+  }
+}
 
 /* ---------- Color helpers ---------- */
 function hexToRgb(hex){ var m=hex.match(/rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/); if(m) return {r:parseInt(m[1],10),g:parseInt(m[2],10),b:parseInt(m[3],10)}; var h=hex.replace('#',''); if(h.length===3){ h=h.split('').map(function(x){return x+x;}).join(''); } var n=parseInt(h,16); return {r:(n>>16)&255,g:(n>>8)&255,b:n&255}; }
@@ -71,14 +110,14 @@ function desaturate(hex, amount){
   var SUN_HTML = '<svg class="sun-svg" viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="12" r="5" fill="#e8700a"/><line x1="12" y1="1" x2="12" y2="4" stroke="#f5a623" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="20" x2="12" y2="23" stroke="#f5a623" stroke-width="2" stroke-linecap="round"/><line x1="4.22" y1="4.22" x2="6.34" y2="6.34" stroke="#f5a623" stroke-width="2" stroke-linecap="round"/><line x1="17.66" y1="17.66" x2="19.78" y2="19.78" stroke="#f5a623" stroke-width="2" stroke-linecap="round"/><line x1="1" y1="12" x2="4" y2="12" stroke="#f5a623" stroke-width="2" stroke-linecap="round"/><line x1="20" y1="12" x2="23" y2="12" stroke="#f5a623" stroke-width="2" stroke-linecap="round"/><line x1="4.22" y1="19.78" x2="6.34" y2="17.66" stroke="#f5a623" stroke-width="2" stroke-linecap="round"/><line x1="17.66" y1="6.34" x2="19.78" y2="4.22" stroke="#f5a623" stroke-width="2" stroke-linecap="round"/></svg>';
   var MOON_HTML = '<img class="btn-icon moon-icon" src="icons/moon.png" alt="" width="22" height="22" />';
 
-  setTheme(localStorage.getItem('tm_theme') || (prefersLight ? 'light' : 'dark'));
+  setTheme(lsGet('tm_theme') || (prefersLight ? 'light' : 'dark'));
 
   if(toggle){
     on(toggle,'click', function(){ animateBtn(toggle); setTheme(root.getAttribute('data-theme')==='dark'?'light':'dark'); });
   }
 
   function setTheme(mode){
-    root.setAttribute('data-theme', mode); localStorage.setItem('tm_theme', mode);
+    root.setAttribute('data-theme', mode); lsSet('tm_theme', mode);
     // Keep browser chrome (address bar / status bar) in step with the theme
     var metaTheme = document.querySelector('meta[name="theme-color"]');
     if(metaTheme) metaTheme.setAttribute('content', mode==='light' ? '#f7f8fb' : '#0a0a0a');
@@ -92,16 +131,13 @@ function desaturate(hex, amount){
       toggle.setAttribute('aria-label', 'Switch to ' + target.toLowerCase() + ' theme');
       if(icon) icon.innerHTML = (target==='Light' ? SUN_HTML : MOON_HTML);
     }
-    var isLight = mode==='light';
     $$('.tier-row').forEach(function(row){
       var chip=$('.label-chip',row), drop=$('.tier-drop',row);
       var color = chip && chip.dataset.color ? chip.dataset.color : '#8b7dff';
       if(chip){
-        var _rgb = hexToRgb(color), _s = Math.max(_rgb.r,_rgb.g,_rgb.b)-Math.min(_rgb.r,_rgb.g,_rgb.b);
-        var cCol = isLight ? boostSaturation(color, 0.12) : desaturate(color, 0.12);
-        if(_s < 20) cCol = isLight ? '#636363' : '#7d7d7d';
-        chip.style.background = cCol;
-        chip.style.color = contrastColor(cCol);
+        var cc = tierChipColors(color);
+        chip.style.background = cc.bg;
+        chip.style.color = cc.fg;
       }
       if (drop && drop.dataset.manual!=='true'){
         drop.style.background = tintFrom(color);
@@ -109,6 +145,22 @@ function desaturate(hex, amount){
     });
   }
 })();
+
+/* Tier chip colors: a theme-tuned background with a lightness floor, so every
+   chip — pastel, saturated or near-black — carries the same near-black text
+   instead of flipping between black and white from one tier to the next. */
+function liftToLuminance(hex, minL){
+  var c = colorToHsl(hex), out = hex, l = c.l;
+  for (var i = 0; i < 50 && relativeLuminance(hexToRgb(out)) < minL; i++){ l += 2; out = hslToHex(c.h, c.s, l); }
+  return out;
+}
+function tierChipColors(color){
+  var isLight = document.documentElement.getAttribute('data-theme')==='light';
+  var rgb = hexToRgb(color), sat = Math.max(rgb.r,rgb.g,rgb.b)-Math.min(rgb.r,rgb.g,rgb.b);
+  var bg = sat < 20 ? '#8a8a8a'   // grays (and black) read as a neutral chip
+         : (isLight ? boostSaturation(color, 0.12) : desaturate(color, 0.12));
+  return { bg: liftToLuminance(bg, 0.22), fg: '#111111' };
+}
 
 /* ---------- DOM refs ---------- */
 var board=null, tray=null;
@@ -209,13 +261,22 @@ function fitChipLabel(chip){
   var chipH = chip.clientHeight || chip.offsetHeight;
   if (!chipW) chipW = isSmall() ? 130 : 180;
   if (!chipH) chipH = 99;
+  // Size against the tier's minimum height, not its current one — otherwise a
+  // tier that grew with extra rows of tokens gets a bigger letter than its
+  // neighbours.
+  var labBox = chip.closest ? chip.closest('.tier-label') : null;
+  var minH = labBox ? parseFloat(getComputedStyle(labBox).minHeight) : 0;
+  if (minH > 0) chipH = Math.min(chipH, minH - 2);
   var availW = chipW - 16;   // 8px padding each side
   var availH = chipH - 12;   // 6px padding top + bottom
 
   var upper = text.toUpperCase();
 
-  // Binary search: largest px in [minPx..maxPx] that fits
-  var maxPx = 48, minPx = 12;
+  // Binary search: largest px in [minPx..maxPx] that fits. Narrow (phone)
+  // labels may go smaller before a long word is allowed to break.
+  // Bowlby One's glyphs sit taller than its 1.1 line box, so short labels
+  // also cap by height to stay fully inside compact (phone) chips.
+  var maxPx = Math.max(12, Math.min(48, Math.floor((chipH - 14) / 1.25))), minPx = chipW < 120 ? 9 : 12;
   var lo = minPx, hi = maxPx;
   while (lo < hi) {
     var mid = Math.ceil((lo + hi) / 2);
@@ -227,6 +288,7 @@ function fitChipLabel(chip){
   }
 
   chip.style.fontSize = lo + 'px';
+  chip.classList.toggle('chip-wrap-any', !labelFitsAt(upper, lo, availW, availH));
   chip.scrollLeft = 0;
 }
 
@@ -287,29 +349,22 @@ function applyTierColor(node, color){
   var colorBtn = node.querySelector('.color-pick-btn');
   var colorInput = node.querySelector('.color-pick-input');
 
-  var isLight = document.documentElement.getAttribute('data-theme')==='light';
-  var chipColor = isLight ? boostSaturation(color, 0.12) : desaturate(color, 0.12);
-  // Grays (like UNKNOWN tier) get explicit themed values
-  var _rgb = hexToRgb(color), _s = Math.max(_rgb.r,_rgb.g,_rgb.b)-Math.min(_rgb.r,_rgb.g,_rgb.b);
-  if(_s < 20) chipColor = isLight ? '#636363' : '#7d7d7d';
-  // Text color follows the chip's luminance so light tier colors (yellows,
-  // pastels) get dark text instead of unreadable white.
-  if(chip){ chip.dataset.color = color; chip.style.background = chipColor; chip.style.color = contrastColor(chipColor); }
+  var cc = tierChipColors(color);
+  if(chip){ chip.dataset.color = color; chip.style.background = cc.bg; chip.style.color = cc.fg; }
   if(del) del.style.background = darken(color, 0.35);
   if(drop){ drop.style.background = tintFrom(color); drop.dataset.manual = 'false'; }
   if(colorBtn){ var dot = colorBtn.querySelector('.color-dot-indicator'); if(dot) dot.style.background = colorPickDotColor(color); }
   if(colorInput) colorInput.value = color;
 }
 
-/* Reveal a tier's tools (delete X, color dot) and start a 30s idle timer that
-   fades them away again. Used on touch devices, where there is no hover: tools
-   show on load and after any direct interaction with the tier, then quietly
-   fade out when left alone. */
+/* Reveal a tier's tools (delete X, color dot) when its label is touched, then
+   fade them away after a few idle seconds. Touch devices have no hover; the
+   tools stay hidden until asked for so the board isn't covered in X buttons. */
 function pokeTierTools(labelArea){
   if(!labelArea) return;
   labelArea.classList.add('show-tools');
   clearTimeout(labelArea._toolTimer);
-  labelArea._toolTimer = setTimeout(function(){ labelArea.classList.remove('show-tools'); }, 30000);
+  labelArea._toolTimer = setTimeout(function(){ labelArea.classList.remove('show-tools'); }, 8000);
 }
 
 /* ---------- Create / wire a new row ---------- */
@@ -345,9 +400,13 @@ function createRow(cfg){
     // reset scroll in the next frame so text stays left-aligned
     chip.scrollLeft = 0;
     requestAnimationFrame(function(){ chip.scrollLeft = 0; });
+    // Text edits are characterData mutations the board observer doesn't see —
+    // save explicitly so a rename survives a reload.
+    scheduleSave();
   });
   on(chip,'keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); chip.blur(); } });
-  on(chip,'blur', function(){ if(!chip.classList.contains('has-crest')){ uniformizeTierLabels(); chip.scrollLeft = 0; } });
+  on(chip,'paste', function(e){ if(!chip.classList.contains('has-crest')) pastePlainText(e); });
+  on(chip,'blur', function(){ if(!chip.classList.contains('has-crest')){ uniformizeTierLabels(); chip.scrollLeft = 0; scheduleSave(); } });
   if(!cfg.image) fitChipLabel(chip);
 
   /* Color picker — label wraps input so native click opens the dialog */
@@ -364,12 +423,6 @@ function createRow(cfg){
     pokeTierTools(labelArea);
   });
 
-  /* Touch only: tools start visible and begin the 30s idle countdown; any
-     direct interaction anywhere in the tier pops them back in and resets it. */
-  if(window.matchMedia && window.matchMedia('(hover:none)').matches){
-    pokeTierTools(labelArea);
-    on(node,'pointerdown', function(){ pokeTierTools(labelArea); });
-  }
 
   on(del,'click', function(){
     var tokens = $$('.token', drop);
@@ -558,6 +611,178 @@ function ensureExportFonts(){
   return _exportFontsPromise;
 }
 window.ensureExportFonts = ensureExportFonts;
+
+/* ---------- Export pipeline (tier list, quadrant chart, bracket) ----------
+   The export library is only needed for Save, so it's loaded on demand
+   (self-hosted first; CDNs only as a fallback) instead of blocking app
+   start-up. Rendering has a timeout, scales down for tall boards to stay under
+   iOS Safari's canvas limit, and hands the PNG over in the way that works on
+   the device (download on desktop; a preview sheet with Share on phones). */
+var EXPORT_LIB_SOURCES = [
+  'vendor/html-to-image.min.js',
+  'https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.min.js',
+  'https://unpkg.com/html-to-image@1.11.11/dist/html-to-image.min.js'
+];
+var _exportLibPromise = null;
+function loadExportLib(){
+  if (window.htmlToImage && typeof htmlToImage.toCanvas === 'function') return Promise.resolve();
+  if (_exportLibPromise) return _exportLibPromise;
+  _exportLibPromise = new Promise(function(resolve, reject){
+    var i = 0;
+    (function next(){
+      if (window.htmlToImage && typeof htmlToImage.toCanvas === 'function') { resolve(); return; }
+      if (i >= EXPORT_LIB_SOURCES.length){ _exportLibPromise = null; reject(new Error('export-lib')); return; }
+      var sc = document.createElement('script');
+      var src = EXPORT_LIB_SOURCES[i++];
+      sc.src = src; sc.async = true;
+      if (/^https?:/.test(src)) sc.crossOrigin = 'anonymous';
+      var t = setTimeout(function(){ sc.onload = sc.onerror = null; next(); }, 12000);
+      sc.onload = function(){ clearTimeout(t); next(); };
+      sc.onerror = function(){ clearTimeout(t); if (sc.parentNode) sc.parentNode.removeChild(sc); next(); };
+      document.head.appendChild(sc);
+    })();
+  });
+  return _exportLibPromise;
+}
+window.loadExportLib = loadExportLib;
+function prepareExport(){ return Promise.all([ensureExportFonts(), loadExportLib()]); }
+
+function withTimeout(promise, ms, code){
+  return new Promise(function(resolve, reject){
+    var t = setTimeout(function(){ var e = new Error(code || 'timeout'); e.code = code || 'timeout'; reject(e); }, ms);
+    promise.then(function(v){ clearTimeout(t); resolve(v); }, function(e){ clearTimeout(t); reject(e); });
+  });
+}
+// iOS Safari refuses canvases above ~16.7 megapixels (less on older phones) —
+// shrink the pixel ratio for tall boards instead of producing a blank image.
+var MAX_EXPORT_PIXELS = 14e6;
+function exportPixelRatio(node){
+  var w = node.offsetWidth || 1200, h = node.offsetHeight || 800;
+  var r = Math.min(2, Math.sqrt(MAX_EXPORT_PIXELS / (w * h)));
+  return Math.max(0.5, Math.floor(r * 100) / 100);
+}
+function canvasToBlob(canvas){
+  return new Promise(function(resolve, reject){
+    if (canvas.toBlob) canvas.toBlob(function(b){ b ? resolve(b) : reject(new Error('blob')); }, 'image/png');
+    else fetch(canvas.toDataURL('image/png')).then(function(r){ return r.blob(); }).then(resolve, reject);
+  });
+}
+function exportFilename(fallback){
+  var t = (($('.board-title') || {}).textContent || '').trim();
+  var slug = t.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase().slice(0, 60);
+  return (slug || fallback) + '.png';
+}
+function downloadBlob(blob, filename){
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ a.remove(); URL.revokeObjectURL(url); }, 4000);
+}
+function canShareFile(file){
+  try { return !!(navigator.canShare && navigator.share && navigator.canShare({ files: [file] })); } catch(e){ return false; }
+}
+function isTouchDevice(){
+  return isSmall() || (window.matchMedia && window.matchMedia('(pointer:coarse)').matches);
+}
+/* Phones: a preview sheet. The Share button runs inside a fresh tap (share
+   sheets need one), "Save to Photos"/Discord live there; Download is the
+   fallback, and in in-app browsers that ignore downloads the preview itself
+   can be pressed-and-held to save. */
+function showExportSheet(blob, filename){
+  var url = URL.createObjectURL(blob);
+  var file = null;
+  try { file = new File([blob], filename, { type: 'image/png' }); } catch(e){}
+  var overlay = document.createElement('div');
+  overlay.className = 'confirm-overlay export-overlay';
+  var card = document.createElement('div');
+  card.className = 'confirm-card export-card';
+  card.setAttribute('role', 'dialog'); card.setAttribute('aria-modal', 'true'); card.setAttribute('aria-labelledby', 'exportTitle');
+  card.innerHTML =
+    '<h3 class="confirm-title" id="exportTitle">Your image is ready</h3>' +
+    '<div class="export-preview"><img alt="Preview of the exported image"></div>' +
+    '<p class="confirm-msg export-hint">Tip: press and hold the image to save it to your photos.</p>' +
+    '<div class="export-actions"></div>';
+  $('img', card).src = url;
+  var actions = $('.export-actions', card);
+  function close(){ overlay.remove(); document.removeEventListener('keydown', onKey); setTimeout(function(){ URL.revokeObjectURL(url); }, 1000); }
+  function onKey(e){ if (e.key === 'Escape') close(); }
+  function addBtn(label, cls, fn){
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'btn ' + cls; b.textContent = label;
+    on(b, 'click', fn); actions.appendChild(b); return b;
+  }
+  var first = null;
+  if (file && canShareFile(file)){
+    first = addBtn('Share / Save to Photos', 'export-share', function(){
+      navigator.share({ files: [file], title: filename.replace(/\.png$/, '') }).then(function(){ close(); showSaveToast('Shared!'); })
+        ['catch'](function(err){ if (err && err.name === 'AbortError') return; downloadBlob(blob, filename); showSaveToast('Downloaded ' + filename); });
+    });
+  }
+  var dl = addBtn('Download', first ? 'export-download secondary' : 'export-download', function(){ downloadBlob(blob, filename); showSaveToast('Downloading ' + filename); });
+  addBtn('Done', 'confirm-cancel', close);
+  overlay.appendChild(card);
+  document.body.appendChild(overlay);
+  on(overlay, 'click', function(e){ if (e.target === overlay) close(); });
+  document.addEventListener('keydown', onKey);
+  try { (first || dl).focus({ preventScroll: true }); } catch(e){}
+}
+function deliverPng(blob, filename){
+  if (isTouchDevice()) { showExportSheet(blob, filename); return; }
+  downloadBlob(blob, filename);
+  showSaveToast('Saved!');
+  vib([6, 40, 10]);
+}
+function exportErrorMessage(err){
+  if (err && err.message === 'export-lib') return "Couldn't load the image exporter — check your connection";
+  if (err && err.code === 'timeout') return 'Saving took too long — check your connection and try again';
+  return 'Export failed — try again';
+}
+
+/* Save-button busy state shared by every export mode */
+var _saveBusy = false, _saveBtnLabel = '';
+function beginSaveBusy(){
+  if (_saveBusy) return false;
+  _saveBusy = true;
+  var btn = $('#saveBtn'), lbl = btn ? btn.querySelector('span:not(.ico)') : null;
+  if (btn){ btn.setAttribute('data-state', 'saving'); btn.disabled = true; }
+  if (lbl){ _saveBtnLabel = lbl.textContent; lbl.textContent = 'Saving…'; }
+  return true;
+}
+function endSaveBusy(){
+  _saveBusy = false;
+  var btn = $('#saveBtn'), lbl = btn ? btn.querySelector('span:not(.ico)') : null;
+  if (btn){ btn.removeAttribute('data-state'); btn.disabled = false; }
+  if (lbl && _saveBtnLabel) lbl.textContent = _saveBtnLabel;
+}
+/* Run one export: `build()` (called once fonts + library are ready) returns
+   {node, wrap, filename, backgroundColor, width} for an offscreen clone. */
+function runExport(build){
+  if (!beginSaveBusy()) return;
+  var made = null;
+  prepareExport()
+    .then(function(){
+      made = build();
+      var opts = {
+        pixelRatio: exportPixelRatio(made.node),
+        backgroundColor: made.backgroundColor || cssVar('--surface') || '#ffffff',
+        // Revalidate (304s are cheap) rather than re-download every image
+        fetchRequestInit: { mode: 'cors', cache: 'no-cache' }
+      };
+      if (made.width) opts.width = made.width;
+      var fontCSS = (_bowlbyFontFaceCSS || '') + (_montserratFontFaceCSS || '');
+      if (fontCSS) opts.fontEmbedCSS = fontCSS;
+      return withTimeout(htmlToImage.toCanvas(made.node, opts), 25000, 'timeout');
+    })
+    .then(canvasToBlob)
+    .then(function(blob){ deliverPng(blob, made.filename); })
+    ['catch'](function(err){
+      showSaveToast(exportErrorMessage(err), true);
+      if (window.DEBUG) console.error('Export error:', err);
+    })
+    .then(function(){ if (made && made.wrap && made.wrap.parentNode) made.wrap.parentNode.removeChild(made.wrap); endSaveBusy(); });
+}
+window.runExport = runExport;
+window.exportFilename = exportFilename;
 // Memoize text-width lookups — the label fitters call these in tight
 // binary-search loops with repeating (text, weight, px) tuples. Cleared when
 // a web font loads (metrics change once the real font is available).
@@ -585,12 +810,16 @@ function fitLiveLabel(lbl){
   var token = lbl.parentElement;
   var D = token.clientWidth;
   if (!D) return;
-  var pad = 8;
+  // Scale with the token: 99px desktop tokens keep 8px padding / 11–22px text,
+  // ~60px phone tokens get tighter padding and a smaller range.
+  var small = D < 80;
+  var pad = small ? Math.max(3, Math.round(D * 0.06)) : 8;
   var maxW = D - pad * 2;
   var text = lbl.textContent;
 
-  var px = 22;
-  for (; px >= 11; px--) {
+  var maxPx = small ? Math.round(D * 0.27) : 22, minPx = small ? 8 : 11;
+  var px = maxPx;
+  for (; px > minPx; px--) {
     if (measureTokenText(text, '900', px) <= maxW) break;
   }
 
@@ -627,9 +856,9 @@ on(window,'resize', debounce(refitAllLabels, 120));
 function buildTokenBase(isCustom){
   var el = document.createElement('div');
   el.className='token token-enter'; el.id = uid(); el.setAttribute('tabindex','0'); el.setAttribute('role','listitem');
-  // touch-action lives in CSS: tokens in tiers block native panning (drag to
-  // reorder), but tray tokens on small screens allow pan-y so the page can
-  // still scroll from the tray grid.
+  // touch-action lives in CSS: on phones every token is pan-y so the page
+  // scrolls from anywhere; dragging a placed token starts after a short hold
+  // (see enableMobileTouchDrag).
   el.setAttribute('draggable','false');
   if (isCustom) el.dataset.custom = 'true';
   setTimeout(function(){ el.classList.remove('token-enter'); }, 300);
@@ -651,32 +880,20 @@ function buildTokenBase(isCustom){
     });
     el.appendChild(delBtn);
 
-    // Swipe-up (mobile) / double-click (desktop) to reveal delete
-    var _swStartY = 0, _swStartX = 0, _swStartT = 0;
+    // Double-click (desktop) reveals the delete control. Phones use the
+    // tap picker's explicit Delete action instead of a hidden gesture.
     function showDel(){
       $$('.token.show-del').forEach(function(t){ t.classList.remove('show-del'); });
       el.classList.add('show-del');
       clearTimeout(el._delDismiss);
       el._delDismiss = setTimeout(function(){ el.classList.remove('show-del'); }, 4000);
     }
-    on(el, 'pointerdown', function(e){
-      if(e.button && e.button!==0) return;
-      _swStartY = e.clientY; _swStartX = e.clientX; _swStartT = Date.now();
-      el._swipeHandled = false;
-    });
-    on(el, 'pointerup', function(e){
-      if(!isSmall()) return;
-      var dy = _swStartY - e.clientY; // positive = upward
-      var dx = Math.abs(e.clientX - _swStartX);
-      var dt = Date.now() - _swStartT;
-      if(dy > 30 && dt < 400 && dy > dx * 1.5){
-        el._swipeHandled = true;
-        showDel();
-        vib(12);
-      }
-    });
     on(el, 'dblclick', function(e){ e.preventDefault(); e.stopPropagation(); showDel(); });
   }
+
+  // A new press starts a new gesture: never let a previous drag's
+  // "swallow the next click" flag eat this one.
+  on(el, 'pointerdown', function(){ el._suppressClick = false; });
 
   // Attach all drag handlers; each checks isSmall() at event time
   if (window.PointerEvent) enablePointerDrag(el);
@@ -685,14 +902,17 @@ function buildTokenBase(isCustom){
 
   on(el,'click', function(ev){
     ev.stopPropagation();
-    if(el._swipeHandled){ el._swipeHandled = false; return; }
+    // The click that follows a finished drag isn't a selection
+    if(el._suppressClick){ el._suppressClick = false; return; }
     var already = el.classList.contains('selected');
     $$('.token.selected').forEach(function(t){ t.classList.remove('selected'); });
-    var inTray = !!el.closest('#tray');
+    // Phones: tapping a token in storage OR in a tier opens the picker, so a
+    // placed token can be moved, sent back to storage or deleted by tap.
+    var pickable = !!(el.closest('#tray') || el.closest('.tier-drop'));
     if (!already){
       el.classList.add('selected');
-      if (isSmall() && inTray) openRadial(el);
-    } else if (isSmall() && inTray){
+      if (isSmall() && pickable) openRadial(el);
+    } else if (isSmall() && pickable){
       closeRadial();
     }
   });
@@ -711,27 +931,193 @@ function buildNameToken(name, bgColor, isCustom, textColor){
 }
 function buildImageToken(src, alt){
   var el = buildTokenBase(true); // images are always custom
+  el.classList.add('img-token');
   var img = document.createElement('img'); if(src) img.src=src; img.alt=alt||''; img.draggable=false; el.appendChild(img);
+  // Desktop: double-click reveals "adjust crop" next to delete
+  var cropBtn = document.createElement('button');
+  cropBtn.className = 'token-crop';
+  cropBtn.type = 'button';
+  cropBtn.setAttribute('aria-label', 'Adjust image');
+  cropBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/></svg>';
+  on(cropBtn, 'click', function(ev){ ev.stopPropagation(); el.classList.remove('show-del'); openCropEditor(el); });
+  el.insertBefore(cropBtn, img);
   return el;
 }
 
+/* ---------- Image crop (position + zoom inside the circle) ----------
+   Stored per token as {x, y, z}: a translate in % of the token box plus a
+   zoom factor, applied as a CSS transform on the <img>. Percentages keep it
+   identical at every token size (phone, desktop, export, Versus). */
+function parseCrop(v){
+  if (!v) return null;
+  if (typeof v === 'object') return { x: +v.x || 0, y: +v.y || 0, z: Math.max(1, +v.z || 1) };
+  var p = String(v).split(',').map(Number);
+  return p.length === 3 && p.every(isFinite) ? { x: p[0], y: p[1], z: Math.max(1, p[2]) } : null;
+}
+function cropTransform(c){
+  if (!c || (!c.x && !c.y && c.z === 1)) return '';
+  return 'translate(' + c.x.toFixed(2) + '%,' + c.y.toFixed(2) + '%) scale(' + c.z.toFixed(3) + ')';
+}
+function applyTokenCrop(tok, crop){
+  var img = tok && tok.querySelector('img');
+  if (!img) return;
+  var c = parseCrop(crop);
+  var t = cropTransform(c);
+  img.style.transform = t;
+  if (t) tok.dataset.crop = [c.x.toFixed(2), c.y.toFixed(2), c.z.toFixed(3)].join(',');
+  else delete tok.dataset.crop;
+}
+window.parseCrop = parseCrop;
+window.cropTransform = cropTransform;
+
+function openCropEditor(tok){
+  var srcImg = tok && tok.querySelector('img');
+  if (!srcImg || !srcImg.src) return;
+  var lastFocus = document.activeElement;
+  var start = parseCrop(tok.dataset.crop) || { x: 0, y: 0, z: 1 };
+  var crop = { x: start.x, y: start.y, z: start.z };
+
+  var overlay = document.createElement('div');
+  overlay.className = 'confirm-overlay crop-overlay';
+  overlay.innerHTML =
+    '<div class="confirm-card crop-card" role="dialog" aria-modal="true" aria-labelledby="cropTitle">' +
+      '<h3 class="confirm-title" id="cropTitle">Adjust image</h3>' +
+      '<p class="confirm-msg crop-hint">Drag to reposition · use the slider to zoom</p>' +
+      '<div class="crop-stage" tabindex="0" aria-label="Image position — use arrow keys to move"><img alt="" draggable="false"></div>' +
+      '<label class="crop-zoom"><span class="sr">Zoom</span>' +
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 11h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>' +
+        '<input type="range" min="1" max="3" step="0.01">' +
+        '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 11h6M11 8v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>' +
+      '</label>' +
+      '<div class="confirm-actions">' +
+        '<button type="button" class="btn crop-reset">Reset</button>' +
+        '<span class="crop-spacer"></span>' +
+        '<button type="button" class="btn confirm-cancel">Cancel</button>' +
+        '<button type="button" class="btn crop-save">Save</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(overlay);
+  var stage = $('.crop-stage', overlay), img = $('img', stage), zoom = $('input[type=range]', overlay);
+  img.src = srcImg.src;
+  zoom.value = crop.z;
+
+  function limits(){
+    var a = (img.naturalWidth && img.naturalHeight) ? img.naturalWidth / img.naturalHeight : 1;
+    return {
+      x: Math.max(0, (crop.z * Math.max(a, 1) - 1) / 2 * 100),
+      y: Math.max(0, (crop.z * Math.max(1 / a, 1) - 1) / 2 * 100)
+    };
+  }
+  function render(){
+    var L = limits();
+    crop.x = Math.max(-L.x, Math.min(L.x, crop.x));
+    crop.y = Math.max(-L.y, Math.min(L.y, crop.y));
+    img.style.transform = cropTransform(crop) || 'none';
+  }
+  img.onload = render; render();
+
+  on(zoom, 'input', function(){ crop.z = parseFloat(zoom.value) || 1; render(); });
+  on(stage, 'wheel', function(e){ e.preventDefault(); crop.z = Math.max(1, Math.min(3, crop.z - e.deltaY * 0.002)); zoom.value = crop.z; render(); }, {passive:false});
+  on(stage, 'keydown', function(e){
+    var step = e.shiftKey ? 5 : 1.5, k = e.key;
+    if (k === 'ArrowLeft') crop.x -= step; else if (k === 'ArrowRight') crop.x += step;
+    else if (k === 'ArrowUp') crop.y -= step; else if (k === 'ArrowDown') crop.y += step; else return;
+    e.preventDefault(); render();
+  });
+  on(stage, 'pointerdown', function(e){
+    e.preventDefault();
+    try { stage.setPointerCapture(e.pointerId); } catch(_){}
+    stage.classList.add('dragging');
+    var lx = e.clientX, ly = e.clientY, size = stage.clientWidth || 220;
+    function mv(ev){
+      crop.x += (ev.clientX - lx) / size * 100;
+      crop.y += (ev.clientY - ly) / size * 100;
+      lx = ev.clientX; ly = ev.clientY;
+      render();
+    }
+    function upx(){
+      stage.classList.remove('dragging');
+      stage.removeEventListener('pointermove', mv);
+      stage.removeEventListener('pointerup', upx);
+      stage.removeEventListener('pointercancel', upx);
+    }
+    stage.addEventListener('pointermove', mv);
+    stage.addEventListener('pointerup', upx);
+    stage.addEventListener('pointercancel', upx);
+  });
+
+  function close(){
+    overlay.remove();
+    document.removeEventListener('keydown', onKey);
+    if (lastFocus && lastFocus.focus) { try { lastFocus.focus({preventScroll:true}); } catch(_){} }
+  }
+  function onKey(e){ if (e.key === 'Escape') close(); }
+  document.addEventListener('keydown', onKey);
+  on(overlay, 'click', function(e){ if (e.target === overlay) close(); });
+  on($('.confirm-cancel', overlay), 'click', close);
+  on($('.crop-reset', overlay), 'click', function(){ crop = { x: 0, y: 0, z: 1 }; zoom.value = 1; render(); });
+  on($('.crop-save', overlay), 'click', function(){
+    var prev = tok.dataset.crop || '';
+    applyTokenCrop(tok, crop);
+    if ((tok.dataset.crop || '') !== prev){
+      pushHistory({ type: 'crop', itemId: ensureId(tok, 'tok'), prev: prev });
+      scheduleSave();
+      live('Image adjusted');
+    }
+    close();
+  });
+  setTimeout(function(){ try { stage.focus({preventScroll:true}); } catch(_){} }, 30);
+}
+window.openCropEditor = openCropEditor;
+
 // Convert an external image URL to a data URL so it survives a refresh
 // (persisted inline) and exports cleanly (no tainted canvas). Falls back to
-// the original URL if the fetch is blocked by CORS or fails.
-function inlineImageSrc(src, cb){
+// the original URL if the fetch is blocked by CORS, fails, or takes longer
+// than `timeoutMs` (a stalled connection must never lose the image).
+// opts.cache: 'default' reuses the browser cache (search thumbnails were just
+// loaded with CORS); arbitrary pasted URLs revalidate ('no-cache').
+function inlineImageSrc(src, cb, opts){
+  opts = opts || {};
   if (typeof src !== 'string' || src.indexOf('data:') === 0) { cb(src); return; }
+  var done = false;
+  function finish(v){ if (done) return; done = true; clearTimeout(timer); cb(v); }
+  var ctl = (typeof AbortController === 'function') ? new AbortController() : null;
+  var timer = setTimeout(function(){ if (ctl) ctl.abort(); finish(src); }, opts.timeoutMs || 15000);
   try {
-    fetch(src, { mode: 'cors', cache: 'no-cache' })
+    fetch(src, { mode: 'cors', cache: opts.cache || 'no-cache', signal: ctl ? ctl.signal : undefined })
       .then(function(r){ if(!r.ok) throw new Error('http '+r.status); return r.blob(); })
       .then(function(blob){
         var reader = new FileReader();
-        reader.onload = function(ev){ cb(ev.target.result); };
-        reader.onerror = function(){ cb(src); };
+        reader.onload = function(ev){ finish(ev.target.result); };
+        reader.onerror = function(){ finish(src); };
         reader.readAsDataURL(blob);
       })
-      .catch(function(){ cb(src); });
-  } catch(e){ cb(src); }
+      .catch(function(){ finish(src); });
+  } catch(e){ finish(src); }
 }
+// A readable name for an image that came from a URL ("golden-retriever").
+function altFromUrl(url){
+  try {
+    var seg = decodeURIComponent(new URL(url, location.href).pathname.split('/').pop() || '');
+    seg = seg.replace(/\.[a-z0-9]{2,5}$/i, '').replace(/^\d+px-/, '').replace(/[_+-]+/g, ' ').trim();
+    return seg.slice(0, 40) || 'Image';
+  } catch(e){ return 'Image'; }
+}
+// Build an image token from a remote URL and show it right away (the browser
+// usually has it cached already), then quietly swap in an inlined copy so it
+// persists and exports. Nothing waits on the network.
+function buildRemoteImageToken(url, alt, opts){
+  var tok = buildImageToken(url, alt || altFromUrl(url));
+  tok.classList.add('img-pending');
+  inlineImageSrc(url, function(finalSrc){
+    tok.classList.remove('img-pending');
+    var img = tok.querySelector('img');
+    if (img && finalSrc && finalSrc !== img.src) img.src = finalSrc;
+    scheduleSave();
+  }, opts);
+  return tok;
+}
+window.buildRemoteImageToken = buildRemoteImageToken;
 window.inlineImageSrc = inlineImageSrc;
 
 /* ---------- History (Undo) ---------- */
@@ -746,7 +1132,7 @@ function recordPlacement(itemId, fromId, toId, originBeforeId, extra){
   if (!fromId || !toId) return;
   // Quadrant pins can move meaningfully within one zone (position change),
   // so same-zone entries are kept when the exact prior coords are recorded.
-  if (fromId===toId && !(extra && extra.isQuadrant)) return;
+  if (fromId===toId && !(extra && (extra.isQuadrant || extra.isReorder))) return;
   var entry = {itemId:itemId, fromId:fromId, toId:toId, originBeforeId: originBeforeId||''};
   if (extra) for (var k in extra) if (Object.prototype.hasOwnProperty.call(extra, k)) entry[k] = extra[k];
   pushHistory(entry);
@@ -756,10 +1142,40 @@ function recordDeletion(element, parentEl, nextSibling){
   var beforeId = nextSibling ? ensureId(nextSibling, 'tok') : '';
   pushHistory({type:'delete', element:element, parentId:parentId, beforeId:beforeId});
 }
-function undoLast(){
-  var last = historyStack.pop(); if (!last) return;
-  var u0;
-  // Handle tier-row deletion undo — re-insert the row and pull its tokens back
+function syncUndoBtn(){ var u = $('#undoBtn'); if (u) u.disabled = historyStack.length===0; }
+// Apply one history entry. Returns true only if something actually changed,
+// so stale entries (e.g. moves into tiers that no longer exist) are skipped
+// instead of producing a misleading "Undone".
+function applyUndo(last){
+  // Prompt rebuilt the tiers — put the old rows (and their tokens) back
+  if (last.type === 'rebuild') {
+    $$('.tier-row', board).forEach(function(r){ r.remove(); });
+    last.oldRows.forEach(function(r){ board.appendChild(r); });
+    last.homes.forEach(function(h){ if (h.token.parentElement === tray) h.drop.appendChild(h.token); });
+    var titleEl = $('.board-title');
+    if (titleEl){
+      titleEl.textContent = last.oldTitle || '';
+      if (titleEl.textContent.trim()){ _promptUserSet = true; hidePromptStack(); }
+      else {
+        _promptUserSet = false;
+        // Only the tier list shows the prompt stack
+        if (typeof window.currentChartMode !== 'function' || window.currentChartMode() === 'tier') showPromptStack();
+      }
+    }
+    uniformizeTierLabels(); refreshRadialOptions(); scheduleSave();
+    live('Restored previous tiers');
+    return true;
+  }
+  // Image crop — restore the previous framing
+  if (last.type === 'crop') {
+    var ct = document.getElementById(last.itemId);
+    if (!ct) return false;
+    applyTokenCrop(ct, last.prev || null);
+    scheduleSave();
+    live('Image framing restored');
+    return true;
+  }
+  // Tier-row deletion — re-insert the row and pull its tokens back
   if (last.type === 'deleteRow') {
     var beforeRow = last.beforeId ? document.getElementById(last.beforeId) : null;
     if (beforeRow && beforeRow.parentElement === board) board.insertBefore(last.element, beforeRow);
@@ -772,46 +1188,37 @@ function undoLast(){
       if (back.length) flipZones([tray, rowDrop], function(){ back.forEach(function(t){ rowDrop.appendChild(t); }); });
     }
     uniformizeTierLabels(); refreshRadialOptions(); scheduleSave();
-    u0 = $('#undoBtn'); if (u0) u0.disabled = historyStack.length===0;
     live('Restored deleted tier');
-    return;
+    return true;
   }
-  // Handle quadrant placement undo — remove the pin, unhide the tray token
+  // Quadrant placement — remove the pin, unhide the tray token
   if (last.type === 'qplace') {
     var qpin = document.getElementById(last.pinId);
-    if (qpin && typeof window.qRemovePinSilent === 'function') window.qRemovePinSilent(qpin);
-    u0 = $('#undoBtn'); if (u0) u0.disabled = historyStack.length===0;
+    if (!qpin || typeof window.qRemovePinSilent !== 'function') return false;
+    window.qRemovePinSilent(qpin);
     live('Removed pin from quadrant chart');
-    return;
+    return true;
   }
-  // Handle deletion undo — re-insert the removed element
+  // Deletion — re-insert the removed element
   if (last.type === 'delete') {
     var parent = document.getElementById(last.parentId);
-    if (!parent) return;
-    if (last.beforeId) {
-      var before = document.getElementById(last.beforeId);
-      if (before && before.parentElement === parent) parent.insertBefore(last.element, before);
-      else parent.appendChild(last.element);
-    } else {
-      parent.appendChild(last.element);
-    }
-    var u = $('#undoBtn'); if (u) u.disabled = historyStack.length===0;
+    if (!parent) return false;
+    var before = last.beforeId ? document.getElementById(last.beforeId) : null;
+    if (before && before.parentElement === parent) parent.insertBefore(last.element, before);
+    else parent.appendChild(last.element);
+    scheduleSave();
     live('Restored deleted token');
-    return;
+    return true;
   }
-  // Handle placement undo
+  // Placement
   var item = document.getElementById(last.itemId);
   var origin = document.getElementById(last.fromId);
-  if (!item || !origin) return;
+  if (!item || !origin || !document.contains(origin)) return false;
   var scrollSnap = window.pageYOffset;
   flipZones([item.parentElement, origin], function(){
-    if (last.originBeforeId){
-      var before = document.getElementById(last.originBeforeId);
-      if (before && before.parentElement === origin){ origin.insertBefore(item, before); }
-      else { origin.appendChild(item); }
-    } else {
-      origin.appendChild(item);
-    }
+    var b = last.originBeforeId ? document.getElementById(last.originBeforeId) : null;
+    if (b && b.parentElement === origin) origin.insertBefore(item, b);
+    else origin.appendChild(item);
     // Quadrant pins are absolutely positioned within their zone — restore the
     // exact left/top they had before the move, otherwise they land in the
     // wrong spot using the drop coordinates.
@@ -823,7 +1230,14 @@ function undoLast(){
     if (typeof window.bringQTokenToFront === 'function') window.bringQTokenToFront(item);
     if (typeof window.scheduleQuadrantSave === 'function') window.scheduleQuadrantSave();
   }
-  var u = $('#undoBtn'); if (u) u.disabled = historyStack.length===0;
+  live('Moved "'+tokenName(item)+'" back');
+  return true;
+}
+function undoLast(){
+  var done = false;
+  while (!done && historyStack.length) done = applyUndo(historyStack.pop());
+  syncUndoBtn();
+  return done;
 }
 
 /* ---------- Insert helper (drop between tokens) ---------- */
@@ -863,7 +1277,7 @@ function enableClickToPlace(zone){
     selected.classList.remove('selected');
     recordPlacement(selected.id, fromId, zone.id, originBeforeId);
     var r = zone.closest ? zone.closest('.tier-row') : null;
-    live('Moved "'+(selected.innerText||'item')+'" to '+ (r?rowLabel(r): isQZone?'quadrant chart':'Image Storage') );
+    live('Moved "'+tokenName(selected)+'" to '+ (r?rowLabel(r): isQZone?'quadrant chart':'Image Storage') );
     vib(6);
   });
 }
@@ -880,18 +1294,22 @@ function getDropZoneFromElement(el){
 var _autoScrollEdge = 80;   // px from viewport edge to start scrolling
 var _autoScrollMax  = 18;   // max px per frame
 
-function autoScrollForDrag(clientY){
+function autoScrollForDrag(clientY, edge){
   var vh = window.innerHeight;
-  if (clientY < _autoScrollEdge) {
+  edge = edge || _autoScrollEdge;
+  if (clientY < edge) {
     // Near top – scroll up; speed proportional to proximity
-    var t = 1 - clientY / _autoScrollEdge;           // 0 at threshold, 1 at edge
+    var t = 1 - clientY / edge;           // 0 at threshold, 1 at edge
     window.scrollBy(0, -Math.round(_autoScrollMax * t * t));
-  } else if (clientY > vh - _autoScrollEdge) {
+  } else if (clientY > vh - edge) {
     // Near bottom – scroll down
-    var t = 1 - (vh - clientY) / _autoScrollEdge;
+    var t = 1 - (vh - clientY) / edge;
     window.scrollBy(0, Math.round(_autoScrollMax * t * t));
   }
 }
+// Touch drags use a slimmer edge (a phone screen is short) and only start
+// auto-scrolling once the finger has actually moved after lifting.
+var _touchAutoScrollEdge = 56;
 
 /* ---------- Pointer drag (desktop / large screens) ---------- */
 function enablePointerDrag(node){
@@ -901,6 +1319,10 @@ function enablePointerDrag(node){
   on(node,'pointerdown', function(e){
     if (isSmall()) return;
     if (e.button!==0) return;
+    // Presses on the token's own buttons (delete / adjust) are clicks, not
+    // drags — capturing the pointer here would retarget their click to the
+    // token and they'd never fire.
+    if (e.target.closest && e.target.closest('button')) return;
     e.preventDefault();
     // preventDefault suppresses the browser's click-focus — restore it so
     // keyboard users who mix in mouse clicks keep a sensible focus position.
@@ -927,11 +1349,29 @@ function enablePointerDrag(node){
       x=ev.clientX; y=ev.clientY;
       if(!started && Math.hypot(x - e.clientX, y - e.clientY) > 4) startDrag();
     }
-    function up(){
+    function detach(){
       try{ node.releasePointerCapture(e.pointerId); }catch(_){}
       document.removeEventListener('pointermove', move, _supportsPassive?{passive:true}:false);
       document.removeEventListener('pointerup', up, false);
+      document.removeEventListener('pointercancel', cancel, false);
+    }
+    // The system took the pointer away mid-drag — drop the ghost, never move
+    function cancel(){
+      detach();
+      if (!started) return;
+      cancelAnimationFrame(raf);
+      if (ghost && ghost.parentNode) ghost.parentNode.removeChild(ghost);
+      ghost = null;
+      node.classList.remove('drag-hidden');
+      document.body.classList.remove('dragging-item');
+      if (currentZone) currentZone.classList.remove('drag-over');
+      currentZone = null;
+    }
+    function up(){
+      detach();
       if (!started) return; // plain click — let the click event handle selection
+      // The click that follows a real drag must not toggle selection
+      node._suppressClick = true; setTimeout(function(){ node._suppressClick = false; }, 400);
       cancelAnimationFrame(raf);
       var target = document.elementFromPoint(x,y);
       var zonePreview = getDropZoneFromElement(target);
@@ -996,7 +1436,7 @@ function enablePointerDrag(node){
         if(!isQZone) recordPlacement(node.id, fromId, toId, originBeforeId);
         node.classList.add('animate-drop'); setTimeout(function(){ node.classList.remove('animate-drop'); },180);
         var rr = zone.closest ? zone.closest('.tier-row') : null;
-        live('Moved "'+(node.innerText||'item')+'" to '+ (rr?rowLabel(rr): isQZone?'quadrant chart':'Image Storage') );
+        live('Moved "'+tokenName(node)+'" to '+ (rr?rowLabel(rr): isQZone?'quadrant chart':'Image Storage') );
         vib(6);
       } else {
         flipZones([originParent], function(){
@@ -1010,6 +1450,7 @@ function enablePointerDrag(node){
 
     document.addEventListener('pointermove', move, _supportsPassive?{passive:true}:false);
     document.addEventListener('pointerup', up, false);
+    document.addEventListener('pointercancel', cancel, false);
 
     var _lhx=null, _lhy=null;
     function loop(){
@@ -1105,7 +1546,7 @@ function enableMouseTouchDragFallback(node){
       if(!isQZone) recordPlacement(node.id, fromId, toId, originBeforeId);
       node.classList.add('animate-drop'); setTimeout(function(){ node.classList.remove('animate-drop'); },180);
       var rr = zone.closest ? zone.closest('.tier-row') : null;
-      live('Moved "'+(node.innerText||'item')+'" to '+ (rr?rowLabel(rr): isQZone?'quadrant chart':'Image Storage') );
+      live('Moved "'+tokenName(node)+'" to '+ (rr?rowLabel(rr): isQZone?'quadrant chart':'Image Storage') );
       vib(6);
     } else {
       flipZones([originParent], function(){
@@ -1117,7 +1558,7 @@ function enableMouseTouchDragFallback(node){
     currentZone=null;
   }
 
-  on(node,'mousedown', function(e){ if(e.button!==0) return; start(e,e.clientX,e.clientY);
+  on(node,'mousedown', function(e){ if(e.button!==0) return; if(e.target.closest && e.target.closest('button')) return; start(e,e.clientX,e.clientY);
     on(document,'mousemove', onMouseMove); on(document,'mouseup', onMouseUp); });
   function onMouseMove(e){ move(e.clientX,e.clientY); }
   function onMouseUp(){ document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onMouseUp); end(); }
@@ -1143,104 +1584,153 @@ function enableMouseTouchDragFallback(node){
   }
 }
 
-/* ---------- Mobile touch drag for placed tokens ---------- */
+/* ---------- Mobile touch drag for placed tokens ----------
+   Press-and-hold (~220ms) lifts a placed token. A finger that starts moving
+   before that is a scroll and is left entirely to the browser (tokens are
+   touch-action:pan-y on phones). Once lifted, a non-passive touchmove
+   listener stops the page from panning under the drag. A plain tap falls
+   through to the click handler (which opens the picker). */
+var TOUCH_HOLD_MS = 220;
 function enableMobileTouchDrag(node){
   if(!('PointerEvent' in window)) return;
+  var armed = false;
+  // Registered up front (not mid-gesture) and non-passive, so it can cancel
+  // native panning once the hold has lifted the token.
+  node.addEventListener('touchmove', function(ev){ if(armed && ev.cancelable) ev.preventDefault(); }, {passive:false});
+  // Long-press must not open the browser's context menu / callout
+  on(node,'contextmenu', function(ev){ if(isSmall()) ev.preventDefault(); });
+
   on(node,'pointerdown',function(e){
     if(!isSmall())return;
     if(e.pointerType!=='touch' && e.pointerType!=='pen')return;
     if(!node.closest('.tier-drop'))return;
-    e.preventDefault(); node.setPointerCapture(e.pointerId); document.body.classList.add('dragging-item');
+    if(e.target.closest && e.target.closest('button'))return;
 
-    var ghost=node.cloneNode(true); ghost.classList.add('drag-ghost'); document.body.appendChild(ghost);
-    var originParent=node.parentElement, originNext=node.nextElementSibling;
+    var pid=e.pointerId, sx=e.clientX, sy=e.clientY, x=sx, y=sy;
+    var ghost=null, originParent=null, originNext=null, offsetX=0, offsetY=0;
+    var lastInsertZone=null, lastInsertBefore=null, raf=null;
+    var liftX=0, liftY=0, dragMoved=false;
+    var holdTimer=setTimeout(lift, TOUCH_HOLD_MS);
 
-    // Show a placeholder gap where the token was, and enable smooth sibling animation
-    node.classList.add('drag-hidden');
-    originParent.classList.add('reorder-active');
-
-    var r=node.getBoundingClientRect(), offsetX=e.clientX-r.left, offsetY=e.clientY-r.top, x=e.clientX, y=e.clientY;
-    // Position the ghost over the original token immediately. Without this it
-    // spawns at the CSS default (top-left 0,0) and flashes near the prompt
-    // cards until the first pointermove sets its transform.
-    ghost.style.transform='translate3d('+(x-offsetX)+'px,'+(y-offsetY)+'px,0)';
-    var lastInsertZone=null, lastInsertBefore=null, moved=false;
-
+    function lift(){
+      if(!node.isConnected){ detach(); return; }
+      armed=true;
+      liftX=x; liftY=y; dragMoved=false;
+      try{ node.setPointerCapture(pid); }catch(_){}
+      document.body.classList.add('dragging-item');
+      originParent=node.parentElement; originNext=node.nextElementSibling;
+      var r=node.getBoundingClientRect(); offsetX=x-r.left; offsetY=y-r.top;
+      ghost=node.cloneNode(true); ghost.classList.add('drag-ghost');
+      ghost.style.width=r.width+'px'; ghost.style.height=r.height+'px';
+      // Place the ghost over the token immediately (no flash at 0,0)
+      ghost.style.transform='translate3d('+(x-offsetX)+'px,'+(y-offsetY)+'px,0)';
+      document.body.appendChild(ghost);
+      // Placeholder gap where the token was + smooth sibling animation
+      node.classList.add('drag-hidden');
+      originParent.classList.add('reorder-active');
+      vib(10);
+      loop();
+    }
+    // Reordering inside the token's own tier happens live. Crossing into
+    // another tier only highlights it and moves the token on release —
+    // moving it live would shrink/grow rows and slide the target out from
+    // under a still finger.
+    var targetZone=null;
+    function setTarget(zone){
+      if(targetZone && targetZone!==zone && targetZone!==originParent) targetZone.classList.remove('drag-over');
+      if(zone && zone!==originParent) zone.classList.add('drag-over');
+      targetZone=zone||null;
+    }
     function updateTarget(){
       // Hit-test through the ghost
       ghost.style.pointerEvents='none';
       var el=document.elementFromPoint(x,y);
       ghost.style.pointerEvents='';
       var zone=el?getDropZoneFromElement(el):null;
-      if(zone){
-        // Enable reorder-active on new zone too
-        if(zone!==lastInsertZone){
-          if(lastInsertZone) lastInsertZone.classList.remove('reorder-active');
-          zone.classList.add('reorder-active');
-        }
+      if(zone && zone.classList.contains('q-zone')) zone=null;
+      if(zone!==targetZone){ setTarget(zone); if(zone) vib(4); }
+      if(zone && zone===originParent){
         var beforeTok=insertBeforeForPoint(zone,x,y,node);
-        if(zone!==lastInsertZone || beforeTok!==lastInsertBefore){
+        if(beforeTok!==lastInsertBefore || lastInsertZone!==zone){
           if(beforeTok) zone.insertBefore(node,beforeTok); else zone.appendChild(node);
           lastInsertZone=zone; lastInsertBefore=beforeTok;
-          vib(4);
         }
       }
     }
-    // rAF loop drives edge auto-scroll (finger held near a screen edge fires
-    // no pointermove events) and re-hit-tests when the page scrolls under a
-    // stationary finger — matching the desktop drag loop.
-    var raf=null, _lhx=null, _lhy=null, _lsY=window.pageYOffset;
+    // rAF loop drives edge auto-scroll (a finger held near a screen edge fires
+    // no pointermove) and re-hit-tests when the page scrolls under it.
+    var _lhx=null, _lhy=null, _lsY=window.pageYOffset;
     function loop(){
       raf=requestAnimationFrame(loop);
-      autoScrollForDrag(y);
-      var sy=window.pageYOffset;
-      if(x===_lhx && y===_lhy && sy===_lsY) return;
-      _lhx=x; _lhy=y; _lsY=sy;
+      if(dragMoved) autoScrollForDrag(y, _touchAutoScrollEdge);
+      var sy2=window.pageYOffset;
+      if(x===_lhx && y===_lhy && sy2===_lsY) return;
+      _lhx=x; _lhy=y; _lsY=sy2;
       updateTarget();
     }
-    loop();
-
     function move(ev){
+      if(ev.pointerId!==pid) return;
       x=ev.clientX; y=ev.clientY;
+      if(!armed){
+        // Moved before the hold completed → it's a scroll, not a drag
+        if(Math.hypot(x-sx,y-sy)>8){ clearTimeout(holdTimer); detach(); }
+        return;
+      }
+      if(!dragMoved && Math.hypot(x-liftX,y-liftY)>10) dragMoved=true;
       ghost.style.transform='translate3d('+(x-offsetX)+'px,'+(y-offsetY)+'px,0)';
     }
-    function up(){
-      cancelAnimationFrame(raf);
-      try{node.releasePointerCapture(e.pointerId);}catch(_){}
+    function detach(){
       document.removeEventListener('pointermove',move,_supportsPassive?{passive:true}:false);
       document.removeEventListener('pointerup',up,false);
+      document.removeEventListener('pointercancel',cancel,false);
+    }
+    function finish(commit){
+      clearTimeout(holdTimer);
+      detach();
+      if(!armed) return; // tap (click handles it) or a scroll the browser owns
+      armed=false;
+      cancelAnimationFrame(raf);
+      // Final hit test at the release point — the finger can lift before the
+      // next animation frame has looked at its last position.
+      if(commit && ghost) updateTarget();
+      try{node.releasePointerCapture(pid);}catch(_){}
       if(ghost&&ghost.parentNode)ghost.parentNode.removeChild(ghost);
       node.classList.remove('drag-hidden');
       document.body.classList.remove('dragging-item');
-
-      // Clean up reorder-active from all zones
       $$('.reorder-active').forEach(function(z){ z.classList.remove('reorder-active'); });
+      // Swallow the click that follows the release
+      node._suppressClick=true; setTimeout(function(){ node._suppressClick=false; },400);
 
-      // Token is already at its new position from live preview
+      var dropZone=targetZone;
+      setTarget(null);
+      // Cross-tier drop: move now, at the release point
+      if(commit && dropZone && dropZone!==originParent){
+        var bt=insertBeforeForPoint(dropZone,x,y,node);
+        flipZones([originParent, dropZone], function(){ if(bt) dropZone.insertBefore(node,bt); else dropZone.appendChild(node); });
+      }
       var currentParent=node.parentElement;
-      if(currentParent && currentParent!==originParent){
+      var moved=currentParent!==originParent || node.nextElementSibling!==originNext;
+      if(commit && moved){
         var fromId=ensureId(originParent,'zone'), toId=ensureId(currentParent,'zone');
         var originBeforeId=originNext?ensureId(originNext,'tok'):'';
-        recordPlacement(node.id,fromId,toId,originBeforeId);
-        moved=true;
-      } else if(currentParent===originParent && node.nextElementSibling!==originNext){
-        var fromId2=ensureId(originParent,'zone');
-        var originBeforeId2=originNext?ensureId(originNext,'tok'):'';
-        recordPlacement(node.id,fromId2,fromId2,originBeforeId2);
-        moved=true;
-      }
-      if(moved){
+        // Same-zone reorders are recorded as a from==to placement
+        if(fromId===toId) recordPlacement(node.id,fromId,fromId,originBeforeId,{isReorder:true});
+        else recordPlacement(node.id,fromId,toId,originBeforeId);
         node.classList.add('animate-drop'); setTimeout(function(){node.classList.remove('animate-drop');},180);
-        var rr=node.closest('.tier-row'); live('Moved "'+(node.innerText||'item')+'" to '+(rr?rowLabel(rr):'Image Storage'));
+        var rr=node.closest('.tier-row'); live('Moved "'+tokenName(node)+'" to '+(rr?rowLabel(rr):'Image Storage'));
         vib(6);
       } else {
+        // Cancelled (system gesture, call, …) or no change: put it back exactly
         if(originNext&&originNext.parentElement===originParent)originParent.insertBefore(node,originNext);
         else originParent.appendChild(node);
       }
     }
+    function up(ev){ if(ev.pointerId!==pid) return; x=ev.clientX; y=ev.clientY; finish(true); }
+    function cancel(ev){ if(ev.pointerId===pid) finish(false); }
     document.addEventListener('pointermove',move,_supportsPassive?{passive:true}:false);
     document.addEventListener('pointerup',up,false);
-  },_supportsPassive?{passive:false}:false);
+    document.addEventListener('pointercancel',cancel,false);
+  });
 }
 
 /* ---------- Row reorder ---------- */
@@ -1302,6 +1792,12 @@ function enableRowReorder(labelArea, row){
      tier label (350ms without moving) to lift the row, then drag vertically;
      rows swap live with a small FLIP animation. */
   if (window.PointerEvent) {
+    // Tier labels are touch-action:pan-y so the page scrolls from them; once
+    // the long-press lifts a row, this (non-passive, registered up front)
+    // listener stops the page panning under the drag.
+    labelArea.addEventListener('touchmove', function(ev){
+      if (labelArea._rowArmed && ev.cancelable) ev.preventDefault();
+    }, {passive:false});
     on(labelArea,'pointerdown', function(e){
       if (!isSmall()) return;
       if (e.pointerType !== 'touch' && e.pointerType !== 'pen') return;
@@ -1313,6 +1809,7 @@ function enableRowReorder(labelArea, row){
       var armed = false, pid = e.pointerId, raf = null;
       var timer = setTimeout(function(){
         armed = true;
+        labelArea._rowArmed = true;
         vib(12);
         row.classList.add('row-lifted');
         document.body.classList.add('dragging-item');
@@ -1338,7 +1835,7 @@ function enableRowReorder(labelArea, row){
       }
       function loop(){
         raf = requestAnimationFrame(loop);
-        autoScrollForDrag(lastY);
+        if (Math.abs(lastY - startY) > 10) autoScrollForDrag(lastY, _touchAutoScrollEdge);
       }
       function move(ev){
         lastY = ev.clientY;
@@ -1360,6 +1857,7 @@ function enableRowReorder(labelArea, row){
         cleanup(armed);
       }
       function cleanup(commit){
+        labelArea._rowArmed = false;
         cancelAnimationFrame(raf);
         document.removeEventListener('pointermove', move, {passive:false});
         document.removeEventListener('pointerup', upOrCancel);
@@ -1394,6 +1892,48 @@ function refreshRadialOptions(){
   openRadial(radialForToken);
 }
 
+/* Picker header: a small preview of the token being placed + its name, so
+   it's always clear what the tier buttons will act on. */
+function buildRadialHead(token, verb){
+  var head = document.createElement('div');
+  head.className = 'radial-head';
+  var chip = document.createElement('span');
+  chip.className = 'radial-head-token';
+  var img = token && token.querySelector('img');
+  if (img){
+    var pi = document.createElement('img');
+    pi.src = img.src; pi.alt = ''; pi.draggable = false;
+    if (img.style.transform) pi.style.transform = img.style.transform;
+    chip.appendChild(pi);
+  } else if (token){
+    chip.style.background = token.style.background || 'var(--token-default)';
+    var lbl = token.querySelector('.label');
+    if (lbl) chip.style.color = lbl.style.color || '';
+    chip.textContent = tokenName(token).slice(0, 2);
+  }
+  var txt = document.createElement('span');
+  txt.className = 'radial-head-text';
+  var v = document.createElement('span'); v.className = 'radial-head-verb'; v.textContent = verb;
+  var n = document.createElement('strong'); n.textContent = tokenName(token);
+  txt.appendChild(v); txt.appendChild(n);
+  head.appendChild(chip); head.appendChild(txt);
+  return head;
+}
+window.buildRadialHead = buildRadialHead;
+function addRadialAction(label, cls, delayIdx, onClick){
+  var b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'radial-option radial-btn radial-action ' + cls;
+  b.style.transitionDelay = (delayIdx * 20) + 'ms';
+  var d = document.createElement('span');
+  d.className = 'dot';
+  d.textContent = label;
+  b.appendChild(d);
+  on(b, 'click', onClick);
+  radialOpts.appendChild(b);
+  return b;
+}
+
 function openRadial(token){
   if(!radial||!isSmall()) return;
   // Remove existing backdrop handler to prevent listener leaks on re-open
@@ -1409,55 +1949,73 @@ function openRadial(token){
   if (_savedScrollY === null) _savedScrollY = window.pageYOffset;
 
   var rows = $$('.tier-row');
-  var labels = rows.map(function(r){ return rowLabel(r); });
-  var colors = rows.map(function(r){
-    var chip = r.querySelector('.label-chip');
-    return chip ? chip.dataset.color : '#8b7dff';
-  });
-  var N = labels.length; if (!N) return;
+  var N = rows.length; if (!N) return;
+  var currentRow = token && token.closest ? token.closest('.tier-row') : null;
 
   _radialGeo = [];
 
   // The options container is a centered, scrollable column (CSS .radial-list)
   // so boards with many tiers never push options off-screen — they scroll.
   radialOpts.innerHTML = '';
-  for (var j = 0; j < N; j++){
-    (function(j){
-      var row = rows[j];
-      var btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'radial-option radial-btn';
-      btn.style.transitionDelay = (j * 20) + 'ms';
+  radialOpts.appendChild(buildRadialHead(token, currentRow ? 'Move' : 'Place'));
+  rows.forEach(function(row, j){
+    var chipEl = row.querySelector('.label-chip');
+    var cc = tierChipColors(chipEl && chipEl.dataset.color ? chipEl.dataset.color : '#8b7dff');
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'radial-option radial-btn';
+    btn.style.transitionDelay = (j * 20) + 'ms';
 
-      var dot = document.createElement('span');
-      dot.className = 'dot';
-      dot.textContent = labels[j];
-      dot.style.background = colors[j];
-      dot.style.color = contrastColor(colors[j] || '#8b7dff');
-      btn.appendChild(dot);
+    var dot = document.createElement('span');
+    dot.className = 'dot';
+    dot.textContent = rowLabel(row);
+    dot.style.background = cc.bg;
+    dot.style.color = cc.fg;
+    btn.appendChild(dot);
+    if (row === currentRow){
+      btn.classList.add('is-current');
+      btn.setAttribute('aria-current', 'true');
+      btn.setAttribute('aria-label', rowLabel(row) + ' (current tier)');
+    }
 
-      function makeHot(){ updateHighlight(j); }
-      on(btn, 'pointerenter', makeHot);
-      on(btn, 'pointerdown', function(e){ makeHot(); });
-      on(btn, 'click', function(){ selectRadialTarget(row); });
+    function makeHot(){ updateHighlight(j); }
+    on(btn, 'pointerenter', makeHot);
+    on(btn, 'pointerdown', makeHot);
+    on(btn, 'click', function(){ selectRadialTarget(row); });
 
-      radialOpts.appendChild(btn);
-      _radialGeo.push({ row: row, btn: btn });
-    })(j);
+    radialOpts.appendChild(btn);
+    _radialGeo.push({ row: row, btn: btn });
+  });
+
+  var extra = N;
+  // Placed tokens can go back to storage by tap
+  if (currentRow){
+    addRadialAction('Back to storage', 'radial-back', extra++, function(){
+      var tok = radialForToken;
+      closeRadial();
+      if (!tok || !tok.parentElement) return;
+      var origin = tok.parentElement, next = tok.nextElementSibling;
+      var fromId = ensureId(origin, 'zone');
+      var scrollSnap = window.pageYOffset;
+      flipZones([origin, tray], function(){ tray.insertBefore(tok, tray.firstChild); });
+      window.scrollTo(0, scrollSnap);
+      tok.classList.remove('selected');
+      recordPlacement(tok.id, fromId, ensureId(tray, 'zone'), next ? ensureId(next, 'tok') : '');
+      live('Moved "'+tokenName(tok)+'" to Image Storage');
+      vib(7);
+    });
   }
-
-  // Custom tokens get an explicit Delete action here — native scrolling now
-  // owns vertical swipes in the tray, so the old swipe-up gesture is gone.
+  // Image tokens: reposition / zoom the circular crop
+  if (token && token.querySelector('img') && typeof window.openCropEditor === 'function'){
+    addRadialAction('Adjust image', 'radial-adjust', extra++, function(){
+      var tok = radialForToken;
+      closeRadial();
+      if (tok) window.openCropEditor(tok);
+    });
+  }
+  // Custom tokens get an explicit Delete action
   if (token && token.dataset && token.dataset.custom === 'true'){
-    var delBtn = document.createElement('button');
-    delBtn.type = 'button';
-    delBtn.className = 'radial-option radial-btn radial-delete';
-    delBtn.style.transitionDelay = (N * 20) + 'ms';
-    var ddot = document.createElement('span');
-    ddot.className = 'dot';
-    ddot.textContent = 'Delete';
-    delBtn.appendChild(ddot);
-    on(delBtn, 'click', function(){
+    addRadialAction('Delete', 'radial-delete', extra++, function(){
       var tok = radialForToken;
       closeRadial();
       if (!tok || !tok.parentElement) return;
@@ -1465,9 +2023,8 @@ function openRadial(token){
       tok.remove();
       scheduleSave();
       vib(10);
-      live('Deleted token');
+      live('Deleted "'+tokenName(tok)+'"');
     });
-    radialOpts.appendChild(delBtn);
   }
 
   function backdrop(ev){
@@ -1476,8 +2033,8 @@ function openRadial(token){
     var y = (ev.touches && ev.touches[0] ? ev.touches[0].clientY : ev.clientY);
     var prevPE = radial.style.pointerEvents; radial.style.pointerEvents = 'none';
     var under = document.elementFromPoint(x, y); radial.style.pointerEvents = prevPE || 'auto';
-    var other = under && under.closest && under.closest('#tray .token');
-    if(other){
+    var other = under && under.closest && under.closest('#tray .token, .tier-drop .token');
+    if(other && other !== radialForToken){
       closeRadial();
       $$('.token.selected').forEach(function(t){ t.classList.remove('selected'); });
       other.classList.add('selected');
@@ -1497,8 +2054,8 @@ function openRadial(token){
   radial.classList.remove('hidden');
   radial.classList.add('visible', 'show');
   radial.setAttribute('aria-hidden', 'false');
-  setTimeout(function(){ radial.classList.remove('show'); }, 160 + N * 20);
-  if (_radialGeo.length){ updateHighlight(0); if(_radialGeo[0].btn) _radialGeo[0].btn.focus(); }
+  setTimeout(function(){ radial.classList.remove('show'); }, 160 + extra * 20);
+  if (_radialGeo.length){ updateHighlight(-1); _radialGeo[0].btn.focus({preventScroll:true}); }
 }
 function updateHighlight(index){
   if(!_radialGeo.length) return;
@@ -1516,6 +2073,8 @@ function selectRadialTarget(row){
   if (!document.contains(row)) { closeRadial(); return; }
   var zone = row.querySelector('.tier-drop');
   if (!zone) { closeRadial(); return; }
+  // Already in this tier — nothing to move
+  if (radialForToken.parentElement === zone) { radialForToken.classList.remove('selected'); closeRadial(); return; }
   var fromId = ensureId(radialForToken.parentElement, 'zone');
   var origin = radialForToken.parentElement; ensureId(zone, 'zone');
   var originNext = radialForToken.nextElementSibling;
@@ -1527,7 +2086,7 @@ function selectRadialTarget(row){
   window.scrollTo(0, scrollSnap);
   radialForToken.classList.remove('selected');
   recordPlacement(radialForToken.id, fromId, zone.id, originBeforeId);
-  live('Moved "'+(radialForToken.innerText||'item')+'" to '+rowLabel(row));
+  live('Moved "'+tokenName(radialForToken)+'" to '+rowLabel(row));
   vib(7);
   closeRadial();
 }
@@ -1660,13 +2219,19 @@ on($('#undoBtn'),'click', function(){
   if(typeof window.isBattleMode === 'function' && window.isBattleMode()){
     if(typeof window.battleUndo === 'function') window.battleUndo();
   } else {
-    var had = historyStack.length > 0;
-    undoLast();
-    if(had){ vib(6); showSaveToast('Undone'); }
+    // Only confirm when something actually changed (stale entries are skipped;
+    // if none were usable the button simply disables itself)
+    if(undoLast()){ vib(6); showSaveToast('Undone'); }
   }
 });
 
 /* ===== Save Tierlist (keeps on-screen circle size) ===== */
+// Warm the exporter up on intent so the first Save feels instant
+(function(){
+  var sb = $('#saveBtn'); if (!sb) return;
+  var warm = function(){ prepareExport()['catch'](function(){}); };
+  on(sb, 'pointerenter', warm); on(sb, 'focus', warm); on(sb, 'touchstart', warm, _supportsPassive ? {passive:true} : false);
+})();
 on($('#saveBtn'),'click', function(){
   // In quadrant mode, let quadrant.js handle the export
   if(typeof window.currentChartMode === 'function' && window.currentChartMode() === 'quadrant') return;
@@ -1676,196 +2241,114 @@ on($('#saveBtn'),'click', function(){
     return;
   }
   $$('.token.selected').forEach(function(t){ t.classList.remove('selected'); });
+  $$('.token.show-del').forEach(function(t){ t.classList.remove('show-del'); });
   $$('.dropzone.drag-over').forEach(function(z){ z.classList.remove('drag-over'); });
 
-  // Busy state up-front: the first export also fetches fonts, so the button
-  // reflects work from the moment it's tapped (and blocks double-clicks).
-  var saveBtn = $('#saveBtn');
-  var saveLabel = saveBtn ? saveBtn.querySelector('span:not(.ico)') : null;
-  var savedLabelText = saveLabel ? saveLabel.textContent : '';
-  if (saveBtn) {
-    saveBtn.setAttribute('data-state', 'saving');
-    saveBtn.disabled = true;
-    if (saveLabel) saveLabel.textContent = 'Saving…';
-  }
-  function resetSaveBtn(){
-    if (!saveBtn) return;
-    saveBtn.removeAttribute('data-state');
-    saveBtn.disabled = false;
-    if (saveLabel) saveLabel.textContent = savedLabelText;
-  }
-  ensureExportFonts().then(function(){
+  runExport(function(){
+    var panel = $('#boardPanel');
 
-  var panel = $('#boardPanel');
+    var cloneWrap = document.createElement('div');
+    cloneWrap.style.position='fixed'; cloneWrap.style.left='-99999px'; cloneWrap.style.top='0';
 
-  var cloneWrap = document.createElement('div');
-  cloneWrap.style.position='fixed'; cloneWrap.style.left='-99999px'; cloneWrap.style.top='0';
+    var clone = panel.cloneNode(true);
+    clone.removeAttribute('id');
+    clone.style.width = '1200px';
+    clone.style.maxWidth = '1200px';
+    // Strip the panel's outer decoration — it's a page card effect, not part of the image.
+    // Removing it prevents html-to-image from adding canvas padding for shadow bleed,
+    // which would otherwise appear as a faint shadow at the left edge of every row.
+    clone.style.boxShadow = 'none';
+    clone.style.border = 'none';
+    clone.style.borderRadius = '0';
+    // Always export at desktop sizes, whatever device is saving
+    clone.style.setProperty('--tok', '99px');
+    clone.style.setProperty('--tier-label-w', '180px');
+    clone.style.setProperty('--tier-gap', '12px');
+    clone.style.setProperty('--drop-pad', '12px');
+    clone.style.setProperty('--drop-gap', '12px');
 
-  var clone = panel.cloneNode(true);
-  clone.style.width = '1200px';
-  clone.style.maxWidth = '1200px';
-  // Strip the panel's outer decoration — it's a page card effect, not part of the image.
-  // Removing it prevents html-to-image from adding canvas padding for shadow bleed,
-  // which would otherwise appear as a faint shadow at the left edge of every row.
-  clone.style.boxShadow = 'none';
-  clone.style.border = 'none';
-  clone.style.borderRadius = '0';
+    // Export styles: hide UI chrome, force desktop layout, use real flex centering
+    // html-to-image uses the browser's SVG foreignObject renderer so all CSS works correctly
+    var style = document.createElement('style');
+    style.textContent = [
+      '.row-del, .token-del, .token-crop, .color-pick-btn, .color-pick-input{ display:none !important; }',
+      // Always render at desktop column widths regardless of device
+      '.tier-row{ grid-template-columns:180px 1fr !important; gap:12px !important; }',
+      '.tier-drop{ grid-template-columns:repeat(auto-fill,minmax(105px,1fr)) !important; padding:12px !important; gap:12px !important; min-height:99px !important; }',
+      '.tier-label{ min-height:99px !important; }',
+      // Token container
+      '.token{ width:99px !important; height:99px !important; position:relative !important; }',
+      // Token label - proper flex centering (html-to-image renders CSS correctly)
+      '.token .label{',
+      '  display:flex !important; align-items:center !important; justify-content:center !important;',
+      '  position:absolute !important; top:0 !important; left:0 !important;',
+      '  width:99px !important; height:99px !important;',
+      '  text-align:center !important; font-weight:900 !important; white-space:nowrap !important;',
+      '  padding:0 !important; margin:0 !important; box-sizing:border-box !important;',
+      '}',
+      // Tier label container — no shadow in a flat export image
+      '.tier-label{ position:relative !important; width:100% !important; height:100% !important; box-shadow:none !important; }',
+      // Token drop zone — strip shadow so it doesn't bleed left onto the tier label
+      '.tier-drop{ box-shadow:none !important; }',
+      // chip-area fills the label box
+      '.chip-area{ display:flex !important; width:100% !important; height:100% !important; }',
+      // Tier label chip - flex centering + explicit font (correctly rendered by html-to-image)
+      '.label-chip{',
+      '  display:flex !important; align-items:center !important; justify-content:center !important;',
+      '  width:100% !important; height:100% !important;',
+      '  font-family:"Bowlby One",sans-serif !important; font-weight:400 !important;',
+      '  text-transform:uppercase !important; letter-spacing:0.5px !important; line-height:1.1 !important;',
+      '  text-align:center !important;',
+      // color intentionally NOT forced — each chip carries its own inline color
+      '  padding:6px 8px !important; margin:0 !important;',
+      '  white-space:normal !important; word-break:normal !important; overflow-wrap:normal !important; overflow:hidden !important;',
+      '}',
+      '.board-title-wrap{ display:block !important; text-align:center !important; margin-bottom:20px !important; }',
+      '.board-title{ display:block !important; text-align:center !important; font-size:28px !important; white-space:normal !important; word-wrap:break-word !important; overflow-wrap:break-word !important; }',
+      '.title-pen, .prompt-stack-wrap, .prompt-browse, .mode-toggle-wrap, #quadrantBoard, #battleBoard, .empty-hint{ display:none !important; }'
+    ].join('\n');
+    // Inject font @font-face CSS directly into the clone so the SVG renderer can resolve them
+    if (_bowlbyFontFaceCSS) style.textContent = _bowlbyFontFaceCSS + '\n' + style.textContent;
+    if (_montserratFontFaceCSS) style.textContent = _montserratFontFaceCSS + '\n' + style.textContent;
+    clone.appendChild(style);
 
-  // Export styles: hide UI chrome, force desktop layout, use real flex centering
-  // html-to-image uses the browser's SVG foreignObject renderer so all CSS works correctly
-  var style = document.createElement('style');
-  style.textContent = [
-    '.row-del{ display:none !important; }',
-    '.token-del{ display:none !important; }',
-    '.color-pick-btn{ display:none !important; }',
-    '.color-pick-input{ display:none !important; }',
-    // Always render at desktop column widths regardless of device
-    '.tier-row{ grid-template-columns:180px 1fr !important; }',
-    // Token container
-    '.token{',
-    '  width:99px !important;',
-    '  height:99px !important;',
-    '  position:relative !important;',
-    '}',
-    // Token label - proper flex centering (html-to-image renders CSS correctly)
-    '.token .label{',
-    '  display:flex !important;',
-    '  align-items:center !important;',
-    '  justify-content:center !important;',
-    '  position:absolute !important;',
-    '  top:0 !important;',
-    '  left:0 !important;',
-    '  width:99px !important;',
-    '  height:99px !important;',
-    '  text-align:center !important;',
-    '  font-weight:900 !important;',
-    '  white-space:nowrap !important;',
-    '  padding:0 !important;',
-    '  margin:0 !important;',
-    '  box-sizing:border-box !important;',
-    '}',
-    // Tier label container — no shadow in a flat export image
-    '.tier-label{',
-    '  position:relative !important;',
-    '  width:100% !important;',
-    '  height:100% !important;',
-    '  box-shadow:none !important;',
-    '}',
-    // Token drop zone — strip shadow so it doesn't bleed left onto the tier label
-    '.tier-drop{',
-    '  box-shadow:none !important;',
-    '}',
-    // chip-area fills the label box
-    '.chip-area{',
-    '  display:flex !important;',
-    '  width:100% !important;',
-    '  height:100% !important;',
-    '}',
-    // Tier label chip - flex centering + explicit font (correctly rendered by html-to-image)
-    '.label-chip{',
-    '  display:flex !important;',
-    '  align-items:center !important;',
-    '  justify-content:center !important;',
-    '  width:100% !important;',
-    '  height:100% !important;',
-    '  font-family:"Bowlby One",sans-serif !important;',
-    '  font-weight:400 !important;',
-    '  text-transform:uppercase !important;',
-    '  letter-spacing:0.5px !important;',
-    '  line-height:1.1 !important;',
-    '  text-align:center !important;',
-    // color intentionally NOT forced — each chip carries a contrast-checked
-    // inline color (dark text on light tier colors)
-    '  padding:6px 8px !important;',
-    '  margin:0 !important;',
-    '  white-space:normal !important;',
-    '  word-break:normal !important;',
-    '  overflow-wrap:normal !important;',
-    '  overflow:hidden !important;',
-    '}',
-    '.board-title-wrap{ display:block !important; text-align:center !important; margin-bottom:20px !important; }',
-    '.board-title{ display:block !important; text-align:center !important; font-size:28px !important; white-space:normal !important; word-wrap:break-word !important; overflow-wrap:break-word !important; }',
-    '.title-pen{ display:none !important; }',
-    '.prompt-stack-wrap{ display:none !important; }',
-    '.mode-toggle-wrap{ display:none !important; }',
-    '#quadrantBoard{ display:none !important; }'
-  ].join('\n');
-  // Inject font @font-face CSS directly into the clone so the SVG renderer can resolve them
-  if (_bowlbyFontFaceCSS) style.textContent = _bowlbyFontFaceCSS + '\n' + style.textContent;
-  if (_montserratFontFaceCSS) style.textContent = _montserratFontFaceCSS + '\n' + style.textContent;
-  clone.appendChild(style);
-
-  // Handle title for export: if empty, strip the title area entirely
-  var title = clone.querySelector('.board-title');
-  var titleText = title ? title.textContent.replace(/\s+/g,'') : '';
-  if (!titleText) {
-    var wrap = title ? title.parentElement : null;
-    if (wrap && wrap.parentNode) wrap.parentNode.removeChild(wrap);
-  }
-
-  cloneWrap.appendChild(clone);
-  document.body.appendChild(cloneWrap);
-
-  // Re-fit tier label chips so custom text renders correctly in export
-  var cloneChips = $$('.label-chip', clone);
-  cloneChips.forEach(function(chip){ fitChipLabel(chip); });
-  // Uniform size across long (3+ char) tier labels in clone
-  var longCloneChips = cloneChips.filter(function(c){ return c.textContent.replace(/\s+/g,' ').trim().length > 2; });
-  if (longCloneChips.length >= 2) {
-    var minChipSize = Infinity;
-    longCloneChips.forEach(function(c){ var sz = parseInt(c.style.fontSize, 10); if (sz && sz < minChipSize) minChipSize = sz; });
-    if (minChipSize < Infinity && minChipSize > 0) longCloneChips.forEach(function(c){ c.style.fontSize = minChipSize + 'px'; });
-  }
-
-  // Size each label to fit on single line (canvas measurement for accuracy)
-  var cloneLabels = $$('.token .label', clone);
-  cloneLabels.forEach(function(lbl){
-    var text = lbl.textContent;
-    var maxW = 89; // token width with small margin
-    var px = 22; // start at 22px for bold readable export
-    for (; px >= 10; px--) {
-      if (measureTokenText(text, '900', px) <= maxW) break;
+    // Handle title for export: if empty, strip the title area entirely
+    var title = clone.querySelector('.board-title');
+    var titleText = title ? title.textContent.replace(/\s+/g,'') : '';
+    if (!titleText) {
+      var wrap = title ? title.parentElement : null;
+      if (wrap && wrap.parentNode) wrap.parentNode.removeChild(wrap);
     }
-    lbl.style.fontFamily = "'Montserrat',ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
-    lbl.style.fontWeight = '900';
-    lbl.style.fontSize = px + 'px';
-  });
 
-  if (typeof htmlToImage === 'undefined' || typeof htmlToImage.toPng !== 'function') {
-    cloneWrap.remove();
-    resetSaveBtn();
-    showSaveToast('Export library failed to load — check your connection');
-    return;
-  }
-  // html-to-image uses the browser's own SVG renderer — text, flex, and grid all
-  // render pixel-perfectly. Returns a data URL directly (no intermediate canvas).
-  var exportOpts = {
-    pixelRatio: 2,
-    width: 1200,
-    backgroundColor: cssVar('--surface') || '#ffffff',
-    fetchRequestInit: { mode: 'cors', cache: 'no-cache' },
-    cacheBust: true
-  };
-  var _exportFontCSS = (_bowlbyFontFaceCSS || '') + (_montserratFontFaceCSS || '');
-  if (_exportFontCSS) exportOpts.fontEmbedCSS = _exportFontCSS;
-  htmlToImage.toPng(clone, exportOpts).then(function(dataUrl){
-    var boardTitle = ($('.board-title') || {}).textContent || '';
-    var slug = boardTitle.trim().replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase();
-    var a=document.createElement('a'); a.href=dataUrl; a.download=(slug || 'tier-list')+'.png';
-    document.body.appendChild(a); a.click();
-    setTimeout(function(){ a.remove(); }, 300);
-    cloneWrap.remove();
-    resetSaveBtn();
-    showSaveToast('Saved!');
-    vib([6, 40, 10]);
-  }).catch(function(err){
-    cloneWrap.remove();
-    resetSaveBtn();
-    showSaveToast('Export failed — try again', true);
-    if (window.DEBUG) console.error('PNG export error:', err);
-  });
+    cloneWrap.appendChild(clone);
+    document.body.appendChild(cloneWrap);
 
-  }); // end ensureExportFonts().then
+    // Re-fit tier label chips so custom text renders correctly in export
+    var cloneChips = $$('.label-chip', clone);
+    cloneChips.forEach(function(chip){ fitChipLabel(chip); });
+    // Uniform size across long (3+ char) tier labels in clone
+    var longCloneChips = cloneChips.filter(function(c){ return c.textContent.replace(/\s+/g,' ').trim().length > 2; });
+    if (longCloneChips.length >= 2) {
+      var minChipSize = Infinity;
+      longCloneChips.forEach(function(c){ var sz = parseInt(c.style.fontSize, 10); if (sz && sz < minChipSize) minChipSize = sz; });
+      if (minChipSize < Infinity && minChipSize > 0) longCloneChips.forEach(function(c){ c.style.fontSize = minChipSize + 'px'; });
+    }
+
+    // Size each label to fit on single line (canvas measurement for accuracy)
+    $$('.token .label', clone).forEach(function(lbl){
+      var text = lbl.textContent;
+      var maxW = 89; // token width with small margin
+      var px = 22; // start at 22px for bold readable export
+      for (; px >= 10; px--) {
+        if (measureTokenText(text, '900', px) <= maxW) break;
+      }
+      lbl.style.fontFamily = "'Montserrat',ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
+      lbl.style.fontWeight = '900';
+      lbl.style.fontSize = px + 'px';
+    });
+
+    return { node: clone, wrap: cloneWrap, width: 1200, filename: exportFilename('tier-list') };
+  });
 });
 
 /* ---------- Toast feedback ---------- */
@@ -1908,12 +2391,15 @@ window.showSaveToast = showSaveToast;
   var bak = null;
   try { bak = JSON.parse(raw); } catch(e){ return; }
   if (!bak || !bak.at || Date.now() - bak.at > 60000) return; // stale — ignore
+  // Keep the backup's images out of GC for the rest of this page session —
+  // otherwise the first autosave after the reload deletes them and Undo
+  // restores blank image tokens. (If Undo isn't used, the next page load
+  // cleans them up.)
+  _gcProtectedJson.push(String(bak.board || ''), String(bak.quadrant || ''));
   showSaveToast('Board cleared', false, {label:'Undo', onClick:function(){
-    try {
-      if (bak.board != null) localStorage.setItem(STORAGE_KEY, bak.board);
-      if (bak.quadrant != null) localStorage.setItem('tm_quadrant', bak.quadrant);
-      if (bak.mode != null) localStorage.setItem('tm_mode', bak.mode);
-    } catch(e){}
+    if (bak.board != null) lsSet(STORAGE_KEY, bak.board);
+    if (bak.quadrant != null) lsSet('tm_quadrant', bak.quadrant);
+    if (bak.mode != null) lsSet('tm_mode', bak.mode);
     location.reload();
   }});
 })();
@@ -1964,7 +2450,7 @@ on(document,'keydown',function(e){
     placed.classList.remove('selected');
     if(typeof window.bringQTokenToFront==='function') window.bringQTokenToFront(placed);
     vib(4);
-    live('Placed "'+(placed.textContent||'item').trim()+'" on quadrant');
+    live('Placed "'+(placed.dataset.pinName||tokenName(placed))+'" on quadrant');
     if(typeof window.scheduleQuadrantSave==='function') window.scheduleQuadrantSave();
     return;
   }
@@ -1979,7 +2465,7 @@ on(document,'keydown',function(e){
     flipZones([origin2, zone], function(){ zone.appendChild(selected); });
     selected.classList.remove('selected');
     selected.style.position=''; selected.style.left=''; selected.style.top='';
-    recordPlacement(selected.id,fromId2,zone.id,kbBeforeId2); vib(4); live('Moved "'+(selected.innerText||'item')+'" to '+rowLabel(row));
+    recordPlacement(selected.id,fromId2,zone.id,kbBeforeId2); vib(4); live('Moved "'+tokenName(selected)+'" to '+rowLabel(row));
   }
 });
 
@@ -2142,20 +2628,29 @@ function serializeImageToken(tok, img){
       // reference, so we always re-emit the idb ref and mark it referenced.
       if (src && src.indexOf('data:') === 0) idbPut(key, src)['catch'](function(){});
       _referencedImgKeys[key] = true;
-      return { type:'image', src: IDB_REF_PREFIX + key, alt: img.alt, custom: true };
+      return { type:'image', src: IDB_REF_PREFIX + key, alt: img.alt, custom: true, crop: tok.dataset.crop || undefined };
     }
   }
-  return { type:'image', src: src, alt: img.alt, custom: true };
+  return { type:'image', src: src, alt: img.alt, custom: true, crop: tok.dataset.crop || undefined };
 }
 // Drop IndexedDB entries no longer referenced by any token (e.g. deleted
 // tokens). Throttled so a busy autosave loop doesn't keyscan constantly.
 var _lastImgGc = 0;
+function collectIdbRefs(json, into){
+  if (!json) return;
+  var re = /idb:([A-Za-z0-9_]+)/g, m;
+  while ((m = re.exec(json))) into[m[1]] = true;
+}
 function gcImages(){
   if (!_idbAvailable) return;
   var now = Date.now();
   if (now - _lastImgGc < 30000) return;
   _lastImgGc = now;
-  var referenced = _referencedImgKeys;
+  var referenced = {};
+  for (var k in _referencedImgKeys) referenced[k] = true;
+  // Quadrant pins keep their own references (and can outlive their token)
+  collectIdbRefs(lsGet('tm_quadrant'), referenced);
+  _gcProtectedJson.forEach(function(j){ collectIdbRefs(j, referenced); });
   idbAllKeys().then(function(keys){
     var orphans = keys.filter(function(k){ return !referenced[k]; });
     if (orphans.length) idbDeleteKeys(orphans)['catch'](function(){});
@@ -2261,9 +2756,12 @@ function restoreToken(zone, tokData){
       idbGet(key).then(function(dataUrl){
         if (dataUrl && imgEl) imgEl.src = dataUrl;
       })['catch'](function(){});
+      if (tokData.crop) applyTokenCrop(el, tokData.crop);
       zone.appendChild(el);
     } else {
-      zone.appendChild(buildImageToken(tokData.src, tokData.alt));
+      var imgTok = buildImageToken(tokData.src, tokData.alt);
+      if (tokData.crop) applyTokenCrop(imgTok, tokData.crop);
+      zone.appendChild(imgTok);
     }
   }
 }
@@ -2372,24 +2870,7 @@ function startAutoSave(){
     on(titleEl, 'keydown', function(e){
       if (e.key === 'Enter'){ e.preventDefault(); titleEl.blur(); }
     });
-    on(titleEl, 'paste', function(e){
-      e.preventDefault();
-      var text = (e.clipboardData || window.clipboardData).getData('text/plain') || '';
-      text = text.replace(/[\r\n]+/g, ' ');
-      if (document.queryCommandSupported && document.queryCommandSupported('insertText')){
-        document.execCommand('insertText', false, text);
-      } else {
-        // Fallback: insert at caret manually
-        var sel = window.getSelection();
-        if (sel && sel.rangeCount){
-          var range = sel.getRangeAt(0);
-          range.deleteContents();
-          range.insertNode(document.createTextNode(text));
-          range.collapse(false);
-        }
-      }
-      scheduleSave();
-    });
+    on(titleEl, 'paste', function(e){ pastePlainText(e); scheduleSave(); });
   }
 }
 function stopAutoSave(){
@@ -2893,7 +3374,7 @@ function confirmPromptUse(prompt, proceed){
   if (prompt && prompt.tiers && hasPlacements){
     showConfirm(
       'Use this prompt?',
-      'This prompt has its own tiers. Your current tiers will be replaced and placed tokens moved back to Image Storage.',
+      'This prompt has its own tiers. Your current tiers will be replaced and placed tokens moved back to Image Storage. (You can Undo this.)',
       proceed,
       'Use Prompt'
     );
@@ -2948,44 +3429,53 @@ function enableCardSwipe(card){
     if(e.button && e.button!==0) return;
     // Don't start drag/long-press on the inner skip/use buttons — let their click fire.
     if(e.target && e.target.closest && e.target.closest('.prompt-card-btn')) return;
-    e.preventDefault();
-    card.setPointerCapture(e.pointerId);
+    // Mouse only: stop text selection. Touch must NOT be prevented — the card
+    // is touch-action:pan-y, so a vertical swipe scrolls the page natively
+    // (the browser then sends pointercancel and nothing is applied).
+    if(e.pointerType === 'mouse') e.preventDefault();
+    try{ card.setPointerCapture(e.pointerId); }catch(_){}
     clearTimeout(_hintTimer);
     card.classList.remove('hint');
 
-    /* #5 Ripple on press */
-    spawnRipple(card, e.clientX, e.clientY);
-
-    var startX = e.clientX, dx = 0, dragging = false;
-    var longPressed = false;
+    var startX = e.clientX, startY = e.clientY, dx = 0, dy = 0;
+    var dragging = false, moved = false, longPressed = false;
     var cardW = card.offsetWidth || 300;
     var threshold = cardW * 0.25;
+    var SLOP = 8; // px of travel before a press stops counting as a tap
     card.style.transition = 'none';
+
+    function detach(){
+      clearTimeout(_longPressTimer);
+      try{ card.releasePointerCapture(e.pointerId); }catch(_){}
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
+      document.removeEventListener('pointercancel', onCancel);
+      card.classList.remove('md-dragging');
+    }
+    function springBack(){
+      card.style.transition = 'transform .3s cubic-bezier(.2,0,0,1), opacity .25s ease';
+      card.style.transform = 'scale(1) translateY(0)';
+      card.style.opacity = '1';
+    }
 
     /* Long-press detection — opens scrollable prompt list */
     clearTimeout(_longPressTimer);
     _longPressTimer = setTimeout(function(){
-      if(!dragging){
-        longPressed = true;
-        vib(12);
-        try{ card.releasePointerCapture(e.pointerId); }catch(_){}
-        document.removeEventListener('pointermove', onMove);
-        document.removeEventListener('pointerup', onUp);
-        card.classList.remove('md-dragging');
-        // Spring back the card
-        card.style.transition = 'transform .3s cubic-bezier(.2,0,0,1), opacity .25s ease';
-        card.style.transform = 'scale(1) translateY(0)';
-        card.style.opacity = '1';
-        openPromptList();
-      }
+      if(moved) return;
+      longPressed = true;
+      vib(12);
+      detach();
+      springBack();
+      openPromptList();
     }, LONG_PRESS_MS);
 
     function onMove(ev){
-      dx = ev.clientX - startX;
-      if(!dragging && Math.abs(dx) > 4){
+      if(ev.pointerId !== e.pointerId) return;
+      dx = ev.clientX - startX; dy = ev.clientY - startY;
+      if(!moved && Math.hypot(dx, dy) > SLOP){ moved = true; clearTimeout(_longPressTimer); }
+      // Only a mostly-horizontal drag moves the card; vertical travel is a scroll.
+      if(!dragging && Math.abs(dx) > SLOP && Math.abs(dx) > Math.abs(dy) * 1.2){
         dragging = true;
-        clearTimeout(_longPressTimer);
-        /* #1 Raise elevation on drag */
         card.classList.add('md-dragging');
       }
       if(!dragging) return;
@@ -2994,26 +3484,28 @@ function enableCardSwipe(card){
       card.style.transform = 'translateX('+dx+'px) rotate('+rotate+'deg)';
       card.style.opacity = opacity;
     }
-    function onUp(){
-      clearTimeout(_longPressTimer);
+    function onCancel(ev){
+      if(ev && ev.pointerId !== e.pointerId) return;
       if(longPressed) return;
-      try{ card.releasePointerCapture(e.pointerId); }catch(_){}
-      document.removeEventListener('pointermove', onMove);
-      document.removeEventListener('pointerup', onUp);
-      /* #1 Remove drag elevation */
-      card.classList.remove('md-dragging');
+      // Browser took the gesture (page scroll) — never apply anything
+      detach();
+      springBack();
+      scheduleHint();
+    }
+    function onUp(ev){
+      if(ev.pointerId !== e.pointerId) return;
+      if(longPressed) return;
+      detach();
 
-      if(!dragging){
-        // Tap = use prompt (right-swipe shortcut)
+      if(!moved){
+        // A genuine tap (finger barely moved) = use prompt
+        spawnRipple(card, ev.clientX, ev.clientY);
         usePromptCard(card, true);
         return;
       }
-
-      if(Math.abs(dx) >= threshold){
-        // Commit swipe
-        var dir = dx > 0 ? 1 : -1;
+      if(dragging && Math.abs(dx) >= threshold){
         vib(6);
-        if(dir > 0){
+        if(dx > 0){
           // Right swipe = apply prompt (confirms first when destructive)
           usePromptCard(card, true);
         } else {
@@ -3022,15 +3514,13 @@ function enableCardSwipe(card){
           advanceCardStack();
         }
       } else {
-        // Spring back — Material standard decelerate
-        card.style.transition = 'transform .3s cubic-bezier(.2,0,0,1), opacity .25s ease';
-        card.style.transform = 'scale(1) translateY(0)';
-        card.style.opacity = '1';
+        springBack();
         scheduleHint();
       }
     }
     document.addEventListener('pointermove', onMove);
     document.addEventListener('pointerup', onUp);
+    document.addEventListener('pointercancel', onCancel);
   });
 
   // Skip / use buttons are wired in buildPromptCard so every card (including
@@ -3123,10 +3613,15 @@ function openPromptList(){
   title.className = 'prompt-list-title';
   title.textContent = 'All Prompts';
   var closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
   closeBtn.className = 'prompt-list-close';
   closeBtn.innerHTML = '&times;';
   closeBtn.setAttribute('aria-label', 'Close prompt list');
   closeBtn.addEventListener('click', closePromptList);
+  sheet.setAttribute('role', 'dialog');
+  sheet.setAttribute('aria-modal', 'true');
+  sheet.setAttribute('aria-label', 'All prompts');
+  _promptListLastFocus = document.activeElement;
   header.appendChild(title);
   header.appendChild(closeBtn);
   sheet.appendChild(header);
@@ -3141,6 +3636,7 @@ function openPromptList(){
       var prompt = TIER_PROMPTS[idx];
       var colors = getCardColors(idx);
       var item = document.createElement('button');
+      item.type = 'button';
       item.className = 'prompt-list-item';
       item.style.background = colors.bg;
       item.style.color = colors.fg;
@@ -3178,15 +3674,30 @@ function openPromptList(){
     if(e.target === overlay) closePromptList();
   });
 
+  // Escape closes; Tab stays inside the sheet
+  overlay.addEventListener('keydown', function(e){
+    if(e.key === 'Escape'){ e.preventDefault(); closePromptList(); return; }
+    if(e.key === 'Tab'){
+      var f = $$('button', sheet); if(!f.length) return;
+      var first = f[0], last = f[f.length-1];
+      if(e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+      else if(!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
+    }
+  });
+
   // Animate in
   requestAnimationFrame(function(){
     overlay.classList.add('open');
+    try { closeBtn.focus({preventScroll:true}); } catch(_){}
   });
 }
+var _promptListLastFocus = null;
 
 function closePromptList(){
   var overlay = $('#promptListOverlay');
   if(!overlay) return;
+  if(_promptListLastFocus && document.contains(_promptListLastFocus)){ try { _promptListLastFocus.focus({preventScroll:true}); } catch(_){} }
+  _promptListLastFocus = null;
   overlay.classList.remove('open');
   overlay.addEventListener('transitionend', function(){ overlay.remove(); }, { once: true });
   // Fallback removal in case transitionend doesn't fire
@@ -3198,15 +3709,25 @@ function applyPrompt(prompt){
   var titleEl = $('.board-title');
   if(!titleEl) return;
   _promptUserSet = true;
+  var oldTitle = titleEl.textContent;
   titleEl.textContent = prompt.text;
   hidePromptStack();
 
   // If prompt defines custom tiers, rebuild the board rows
   if(prompt.tiers && prompt.tiers.length){
+    // Keep the old rows (detached, listeners intact) and where every placed
+    // token lived, so the whole rebuild is one Undo step.
+    var oldRows = $$('.tier-row', board);
+    var homes = [];
+    oldRows.forEach(function(r){
+      var d = r.querySelector('.tier-drop');
+      $$('.token', d).forEach(function(tok){ homes.push({ token: tok, drop: d }); });
+    });
     // Move all placed tokens back to tray
-    $$('.tier-drop .token').forEach(function(tok){ tray.appendChild(tok); });
+    homes.forEach(function(h){ tray.appendChild(h.token); });
     // Remove existing rows
-    board.innerHTML = '';
+    oldRows.forEach(function(r){ r.remove(); });
+    pushHistory({ type: 'rebuild', oldRows: oldRows, homes: homes, oldTitle: oldTitle });
     // Create new rows from prompt config
     prompt.tiers.forEach(function(t){
       board.appendChild(createRow({ label: t.label, color: t.color, image: t.image }));
@@ -3408,13 +3929,11 @@ document.addEventListener('DOMContentLoaded', function start(){
     probe.onload = function(){
       if (done) return; done = true;
       cleanup();
-      // Inline so the image persists across refresh and exports cleanly;
-      // falls back to the raw URL when CORS blocks the fetch.
-      inlineImageSrc(url, function(finalSrc){
-        var token = buildImageToken(finalSrc, '');
-        tray.insertBefore(token, tray.firstChild);
-        scheduleSave();
-      });
+      // Show the token immediately; it's inlined in the background so it
+      // persists across refresh and exports cleanly (raw URL if CORS blocks).
+      tray.insertBefore(buildRemoteImageToken(url), tray.firstChild);
+      scheduleSave();
+      showSaveToast('Image added to storage');
       urlInput.value = '';
       if(imgDropdown) { imgDropdown.classList.add('hidden'); syncDropdownChevron(); }
     };
@@ -3445,20 +3964,22 @@ document.addEventListener('DOMContentLoaded', function start(){
     if(!drawer || !handle || !helpTrayEl || !tips) return;
 
     // Populate tips
-    var tipData = [
-      isSmall()
-        ? 'Tap a token to choose a row. Drag placed tokens to reorder.'
-        : 'Drag tokens into rows to rank them. Drag back to Image Storage to unplace.',
-      'Tap a tier label to rename it. ' + (isSmall() ? 'Tap' : 'Hover over') + ' a label to change its color.',
-      isSmall()
-        ? 'Hold a tier label, then drag up or down to reorder tiers.'
-        : 'Drag a tier label up or down to reorder tiers.',
-      'Tap a suggestion card to use it as your title, or type your own directly.',
-      'Add images via upload, paste a URL, or use the built-in image search.',
-      isSmall()
-        ? 'Tap a custom token and choose Delete to remove it.'
-        : 'Double-click a custom token to delete it.',
-      'Use Save Tierlist to download your board as a PNG image.'
+    var tipData = isSmall() ? [
+      'Tap anyone — in storage or already ranked — to pick their tier, send them back to storage, or delete them.',
+      'Press and hold a ranked token for a moment, then drag to reorder it.',
+      'Tap a tier name to rename it. Tap the small colored dot on a tier to change its color.',
+      'Press and hold a tier name, then drag up or down to reorder tiers.',
+      'Tap a suggestion card to use it as your title, swipe it left to skip, or tap “Browse all prompts”.',
+      'Add images by upload, pasted link or the built-in search. Tap an image token → Adjust image to reframe it.',
+      'Save gives you a preview you can share, download or press and hold to keep.'
+    ] : [
+      'Drag tokens into tiers to rank them. Drag back to Image Storage to unplace. Or click a token, then press 1–9 for that tier.',
+      'Click a tier name to rename it. Hover a tier to change its color or delete it.',
+      'Drag a tier name up or down to reorder tiers.',
+      'Click a suggestion card to use it as your title, press ← to skip, or open “Browse all prompts”.',
+      'Add images by upload, pasted link or the built-in search.',
+      'Double-click one of your own tokens to delete it — or, for images, to adjust the framing.',
+      'Save downloads your board as a PNG. Ctrl/Cmd+Z undoes, ? opens this help.'
     ];
     tips.innerHTML = tipData.map(function(t){ return '<div class="tip">' + t + '</div>'; }).join('');
 
@@ -3565,10 +4086,18 @@ document.addEventListener('DOMContentLoaded', function start(){
     }, 2500);
   })();
 
+  on($('#promptBrowseBtn'), 'click', function(){ openPromptList(); });
+
   enableClickToPlace(tray);
   refitAllLabels();
   live('Ready.');
 });
+
+/* ---------- Offline / flaky-connection support ---------- */
+// Only over https (or local dev) — service workers aren't available elsewhere.
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) {
+  window.addEventListener('load', function(){ navigator.serviceWorker.register('sw.js')['catch'](function(){}); });
+}
 
 /* ---------- First-run onboarding (subtle, one-time, dismissible) ---------- */
 (function(){
@@ -3695,7 +4224,7 @@ document.addEventListener('DOMContentLoaded', function start(){
     if (tourDone) return;
     var target = document.querySelector('.action-bar');
     if (!target) return;
-    showStep(target, 'Start here — upload images or type a name to add items.', true);
+    showStep(target, 'Add your own people or images here — or start ranking the ones already in Image Storage below.', true);
 
     var trayEl = document.querySelector('#tray');
     if (!trayEl) return;

@@ -35,8 +35,11 @@
   var hasMore    = true;
   var selected   = {};   // src → {title}
   var seenKeys   = {};   // dedup across pages (by underlying file name)
+  var searchSeq  = 0;    // bumps on every new query; stale responses are dropped
+  var activeCtl  = null; // AbortController for the request in flight
 
   var BATCH = 40;
+  var REQUEST_TIMEOUT = 15000; // slow/stalled networks get an error, not a spinner forever
 
   /* ---------- filename noise filter ---------- */
   var NOISE_RE = /flag[\s_]of|icon[\s_]|logo[\s_]|commons[\s_-]logo|wikinews|wiktionary|wikisource|wikiquote|wikibooks|wikiversity|wikidata|wikivoyage|mediawiki|nuvola|crystal[\s_]clear|edit[\s_-]clear|ambox|padlock|question[\s_]book|text[\s_]document|disambig|stub[\s_]|map[\s_]of|locator[\s_]|blank[\s_]map|increase2?\.svg|decrease2?\.svg|steady2?\.svg|red[\s_]pog|symbol[\s_]|wiki[\s_]?letter|gnome-|oojs[\s_]ui|ic[\s_]/i;
@@ -91,6 +94,9 @@
     overlay.setAttribute('role', 'dialog');
     overlay.setAttribute('aria-modal', 'true');
     overlay.setAttribute('aria-label', 'Image search');
+    // Closed = out of the tab order and the accessibility tree
+    overlay.inert = true;
+    overlay.setAttribute('aria-hidden', 'true');
 
     overlay.innerHTML =
       '<div class="img-search-modal">' +
@@ -105,7 +111,7 @@
           '</div>' +
         '</div>' +
         '<div class="img-search-status" role="status" aria-live="polite"></div>' +
-        '<div class="img-search-grid" role="list"></div>' +
+        '<div class="img-search-grid" role="group" aria-label="Search results"></div>' +
         '<div class="img-search-footer">' +
           '<div class="img-search-sel-count"></div>' +
           '<button class="img-search-add" type="button" disabled>Add selected <span class="img-search-add-count"></span></button>' +
@@ -157,6 +163,8 @@
   function open() {
     if (!overlay) buildOverlay();
     _lastFocus = document.activeElement;
+    overlay.inert = false;
+    overlay.removeAttribute('aria-hidden');
     overlay.classList.remove('hidden');
     document.body.style.overflow = 'hidden';
     setTimeout(function () { input.focus(); }, 60);
@@ -165,6 +173,8 @@
   function close() {
     if (!overlay) return;
     overlay.classList.add('hidden');
+    overlay.inert = true;
+    overlay.setAttribute('aria-hidden', 'true');
     document.body.style.overflow = '';
     // Return focus to whatever opened the modal
     if (_lastFocus && typeof _lastFocus.focus === 'function') {
@@ -180,11 +190,23 @@
     var q = input.value.trim();
     if (!q) return;
     if (fresh) {
+      // A new query supersedes anything still loading (e.g. fixing a typo on
+      // a slow connection) — cancel it and ignore whatever it returns.
+      searchSeq++;
+      if (activeCtl) { try { activeCtl.abort(); } catch (e) {} activeCtl = null; }
+      loading = false;
       page = 0; query = q; grid.innerHTML = ''; selected = {};
       seenKeys = {}; updateSelCount(); hasMore = true;
+      grid.scrollTop = 0;
     }
     if (loading || !hasMore) return;
     loading = true;
+    var mySeq = searchSeq;
+    var ctl = (typeof AbortController === 'function') ? new AbortController() : null;
+    activeCtl = ctl;
+    var signal = ctl ? ctl.signal : undefined;
+    var timedOut = false;
+    var timer = setTimeout(function () { timedOut = true; if (ctl) ctl.abort(); }, REQUEST_TIMEOUT);
     setStatus('Searching…');
     if (fresh) showSkeletons(); else showSpinner();
 
@@ -193,7 +215,7 @@
 
     // 1) Wikipedia representative lead images — highest relevance.
     tasks.push(function (done) {
-      searchWikiLeadImages(query, offset, function (err, res, more) {
+      searchWikiLeadImages(query, offset, signal, function (err, res, more) {
         done({ key: 'wiki', err: err, res: res || [], more: !!more });
       });
     });
@@ -201,7 +223,7 @@
     // 2) First page only: pull the top article's own images for variety.
     if (page === 0) {
       tasks.push(function (done) {
-        searchTopArticleImages(query, function (err, res) {
+        searchTopArticleImages(query, signal, function (err, res) {
           done({ key: 'article', err: err, res: res || [], more: false });
         });
       });
@@ -209,12 +231,15 @@
 
     // 3) Commons full-text as a fill (real-world subjects).
     tasks.push(function (done) {
-      searchCommons(query, page, function (err, res, more) {
+      searchCommons(query, page, signal, function (err, res, more) {
         done({ key: 'commons', err: err, res: res || [], more: !!more });
       });
     });
 
     runParallel(tasks, function (out) {
+      clearTimeout(timer);
+      if (mySeq !== searchSeq) return;          // superseded by a newer search
+      if (activeCtl === ctl) activeCtl = null;
       loading = false;
       removeSkeletons();
       removeSpinner();
@@ -232,11 +257,15 @@
       var hadCardsBefore = !!grid.querySelector('.img-search-card');
       var allFailed = wiki.err && commons.err && !article.res.length;
 
-      if (allFailed && !merged.length && !hadCardsBefore) {
-        setStatus('Network error – please try again.');
-        showEmptyState(query, true);
-        hasMore = false;
-        page++;
+      if (allFailed && !merged.length) {
+        if (!hadCardsBefore) {
+          setStatus(timedOut ? 'That took too long.' : 'Network error.');
+          showEmptyState(query, true, timedOut);
+          hasMore = false;
+        } else {
+          // Keep what's shown; the next scroll to the bottom retries this page
+          setStatus("Couldn't load more — check your connection.");
+        }
         return;
       }
 
@@ -272,7 +301,7 @@
      returns each article's single representative picture (the PageImages
      extension's pick, normally the infobox/lead image). Results are
      ordered by the search rank carried in each page's `index`. */
-  function searchWikiLeadImages(q, offset, cb) {
+  function searchWikiLeadImages(q, offset, signal, cb) {
     var url = WIKI_API + '?action=query' +
       '&generator=search' +
       '&gsrsearch=' + encodeURIComponent(q) +
@@ -285,7 +314,7 @@
       '&pilimit=' + BATCH +
       '&format=json&origin=*';
 
-    fetch(url)
+    fetch(url, { signal: signal })
       .then(function (r) { return r.json(); })
       .then(function (data) {
         if (!data.query || !data.query.pages) { cb(null, [], false); return; }
@@ -313,12 +342,12 @@
      Resolves the single best article for the query, then pulls the
      images embedded in it (filtered) so a focused search like
      "Tracer (Overwatch)" yields several on-topic pictures. */
-  function searchTopArticleImages(q, cb) {
+  function searchTopArticleImages(q, signal, cb) {
     var sUrl = WIKI_API + '?action=query&list=search' +
       '&srsearch=' + encodeURIComponent(q) +
       '&srnamespace=0&srlimit=1&format=json&origin=*';
 
-    fetch(sUrl)
+    fetch(sUrl, { signal: signal })
       .then(function (r) { return r.json(); })
       .then(function (d) {
         var hits = d.query && d.query.search;
@@ -330,7 +359,7 @@
           '&prop=imageinfo&iiprop=url|thumbmime&iiurlwidth=500' +
           '&format=json&origin=*';
 
-        fetch(iUrl)
+        fetch(iUrl, { signal: signal })
           .then(function (r2) { return r2.json(); })
           .then(function (d2) {
             var pages = d2.query && d2.query.pages;
@@ -355,7 +384,7 @@
   }
 
   /* ---------- 3) Wikimedia Commons fill ---------- */
-  function searchCommons(q, pg, cb) {
+  function searchCommons(q, pg, signal, cb) {
     var offset = pg * BATCH;
     var url = COMMONS_API + '?action=query' +
       '&generator=search&gsrnamespace=6' +
@@ -364,7 +393,7 @@
       '&prop=imageinfo&iiprop=url|thumbmime&iiurlwidth=500' +
       '&format=json&origin=*';
 
-    fetch(url)
+    fetch(url, { signal: signal })
       .then(function (r) { return r.json(); })
       .then(function (data) {
         if (!data.query || !data.query.pages) { cb(null, [], false); return; }
@@ -392,15 +421,22 @@
     results.forEach(function (r) {
       var card = document.createElement('div');
       card.className = 'img-search-card';
-      card.setAttribute('role', 'listitem');
+      // Selectable tile: a checkbox semantically (aria-selected isn't valid
+      // on a list item)
+      card.setAttribute('role', 'checkbox');
+      card.setAttribute('aria-checked', 'false');
+      card.setAttribute('aria-label', r.title || 'Image');
       card.setAttribute('tabindex', '0');
       card.dataset.full  = r.full;
       card.dataset.thumb = r.thumb || r.full;
       card.dataset.title = r.title;
 
       var img = document.createElement('img');
+      // Load with CORS so the cached copy can be reused when the image is
+      // added (no second download on a slow connection)
+      img.crossOrigin = 'anonymous';
       img.src = r.thumb;
-      img.alt = r.title;
+      img.alt = '';
       img.loading = 'lazy';
       img.draggable = false;
       img.addEventListener('error', function () {
@@ -430,11 +466,11 @@
     if (selected[src]) {
       delete selected[src];
       card.classList.remove('selected');
-      card.setAttribute('aria-selected', 'false');
+      card.setAttribute('aria-checked', 'false');
     } else {
-      selected[src] = { title: card.dataset.title, thumb: card.dataset.thumb };
+      selected[src] = { title: card.dataset.title, thumb: card.dataset.thumb, order: Date.now() };
       card.classList.add('selected');
-      card.setAttribute('aria-selected', 'true');
+      card.setAttribute('aria-checked', 'true');
     }
     updateSelCount();
   }
@@ -471,7 +507,7 @@
   function removeSkeletons() {
     qsa('.img-search-skel', grid).forEach(function (s) { s.remove(); });
   }
-  function showEmptyState(q, isError) {
+  function showEmptyState(q, isError, timedOut) {
     var wrap = document.createElement('div');
     wrap.className = 'img-search-empty';
     var safeQ = String(q).replace(/[<>&]/g, function (c) {
@@ -483,8 +519,16 @@
         (isError ? 'Something went wrong' : 'No matches for “' + safeQ + '”') +
       '</h4>' +
       '<p class="img-search-empty-sub">' +
-        (isError ? 'Check your connection and try again.' : 'Try a different spelling, a related term, or a broader query.') +
+        (isError ? (timedOut ? 'The image service is slow to respond right now. Check your connection and try again.' : 'Check your connection and try again.') : 'Try a different spelling, a related term, or a broader query.') +
       '</p>';
+    if (isError) {
+      var retry = document.createElement('button');
+      retry.type = 'button';
+      retry.className = 'img-search-retry';
+      retry.textContent = 'Try again';
+      retry.addEventListener('click', function () { doSearch(true); });
+      wrap.appendChild(retry);
+    }
     grid.appendChild(wrap);
   }
 
@@ -496,40 +540,35 @@
     var tray = document.querySelector('#tray');
     if (!tray) return;
 
-    function addToken(finalSrc, info) {
-      if (typeof window.buildImageToken === 'function') {
-        var token = window.buildImageToken(finalSrc, info.title || '');
-        tray.insertBefore(token, tray.firstChild);
+    // Keep the order the images were picked in (first pick ends up first)
+    srcs.sort(function (a, b) { return selected[a].order - selected[b].order; });
+    for (var i = srcs.length - 1; i >= 0; i--) {
+      var info = selected[srcs[i]];
+      // The 500px thumbnail is plenty for a token (and far smaller than
+      // full-res). The token appears immediately from the browser's cached
+      // copy; inlining for persistence/export happens in the background.
+      var url = info.thumb || srcs[i];
+      var token;
+      if (typeof window.buildRemoteImageToken === 'function') {
+        token = window.buildRemoteImageToken(url, info.title || '', { cache: 'default' });
       } else {
-        var token = document.createElement('div');
+        token = document.createElement('div');
         token.className = 'token';
         token.setAttribute('data-custom', 'true');
         var img = document.createElement('img');
-        img.src = finalSrc; img.alt = info.title || ''; img.draggable = false;
+        img.src = url; img.alt = info.title || ''; img.draggable = false;
         token.appendChild(img);
-        tray.insertBefore(token, tray.firstChild);
       }
-      if (typeof window.scheduleSave === 'function') window.scheduleSave();
+      tray.insertBefore(token, tray.firstChild);
     }
+    if (typeof window.scheduleSave === 'function') window.scheduleSave();
 
-    srcs.forEach(function (src) {
-      var info = selected[src];
-      // Inline the 500px thumbnail (plenty for a ~99px token, far smaller than
-      // full-res) so it persists + exports cleanly; fall back to the raw URL.
-      var toInline = info.thumb || src;
-      if (typeof window.inlineImageSrc === 'function') {
-        window.inlineImageSrc(toInline, function (finalSrc) { addToken(finalSrc, info); });
-      } else {
-        addToken(toInline, info);
-      }
-    });
-
-    setStatus(srcs.length + ' image' + (srcs.length > 1 ? 's' : '') + ' added!');
+    var msg = srcs.length + ' image' + (srcs.length > 1 ? 's' : '') + ' added to Image Storage';
     selected = {};
-    qsa('.img-search-card.selected', overlay).forEach(function (c) { c.classList.remove('selected'); });
+    qsa('.img-search-card.selected', overlay).forEach(function (c) { c.classList.remove('selected'); c.setAttribute('aria-checked', 'false'); });
     updateSelCount();
-
-    setTimeout(close, 600);
+    close();
+    if (typeof window.showSaveToast === 'function') window.showSaveToast(msg);
   }
 
   /* ---------- public API ---------- */
