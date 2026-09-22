@@ -119,13 +119,12 @@ a{color:inherit;text-decoration:none}
   display:inline-flex;align-items:center;justify-content:center;
   min-width:28px;height:28px;padding:0 8px;border-radius:999px;
   font-size:13px;font-weight:800;line-height:1;
-  background:var(--neon);color:#111;
-  box-shadow:0 2px 8px rgba(186,248,0,.3);
+  background:var(--accent);color:#fff;
+  box-shadow:0 2px 8px color-mix(in srgb, var(--accent) 35%, transparent);
   transition:transform .15s ease, background .2s ease;
 }
 .tray-count.pulse{animation:count-pulse .3s ease}
 @keyframes count-pulse{0%{transform:scale(1)}50%{transform:scale(1.2)}100%{transform:scale(1)}}
-:root[data-theme="light"] .tray-count{color:#fff}
 .tray-count[data-count="0"]{background:var(--muted);opacity:.5;box-shadow:none}
 
 /* ---------- Controls row ---------- */
@@ -182,11 +181,27 @@ a{color:inherit;text-decoration:none}
 #trashClear .ico svg,
 #saveBtn .ico svg{fill:none;stroke:currentColor}
 
-/* PNG button icons — fixed size, theme-aware color via filter */
-.btn-icon{width:22px;height:22px;pointer-events:none;object-fit:contain;transition:filter .2s ease}
-/* Theme toggle moon (shown in light mode): a soft ink-colored glyph */
-#themeToggle .moon-icon{filter:brightness(0) opacity(.78)}
-#themeToggle .sun-svg{width:22px;height:22px}
+/* Theme toggle icon: the button shows the TARGET theme, picked by CSS from
+   data-theme (set before first paint) — sun in dark mode, moon in light */
+#themeToggle .sun-svg,#themeToggle .moon-svg{width:22px;height:22px;display:block;overflow:visible}
+#themeToggle .moon-svg{color:var(--text)}
+#themeToggle .sun-svg,
+:root[data-theme="dark"] #themeToggle .moon-svg{display:none}
+:root[data-theme="dark"] #themeToggle .sun-svg{display:block}
+/* After tapping the moon it stays up just long enough to twinkle */
+:root[data-theme="dark"] #themeToggle.hold-moon .moon-svg{display:block}
+:root[data-theme="dark"] #themeToggle.hold-moon .sun-svg{display:none}
+#themeToggle .moon-svg .star,#themeToggle .moon-svg .moon-body{transform-box:fill-box;transform-origin:center}
+#themeToggle.twinkle .moon-svg .star{animation:star-twinkle .62s cubic-bezier(.34,1.4,.64,1) both}
+#themeToggle.twinkle .moon-svg .star-2{animation-delay:.13s}
+#themeToggle.twinkle .moon-svg .moon-body{animation:moon-tilt .7s ease-in-out}
+@keyframes star-twinkle{
+  0%{transform:scale(1) rotate(0);opacity:1}
+  35%{transform:scale(.25) rotate(45deg);opacity:.35}
+  70%{transform:scale(1.55) rotate(90deg);opacity:1;filter:drop-shadow(0 0 2.5px currentColor)}
+  100%{transform:scale(1) rotate(90deg);opacity:1}
+}
+@keyframes moon-tilt{0%,100%{transform:rotate(0)}45%{transform:rotate(-14deg)}}
 
 /* Sun shine animation — in dark mode when sun is visible, brighter than moon */
 @keyframes sun-shine{
@@ -408,20 +423,20 @@ body,.panel,.btn,.tier-drop,.tier-label,.tray-well,.action-bar,.action-icon,.act
 .help-handle:active{cursor:grabbing}
 .help-handle-pill{
   width:44px;height:4px;border-radius:99px;
-  background:var(--neon);opacity:.35;
+  background:var(--accent);opacity:.4;
   transition:opacity .2s ease,width .2s ease,background .2s ease;
 }
 .help-drawer.peek .help-handle-pill,
 .help-handle:hover .help-handle-pill{
-  opacity:.6;width:52px;background:var(--neon);
+  opacity:.7;width:52px;background:var(--accent);
 }
 .help-handle-label{
   font-size:12px;font-weight:800;letter-spacing:2px;
-  color:var(--neon);opacity:.65;
+  color:var(--accent);opacity:.8;
   transition:opacity .2s ease,color .2s ease,transform .2s ease;
 }
 .help-drawer.peek .help-handle-label,
-.help-handle:hover .help-handle-label{opacity:1;color:var(--neon)}
+.help-handle:hover .help-handle-label{opacity:1;color:var(--accent)}
 .help-drawer.open .help-handle-label{opacity:0;transform:translateY(-4px)}
 .help-tray{
   height:0;overflow:hidden;
@@ -565,7 +580,7 @@ body,.panel,.btn,.tier-drop,.tier-label,.tray-well,.action-bar,.action-icon,.act
 }
 .prompt-card-badge{
   position:relative;z-index:2;
-  font-size:17px;color:var(--neon);flex:0 0 auto;opacity:.7;
+  font-size:17px;color:var(--accent);flex:0 0 auto;opacity:.7;
   line-height:1;
 }
 /* Explicit skip / use buttons on the top card — additive to swipe + keyboard */
@@ -700,16 +715,23 @@ body,.panel,.btn,.tier-drop,.tier-label,.tray-well,.action-bar,.action-icon,.act
 .tier-label{
   position:relative;
   border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow);
-  padding:0; display:grid; place-items:stretch; min-height:calc(var(--tok) + 2 * var(--drop-pad)); overflow:hidden;
+  padding:0; display:grid; place-items:stretch; min-height:calc(var(--tok) + 2 * var(--drop-pad));
+  /* no overflow clipping: the color dot / delete badges hang off the corners */
 }
 @media (max-width:600px){ .tier-label{border-radius:12px} }
 .label-chip{
-  position:relative;width:100%;height:100%;border-radius:inherit;background:var(--label-default);color:#111;
+  position:relative;width:100%;height:100%;border-radius:inherit;background:var(--label-default);color:#fff;
   display:flex;align-items:center;justify-content:center;
   font-family:'Bowlby One',sans-serif;font-weight:400;font-size:clamp(12px,4vw,48px);
   text-transform:uppercase;letter-spacing:.5px;user-select:none;
-  line-height:1.1;white-space:normal;word-break:normal;overflow-wrap:break-word;
+  /* Words never break silently — the fitter shrinks the font instead */
+  line-height:1.1;white-space:normal;word-break:normal;overflow-wrap:normal;
   text-align:center;padding:6px 8px;overflow:hidden;
+  text-shadow:0 1px 2px rgba(0,0,0,.2);
+}
+/* White on light chips (yellows, pastels): a soft halo keeps it legible */
+.label-chip.chip-light,.radial-option .dot.chip-light{
+  text-shadow:0 1px 1px rgba(0,0,0,.22),0 1px 8px rgba(0,0,0,.3);
 }
 
 /* A single word too long for a narrow (phone) label may break as a last resort */
@@ -724,27 +746,30 @@ body,.panel,.btn,.tier-drop,.tier-label,.tray-well,.action-bar,.action-icon,.act
   pointer-events:none;filter:drop-shadow(0 2px 4px rgba(0,0,0,.4));
 }
 
-/* Chip area: positions color picker relative to chip, not the stretching tier-label */
-.chip-area{position:relative;width:100%;height:100%}
+/* Chip area fills the tier box absolutely, so the label's text can never
+   stretch the box — only the font size changes to fit */
+.chip-area{position:absolute;inset:0;border-radius:inherit}
 
-/* Color picker dot on tier label — hidden until interaction */
+/* Tier tools (color dot, delete) are small badges hanging off the label's
+   top corners — never on top of the label text. Hidden until hover (desktop)
+   or a tap on the tier name (touch). */
 .color-pick-btn{
-  position:absolute;left:5px;bottom:5px;width:26px;height:26px;border-radius:999px;
+  position:absolute;left:-8px;top:-8px;width:26px;height:26px;border-radius:999px;
   display:grid;place-items:center;cursor:pointer;z-index:8;
   border:none;box-shadow:none;background:none;padding:0;
-  opacity:0;transform:scale(0.5);
+  opacity:0;transform:scale(0.5);pointer-events:none;
   transition:opacity .25s ease,transform .35s cubic-bezier(.34,1.56,.64,1);
 }
+.color-pick-btn::before,.row-del::before{content:'';position:absolute;inset:-9px;border-radius:999px} /* ~44px touch target */
 .tier-label:hover .color-pick-btn,
 .tier-label:focus-within .color-pick-btn,
 .tier-label.show-tools .color-pick-btn{
-  opacity:1;transform:scale(1);
-  animation:dot-pulse 1.8s ease-in-out infinite;
+  opacity:1;transform:scale(1);pointer-events:auto;
 }
-@keyframes dot-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
-.color-pick-btn:active{transform:scale(.85);animation:none}
+.color-pick-btn:active{transform:scale(.85)}
 .color-dot-indicator{
-  width:22px;height:22px;border-radius:999px;display:block;
+  width:24px;height:24px;border-radius:999px;display:block;
+  border:2px solid var(--surface-raised);
   box-shadow:0 2px 8px rgba(0,0,0,.3);
   transition:background .2s ease;
 }
@@ -752,9 +777,9 @@ body,.panel,.btn,.tier-drop,.tier-label,.tray-well,.action-bar,.action-icon,.act
 
 /* Row delete X (auto-darker) */
 .row-del{
-  position:absolute;right:8px;bottom:8px;width:28px;height:28px;border-radius:7px;
+  position:absolute;right:-8px;top:-8px;width:26px;height:26px;border-radius:999px;
   color:#fff;display:grid;place-items:center;
-  box-shadow:0 6px 14px rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.18);
+  box-shadow:0 2px 8px rgba(0,0,0,.3);border:2px solid var(--surface-raised);
   font-weight:900;z-index:8;
   opacity:0;pointer-events:none;
   transition:opacity .25s ease;
@@ -764,15 +789,14 @@ body,.panel,.btn,.tier-drop,.tier-label,.tray-well,.action-bar,.action-icon,.act
 .tier-label.show-tools .row-del{
   opacity:1;pointer-events:auto;
 }
-.row-del svg{width:14px;height:14px;stroke:currentColor;fill:none}
+.row-del svg{width:12px;height:12px;stroke:currentColor;fill:none}
 
-/* Touch devices have no hover — give the color tool a quiet resting
-   affordance so it's discoverable. The delete button appears only after the
-   tier label is touched (JS pokeTierTools) and fades after a few idle seconds. */
+/* Touch devices have no hover — the color dot and delete badges appear once
+   the tier name is tapped (JS pokeTierTools) and fade after a few idle seconds. */
 @media (hover:none){
-  .color-pick-btn{opacity:.55;transform:scale(.85)}
-  .row-del{transition:opacity .6s var(--ease-out)}
-  .tier-label.show-tools .row-del{transition:opacity .18s var(--ease-spring)}
+  .color-pick-btn,.row-del{transition:opacity .6s var(--ease-out),transform .35s cubic-bezier(.34,1.56,.64,1)}
+  .tier-label.show-tools .color-pick-btn,
+  .tier-label.show-tools .row-del{transition:opacity .18s var(--ease-spring),transform .3s var(--ease-spring)}
   /* Scroll from the label like anywhere else; long-press still lifts the row
      (JS cancels panning only once the row is lifted). */
   .tier-label{touch-action:pan-y}
@@ -820,36 +844,12 @@ body,.panel,.btn,.tier-drop,.tier-label,.tray-well,.action-bar,.action-icon,.act
 .token:active,.token.dragging{cursor:grabbing}
 .token:active{transform:translateY(0)}
 .token:focus-visible{outline:3px solid var(--accent);outline-offset:4px}
-/* Tonal rim: conic swirl of base-color shades/tints under a whisper of film
-   grain, confined to the outer edge by a radial cover of the solid base color
-   that melts into the flat center. A strong base tint stays over the ring all
-   the way to the edge so it reads as depth in the same material — not a
-   prism fringe, not a glossy bevel. Layers top→bottom: cover, grain, swirl. */
-.token.aura::before,
-.battle-circle.aura::before,.bracket-circle.aura::before,.champion-circle.aura::before{
-  content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
-  background:
-    radial-gradient(circle closest-side at var(--aura-cx,50%) var(--aura-cy,50%),
-      var(--aura-base) 0 80%,
-      color-mix(in srgb, var(--aura-base) 88%, transparent) 87%,
-      color-mix(in srgb, var(--aura-base) 48%, transparent) 94%,
-      color-mix(in srgb, var(--aura-base) 26%, transparent) 100%),
-    url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='120'%20height='120'%3E%3Cfilter%20id='n'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.9'%20numOctaves='3'%20stitchTiles='stitch'/%3E%3CfeComponentTransfer%3E%3CfeFuncA%20type='linear'%20slope='0.35'%20intercept='0'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect%20width='120'%20height='120'%20filter='url(%23n)'/%3E%3C/svg%3E"),
-    conic-gradient(from var(--aura-rot,0deg),
-      var(--aura-c1,transparent) 0deg,
-      var(--aura-c2,transparent) 52deg,
-      var(--aura-c3,transparent) 118deg,
-      var(--aura-c4,transparent) 172deg,
-      var(--aura-c5,transparent) 240deg,
-      var(--aura-c1,transparent) 318deg,
-      var(--aura-c1,transparent) 360deg);
-}
 .token .label{
   padding:7px;text-align:center;font-family:'Montserrat',ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-weight:900;font-size:22px;line-height:1.1;
   white-space:nowrap;
   display:flex;align-items:center;justify-content:center;
   width:100%;height:100%;overflow:hidden;
-  position:relative;z-index:1; /* keep the name above the aura pseudo-element */
+  position:relative;z-index:1;
 }
 .token img{width:100%;height:100%;object-fit:cover;border-radius:999px;pointer-events:none}
 .token.selected{outline:3px solid var(--accent);outline-offset:4px}
@@ -953,7 +953,10 @@ body.dragging-item #tray{
 .color-flash .tier-drop{animation:color-flash .3s ease}
 
 /* Tray badge glow when going from 0 to non-zero */
-@keyframes badge-glow{0%{box-shadow:0 2px 8px rgba(186,248,0,.3)}50%{box-shadow:0 2px 16px rgba(186,248,0,.7)}100%{box-shadow:0 2px 8px rgba(186,248,0,.3)}}
+@keyframes badge-glow{
+  0%,100%{box-shadow:0 2px 8px color-mix(in srgb, var(--accent) 35%, transparent)}
+  50%{box-shadow:0 2px 16px color-mix(in srgb, var(--accent) 70%, transparent)}
+}
 .tray-count.glow{animation:badge-glow .5s ease}
 
 /* ---------- Image Storage ---------- */
@@ -1007,14 +1010,15 @@ body.dragging-item #tray{
   font-family:'Bowlby One',sans-serif;font-weight:400;font-size:20px;
   text-transform:uppercase;letter-spacing:.5px;line-height:1.15;
   overflow-wrap:anywhere;
-  background:var(--dot-color);color:#111;
+  background:var(--dot-color);color:#fff;
+  text-shadow:0 1px 2px rgba(0,0,0,.2);
   border:2px solid transparent;
   transform:scale(.7);opacity:0;transition:transform .18s ease,opacity .18s ease,border-color .12s ease;
 }
 .radial.visible .dot,.radial.show .dot{opacity:1;transform:scale(1)}
 .radial-option.is-hot .dot{border-color:#fff;transform:scale(1.03)}
 /* The tier the token already sits in: ringed and tagged, tapping it just closes */
-.radial-option.is-current .dot{box-shadow:inset 0 0 0 3px rgba(17,17,17,.55);position:relative}
+.radial-option.is-current .dot{box-shadow:inset 0 0 0 3px rgba(255,255,255,.8);position:relative}
 .radial-option.is-current .dot::after{
   content:'NOW';position:absolute;right:10px;top:50%;transform:translateY(-50%);
   font:800 10px/1 ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;letter-spacing:1px;

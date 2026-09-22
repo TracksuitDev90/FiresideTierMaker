@@ -143,8 +143,6 @@
       circle.appendChild(img);
     } else {
       circle.style.background = tok.bg;
-      // Same textured rim as tokens in the tier list
-      if(typeof applyTokenAura === 'function') applyTokenAura(circle, tok.bg, tok.name);
       var lbl = document.createElement('div');
       lbl.className = 'battle-label';
       lbl.style.color = tok.textColor || '#fff';
