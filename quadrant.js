@@ -221,6 +221,9 @@
       on(qAxisLabels[dir],'keydown',function(e){
         if(e.key==='Enter'){e.preventDefault();qAxisLabels[dir].blur();}
       });
+      on(qAxisLabels[dir],'paste',function(e){
+        if(typeof pastePlainText === 'function'){ pastePlainText(e); scheduleQuadrantSave(); }
+      });
     });
 
     return outer;
@@ -439,7 +442,7 @@
       placePinAtPoint(zone, placed, e.clientX, e.clientY);
       placed.classList.remove('selected');
 
-      live('Placed "'+(placed.textContent||'item').trim()+'" on quadrant chart');
+      live('Placed "'+(placed.dataset.pinName||'item')+'" on quadrant chart');
       vib(6);
       scheduleQuadrantSave();
     });
@@ -687,6 +690,15 @@
 
   /* ---------- Mode switching ---------- */
   function setMode(mode){
+    var prevMode = currentMode;
+    // Persist the chart exactly once while its pins are still on the page —
+    // BEFORE flipping modes, because quadrant saves are ignored outside
+    // quadrant mode (the zones are emptied on the way out, and saving that
+    // empty state is what used to wipe every placement).
+    if(prevMode === 'quadrant' && mode !== 'quadrant' && qBoard){
+      clearTimeout(_qSaveTimeout);
+      saveQuadrantData();
+    }
     currentMode = mode;
     var tierBoard = $('#tierBoard');
     if(!qBoard) return;
@@ -711,8 +723,7 @@
       document.body.classList.remove('quadrant-mode');
       if(tierBoard) tierBoard.classList.add('hidden-mode');
       qBoard.classList.remove('active');
-      // Save quadrant data then destroy pins
-      saveQuadrantData();
+      // Destroy pins (already saved above when leaving quadrant mode)
       qZones.forEach(function(z){
         $$('.q-pin',z).forEach(function(pin){ pin.remove(); });
         $$('.token',z).forEach(function(tok){ tok.remove(); });
@@ -725,7 +736,6 @@
       if(tierBoard) tierBoard.classList.remove('hidden-mode');
       qBoard.classList.remove('active');
       if(typeof showPromptStack === 'function') showPromptStack();
-      saveQuadrantData();
       qZones.forEach(function(z){
         $$('.q-pin',z).forEach(function(pin){ pin.remove(); });
         $$('.token',z).forEach(function(tok){ tok.remove(); });
@@ -742,12 +752,12 @@
     var saveBtn = $('#saveBtn');
     if(saveBtn){
       var saveTxt = saveBtn.querySelector('span:last-child');
-      if(saveTxt) saveTxt.textContent = isQ ? 'Save Quadrant' : isB ? 'Save Bracket' : 'Save Tierlist';
+      if(saveTxt) saveTxt.textContent = isQ ? 'Save Chart' : isB ? 'Save Bracket' : 'Save Tierlist';
     }
     var clearBtn = $('#trashClear');
     if(clearBtn){
       var clearTxt = clearBtn.querySelector('span:last-child');
-      if(clearTxt) clearTxt.textContent = isQ ? 'Clear Quadrants' : isB ? 'Clear Bracket' : 'Clear Board';
+      if(clearTxt) clearTxt.textContent = isQ ? 'Clear Chart' : isB ? 'Clear Bracket' : 'Clear Board';
     }
     // Update undo button behavior text for battles
     var undoBtn = $('#undoBtn');
@@ -810,6 +820,10 @@
       if(!json) return;
       var data = JSON.parse(json);
       if(!data) return;
+
+      // Start from an empty chart so a reload (e.g. the clear → Undo lifeline)
+      // can never duplicate pins that are already on the page.
+      qZones.forEach(function(z){ $$('.q-pin',z).forEach(function(p){ p.remove(); }); });
 
       // Restore axis labels
       if(data.labels){
@@ -928,8 +942,12 @@
 
   var _qSaveTimeout = null;
   function scheduleQuadrantSave(){
+    // Outside quadrant mode the zones are intentionally empty — saving then
+    // would overwrite the real chart with nothing.
+    if(currentMode !== 'quadrant') return;
     clearTimeout(_qSaveTimeout);
     _qSaveTimeout = setTimeout(function(){
+      if(currentMode !== 'quadrant') return;
       saveQuadrantData();
       if(typeof updateTrayCount === 'function') updateTrayCount();
     }, 800);
@@ -961,128 +979,71 @@
   }
 
   function exportQuadrantPng(){
-    // Busy state mirrors the tier export: blocks double-clicks and shows
-    // progress while fonts fetch (first export) and the PNG renders.
-    var saveBtn = $('#saveBtn');
-    if(saveBtn && saveBtn.getAttribute('data-state') === 'saving') return;
-    var saveLabel = saveBtn ? saveBtn.querySelector('span:not(.ico)') : null;
-    var savedLabelText = saveLabel ? saveLabel.textContent : '';
-    if(saveBtn){
-      saveBtn.setAttribute('data-state','saving');
-      saveBtn.disabled = true;
-      if(saveLabel) saveLabel.textContent = 'Saving…';
-    }
-    function resetSaveBtn(){
-      if(!saveBtn) return;
-      saveBtn.removeAttribute('data-state');
-      saveBtn.disabled = false;
-      if(saveLabel) saveLabel.textContent = savedLabelText;
-    }
-    var fontsReady = (typeof window.ensureExportFonts === 'function') ? window.ensureExportFonts() : Promise.resolve();
-    fontsReady.then(function(){
+    if(typeof window.runExport !== 'function') return;
+    $$('.q-pin.selected').forEach(function(p){ p.classList.remove('selected'); });
+    window.runExport(function(){
+      var panel = $('#boardPanel');
+      var cloneWrap = document.createElement('div');
+      cloneWrap.style.position='fixed';cloneWrap.style.left='-99999px';cloneWrap.style.top='0';
 
-    var panel = $('#boardPanel');
-    var cloneWrap = document.createElement('div');
-    cloneWrap.style.position='fixed';cloneWrap.style.left='-99999px';cloneWrap.style.top='0';
+      var clone = panel.cloneNode(true);
+      clone.removeAttribute('id');
+      clone.style.width = '1200px';
+      clone.style.maxWidth = '1200px';
+      clone.style.boxShadow = 'none';
+      clone.style.border = 'none';
+      clone.style.borderRadius = '0';
 
-    var clone = panel.cloneNode(true);
-    clone.style.width = '1200px';
-    clone.style.maxWidth = '1200px';
-    clone.style.boxShadow = 'none';
-    clone.style.border = 'none';
-    clone.style.borderRadius = '0';
+      // Hide tier board in clone, show quadrant
+      var tierClone = clone.querySelector('#tierBoard');
+      if(tierClone) tierClone.style.display = 'none';
+      var qClone = clone.querySelector('#quadrantBoard');
+      if(qClone){ qClone.style.display = 'block'; qClone.classList.add('q-export-mode'); }
 
-    // Hide tier board in clone, show quadrant
-    var tierClone = clone.querySelector('#tierBoard');
-    if(tierClone) tierClone.style.display = 'none';
-    var qClone = clone.querySelector('#quadrantBoard');
-    if(qClone){ qClone.style.display = 'block'; qClone.classList.add('q-export-mode'); }
+      // Clean up pins in clone: strip drag/selection state and inline shadows
+      var clonePins = clone.querySelectorAll('.q-pin');
+      for(var ci=0;ci<clonePins.length;ci++){
+        var cp = clonePins[ci];
+        cp.classList.remove('q-dragging-token','selected');
+        cp.style.boxShadow = 'none';
+        cp.style.transform = 'none';
+        cp.style.willChange = 'auto';
+        cp.style.opacity = '1';
+        cp.style.transition = 'none';
+      }
 
-    // Clean up pins in clone: strip drag/selection state and inline shadows
-    var clonePins = clone.querySelectorAll('.q-pin');
-    for(var ci=0;ci<clonePins.length;ci++){
-      var cp = clonePins[ci];
-      cp.classList.remove('q-dragging-token','selected');
-      cp.style.boxShadow = 'none';
-      cp.style.transform = 'none';
-      cp.style.willChange = 'auto';
-      cp.style.opacity = '1';
-      cp.style.transition = 'none';
-    }
+      // Hide prompt stack and edit chrome
+      var style = document.createElement('style');
+      style.textContent = [
+        '.prompt-stack-wrap, .prompt-browse, .title-pen, .token-del, .q-pin-del, .mode-toggle-wrap, #battleBoard, .empty-hint{display:none !important}',
+        '.board-title-wrap{display:block !important;text-align:center !important;margin-bottom:20px !important}',
+        '.board-title{display:block !important;text-align:center !important;font-size:28px !important;white-space:normal !important;word-wrap:break-word !important;overflow-wrap:break-word !important}',
+        // Pin styling for export — reset all drag/hover shadows
+        '.q-pin{position:absolute !important;box-shadow:none !important;transform:none !important;will-change:auto !important;opacity:1 !important}',
+        ".q-pin-label{font-family:'Montserrat',ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif !important;font-weight:900 !important;font-size:14px !important;max-width:110px !important}",
+        '.q-pin-dot{width:16px !important;height:16px !important;border-radius:50% !important;flex-shrink:0 !important}',
+        // Ensure quadrant grid renders properly at export width
+        '.q-grid-wrap{min-height:500px !important}',
+        '.q-zone{min-height:240px !important;overflow:visible !important}',
+        '.q-axis-label{font-size:16px !important}'
+      ].join('\n');
+      // Inject font @font-face CSS directly into the clone so the SVG renderer can resolve them
+      if (typeof _bowlbyFontFaceCSS === 'string' && _bowlbyFontFaceCSS) style.textContent = _bowlbyFontFaceCSS + '\n' + style.textContent;
+      if (typeof _montserratFontFaceCSS === 'string' && _montserratFontFaceCSS) style.textContent = _montserratFontFaceCSS + '\n' + style.textContent;
+      clone.appendChild(style);
 
-    // Hide prompt stack and edit chrome
-    var style = document.createElement('style');
-    style.textContent = [
-      '.prompt-stack-wrap{display:none !important}',
-      '.title-pen{display:none !important}',
-      '.board-title-wrap{display:block !important;text-align:center !important;margin-bottom:20px !important}',
-      '.board-title{display:block !important;text-align:center !important;font-size:28px !important;white-space:normal !important;word-wrap:break-word !important;overflow-wrap:break-word !important}',
-      '.token-del{display:none !important}',
-      '.q-pin-del{display:none !important}',
-      '.mode-toggle-wrap{display:none !important}',
-      // Pin styling for export — reset all drag/hover shadows
-      '.q-pin{position:absolute !important;box-shadow:none !important;transform:none !important;will-change:auto !important;opacity:1 !important}',
-      '.q-pin.q-dragging-token{box-shadow:none !important;opacity:1 !important}',
-      '.q-pin.selected{box-shadow:none !important}',
-      ".q-pin-label{font-family:'Montserrat',ui-sans-serif,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif !important;font-weight:700 !important;font-size:14px !important}",
-      '.q-pin-dot{width:16px !important;height:16px !important;border-radius:50% !important;flex-shrink:0 !important}',
-      // Ensure quadrant grid renders properly at export width
-      '.q-grid-wrap{min-height:500px !important}',
-      '.q-zone{min-height:240px !important;overflow:visible !important}',
-      '.q-axis-label{font-size:16px !important}'
-    ].join('\n');
-    // Inject font @font-face CSS directly into the clone so the SVG renderer can resolve them
-    if (typeof _bowlbyFontFaceCSS === 'string' && _bowlbyFontFaceCSS) style.textContent = _bowlbyFontFaceCSS + '\n' + style.textContent;
-    if (typeof _montserratFontFaceCSS === 'string' && _montserratFontFaceCSS) style.textContent = _montserratFontFaceCSS + '\n' + style.textContent;
-    clone.appendChild(style);
+      // Handle title
+      var title = clone.querySelector('.board-title');
+      var titleText = title ? title.textContent.replace(/\s+/g,'') : '';
+      if(!titleText){
+        var wrap = title ? title.parentElement : null;
+        if(wrap && wrap.parentNode) wrap.parentNode.removeChild(wrap);
+      }
 
-    // Handle title
-    var title = clone.querySelector('.board-title');
-    var titleText = title ? title.textContent.replace(/\s+/g,'') : '';
-    if(!titleText){
-      var wrap = title ? title.parentElement : null;
-      if(wrap && wrap.parentNode) wrap.parentNode.removeChild(wrap);
-    }
-
-    cloneWrap.appendChild(clone);
-    document.body.appendChild(cloneWrap);
-
-    if(typeof htmlToImage === 'undefined' || typeof htmlToImage.toPng !== 'function'){
-      cloneWrap.remove();
-      resetSaveBtn();
-      if(typeof showSaveToast === 'function') showSaveToast('Export library failed to load');
-      return;
-    }
-
-    var _qExportFontCSS = (typeof _bowlbyFontFaceCSS === 'string' ? _bowlbyFontFaceCSS : '') + (typeof _montserratFontFaceCSS === 'string' ? _montserratFontFaceCSS : '');
-    var _qExportOpts = {
-      pixelRatio: 2,
-      width: 1200,
-      backgroundColor: cssVar('--surface') || '#ffffff',
-      fetchRequestInit: {mode:'cors',cache:'no-cache'},
-      cacheBust:true
-    };
-    if(_qExportFontCSS) _qExportOpts.fontEmbedCSS = _qExportFontCSS;
-    htmlToImage.toPng(clone, _qExportOpts).then(function(dataUrl){
-      var boardTitle = ($('.board-title') || {}).textContent || '';
-      var slug = boardTitle.trim().replace(/[^a-z0-9]+/gi,'-').replace(/^-|-$/g,'').toLowerCase();
-      var a = document.createElement('a');
-      a.href = dataUrl;
-      a.download = (slug || 'quadrant-chart')+'.png';
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(function(){a.remove();},300);
-      cloneWrap.remove();
-      resetSaveBtn();
-      if(typeof showSaveToast === 'function') showSaveToast('Saved!');
-    }).catch(function(err){
-      cloneWrap.remove();
-      resetSaveBtn();
-      if(typeof showSaveToast === 'function') showSaveToast('Export failed — try again', true);
-      if(window.DEBUG) console.error('Quadrant PNG export error:', err);
+      cloneWrap.appendChild(clone);
+      document.body.appendChild(cloneWrap);
+      return { node: clone, wrap: cloneWrap, width: 1200, filename: window.exportFilename('quadrant-chart') };
     });
-
-    }); // end fontsReady.then
   }
 
   /* ---------- Keyboard control: nudge, cross-quadrant move, select, delete ---------- */
@@ -1221,6 +1182,7 @@
 
     // Options render into the shared centered, scrollable column (.radial-list)
     radialOpts.innerHTML = '';
+    if(typeof window.buildRadialHead === 'function') radialOpts.appendChild(window.buildRadialHead(token, 'Place'));
     for(var j=0;j<N;j++){
       (function(j){
         var btn = document.createElement('button');
@@ -1318,16 +1280,22 @@
     radial.addEventListener('pointerdown', backdrop, {passive:false});
     radial._backdropHandler = backdrop;
 
-    // Show radial
+    // Show radial. Use the scroll offset saved on first open — while the body
+    // is locked (position:fixed) pageYOffset reads 0, and re-opening (e.g. on
+    // a viewport resize) would otherwise jump the page to the top.
     if(typeof _savedScrollY !== 'undefined' && _savedScrollY === null){
       _savedScrollY = window.pageYOffset;
     }
-    document.body.style.top = '-'+(window.pageYOffset||0)+'px';
+    var lockY = (typeof _savedScrollY !== 'undefined' && _savedScrollY !== null) ? _savedScrollY : window.pageYOffset;
+    document.body.style.top = '-'+(lockY||0)+'px';
     document.body.classList.add('radial-open');
     radial.classList.remove('hidden');
     radial.classList.add('visible','show');
     radial.setAttribute('aria-hidden','false');
     setTimeout(function(){radial.classList.remove('show');}, 160+N*20);
+    // Keyboard / screen-reader users land on the first option
+    var firstOpt = radialOpts.querySelector('.radial-option');
+    if(firstOpt){ try{ firstOpt.focus({preventScroll:true}); }catch(_){} }
   }
 
   // Patch the token click handler to use quadrant radial in quadrant mode

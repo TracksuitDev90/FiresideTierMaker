@@ -112,17 +112,18 @@
     return false;
   }
 
-  function getTokensFromTray(){
-    var tray = document.getElementById('tray');
-    if(!tray) return [];
+  // Everyone in the list competes — people already ranked in tiers as well as
+  // those still in Image Storage (quadrant pins are copies, so skip those).
+  function getBattleTokens(){
     var tokens = [];
-    var els = tray.querySelectorAll('.token');
+    var els = document.querySelectorAll('#tray .token, #tierBoard .tier-drop .token');
     for(var i=0;i<els.length;i++){
       var t = els[i];
       var img = t.querySelector('img');
       var lbl = t.querySelector('.label');
       if(img){
-        tokens.push({ type:'image', src:img.src, alt:img.alt||'', bg:'' });
+        if(!img.src) continue; // still loading from storage
+        tokens.push({ type:'image', src:img.src, alt:img.alt||'', bg:'', crop: t.dataset.crop || '' });
       } else if(lbl){
         var bg = t.style.background || t.style.backgroundColor || '#888';
         tokens.push({ type:'name', name:lbl.textContent, bg:bg, textColor:lbl.style.color||'#fff' });
@@ -130,39 +131,50 @@
     }
     return tokens;
   }
+  function tokenLabel(tok){ return tok.name || tok.alt || 'this image'; }
+  function fillCircle(circle, tok){
+    if(tok.type === 'image'){
+      var img = document.createElement('img');
+      img.src = tok.src;
+      img.alt = tok.alt || '';
+      img.draggable = false;
+      var c = (typeof parseCrop === 'function') ? parseCrop(tok.crop) : null;
+      if(c && typeof cropTransform === 'function') img.style.transform = cropTransform(c);
+      circle.appendChild(img);
+    } else {
+      circle.style.background = tok.bg;
+      // Same textured rim as tokens in the tier list
+      if(typeof applyTokenAura === 'function') applyTokenAura(circle, tok.bg, tok.name);
+      var lbl = document.createElement('div');
+      lbl.className = 'battle-label';
+      lbl.style.color = tok.textColor || '#fff';
+      lbl.textContent = tok.name;
+      circle.appendChild(lbl);
+    }
+  }
 
   function renderTokenCard(tok, side){
     var card = document.createElement('div');
     card.className = 'battle-card battle-card--' + side;
     card.setAttribute('role','button');
     card.setAttribute('tabindex','0');
-    card.setAttribute('aria-label','Pick ' + (tok.name || tok.alt || 'this token'));
+    card.setAttribute('aria-label','Pick ' + tokenLabel(tok));
 
     var circle = document.createElement('div');
     circle.className = 'battle-circle';
-
-    if(tok.type === 'image'){
-      var img = document.createElement('img');
-      img.src = tok.src;
-      img.alt = tok.alt || '';
-      img.draggable = false;
-      circle.appendChild(img);
-    } else {
-      circle.style.background = tok.bg;
-      var lbl = document.createElement('div');
-      lbl.className = 'battle-label';
-      lbl.style.color = tok.textColor || '#fff';
-      lbl.textContent = tok.name;
-      circle.appendChild(lbl);
-      fitBattleLabel(lbl, circle);
-    }
-
-    var name = document.createElement('div');
-    name.className = 'battle-name';
-    name.textContent = tok.name || tok.alt || '';
-
+    fillCircle(circle, tok);
     card.appendChild(circle);
-    card.appendChild(name);
+    var lblEl = circle.querySelector('.battle-label');
+    if(lblEl) fitBattleLabel(lblEl, circle);
+
+    // Name tokens already show their name inside the circle; only images
+    // need a caption underneath.
+    if(tok.type === 'image' && tok.alt){
+      var name = document.createElement('div');
+      name.className = 'battle-name';
+      name.textContent = tok.alt;
+      card.appendChild(name);
+    }
     return card;
   }
 
@@ -207,6 +219,11 @@
       '  </div>',
       '  <div class="battle-actions" id="battleActions">',
       '  </div>',
+      '  <div class="battle-empty hidden" id="battleEmpty" role="status">',
+      '    <div class="battle-empty-icon" aria-hidden="true">VS</div>',
+      '    <h3 class="battle-empty-title">Add at least 2 people to battle</h3>',
+      '    <p class="battle-empty-sub">Type a name or add images above — the matchup starts automatically.</p>',
+      '  </div>',
       '</div>',
       '<div class="battle-results hidden" id="battleResults"></div>'
     ].join('\n');
@@ -227,38 +244,68 @@
     el.innerHTML = html;
   }
 
+  /* ---------- Empty state ---------- */
+  var _waitObs = null;
+  function setEmptyState(on){
+    var empty = document.getElementById('battleEmpty');
+    ['battleVersus','battleActions','battleProgress'].forEach(function(id){
+      var el = document.getElementById(id); if(el) el.classList.toggle('hidden', on);
+    });
+    var hdr = document.querySelector('#battleBoard .battle-header');
+    if(hdr) hdr.classList.toggle('hidden', on);
+    if(empty) empty.classList.toggle('hidden', !on);
+    if(on){
+      // Start by itself as soon as there are enough people
+      if(!_waitObs && window.MutationObserver){
+        _waitObs = new MutationObserver(function(){
+          if(!window.isBattleMode || !window.isBattleMode()) return;
+          if(getBattleTokens().length >= 2){ stopWaiting(); startBattle(); }
+        });
+        ['tray','tierBoard'].forEach(function(id){ var el = document.getElementById(id); if(el) _waitObs.observe(el, {childList:true, subtree:true}); });
+      }
+    } else stopWaiting();
+  }
+  function stopWaiting(){ if(_waitObs){ _waitObs.disconnect(); _waitObs = null; } }
+
+  /* ---------- Opponent pool ----------
+     Opponents are drawn from a shuffled pool that refills when used up. A draw
+     never returns the current winner, so nobody ever battles themselves. */
+  function drawOpponent(exclude){
+    for(var guard = 0; guard < 500; guard++){
+      if(battleState.poolIndex >= battleState.tokenPool.length){
+        var more = shuffle(getBattleTokens());
+        if(!more.length) return null;
+        battleState.tokenPool = battleState.tokenPool.concat(more);
+      }
+      var t = battleState.tokenPool[battleState.poolIndex++];
+      if(!tokenMatch(t, exclude)) return t;
+    }
+    return null;
+  }
+
   /* ---------- Start / Reset ---------- */
   function startBattle(){
-    var tokens = getTokensFromTray();
+    var tokens = getBattleTokens();
     if(tokens.length < 2){
-      if(typeof live === 'function') live('Need at least 2 tokens in the tray to battle!');
+      setEmptyState(true);
+      if(typeof live === 'function') live('Add at least 2 people to start a matchup.');
+      updateBattleUndoBtn();
       return;
     }
-
-    var shuffled = shuffle(tokens);
-    // We need TOTAL_ROUNDS+1 unique tokens (1 initial + 10 opponents)
-    // Build pool that avoids back-to-back repeats when possible
-    var pool = shuffled.slice();
-    while(pool.length < TOTAL_ROUNDS + 1){
-      var batch = shuffle(tokens);
-      // Avoid last token of pool being same as first of new batch
-      if(pool.length > 0 && batch.length > 1 && tokenMatch(pool[pool.length-1], batch[0])){
-        var tmp = batch[0]; batch[0] = batch[1]; batch[1] = tmp;
-      }
-      pool = pool.concat(batch);
-    }
-
-    var category = pickCategory();
+    setEmptyState(false);
     battleState = {
-      tokenPool: pool,
-      poolIndex: 2, // next unused token index
-      category: category,
+      tokenPool: shuffle(tokens),
+      poolIndex: 1,
+      category: pickCategory(),
       rounds: [],
       currentRound: 0,
-      left: pool[0],
-      right: pool[1],
+      left: null,
+      right: null,
       winner: null
     };
+    battleState.left = battleState.tokenPool[0];
+    battleState.right = drawOpponent(battleState.left);
+    if(!battleState.right){ setEmptyState(true); return; }
 
     showMatchup();
     document.getElementById('battleResults').classList.add('hidden');
@@ -267,36 +314,54 @@
     updateBattleUndoBtn();
   }
 
-  /* Restart same category from round 1 with reshuffled tokens */
+  function snapshotState(){
+    if(!battleState) return null;
+    var snap = {};
+    for(var k in battleState) if(Object.prototype.hasOwnProperty.call(battleState, k)) snap[k] = battleState[k];
+    snap.rounds = battleState.rounds.slice();
+    snap.tokenPool = battleState.tokenPool.slice();
+    return snap;
+  }
+  function renderState(){
+    if(!battleState) return;
+    setEmptyState(false);
+    if(battleState.winner){ showResults(); renderProgress(); }
+    else {
+      document.getElementById('battleResults').classList.add('hidden');
+      document.getElementById('battleVersus').classList.remove('hidden');
+      document.getElementById('battleActions').classList.remove('hidden');
+      showMatchup();
+    }
+    updateBattleUndoBtn();
+  }
+
+  /* Restart same category from round 1 with reshuffled tokens. Picks already
+     made are confirmed first and can be brought back from the toast. */
   function restartBattle(){
     if(!battleState) { startBattle(); return; }
-    var tokens = getTokensFromTray();
-    if(tokens.length < 2){
-      if(typeof live === 'function') live('Need at least 2 tokens in the tray to battle!');
-      return;
-    }
-    var shuffled = shuffle(tokens);
-    var pool = shuffled.slice();
-    while(pool.length < TOTAL_ROUNDS + 1){
-      var batch = shuffle(tokens);
-      if(pool.length > 0 && batch.length > 1 && tokenMatch(pool[pool.length-1], batch[0])){
-        var tmp = batch[0]; batch[0] = batch[1]; batch[1] = tmp;
+    var hasProgress = battleState.currentRound > 0;
+    function doRestart(){
+      var tokens = getBattleTokens();
+      if(tokens.length < 2){ startBattle(); return; }
+      var snap = hasProgress ? snapshotState() : null;
+      battleState.tokenPool = shuffle(tokens);
+      battleState.poolIndex = 1;
+      battleState.rounds = [];
+      battleState.currentRound = 0;
+      battleState.left = battleState.tokenPool[0];
+      battleState.right = drawOpponent(battleState.left);
+      battleState.winner = null;
+      renderState();
+      if(typeof live === 'function') live('Bracket restarted — ' + battleState.category);
+      if(snap && typeof window.showSaveToast === 'function'){
+        window.showSaveToast('Bracket restarted', false, { label:'Undo', onClick:function(){ battleState = snap; renderState(); } });
       }
-      pool = pool.concat(batch);
     }
-    battleState.tokenPool = pool;
-    battleState.poolIndex = 2;
-    battleState.rounds = [];
-    battleState.currentRound = 0;
-    battleState.left = pool[0];
-    battleState.right = pool[1];
-    battleState.winner = null;
-
-    showMatchup();
-    document.getElementById('battleResults').classList.add('hidden');
-    document.getElementById('battleVersus').classList.remove('hidden');
-    document.getElementById('battleActions').classList.remove('hidden');
-    if(typeof live === 'function') live('Bracket restarted — ' + battleState.category);
+    if(hasProgress && typeof showConfirm === 'function'){
+      showConfirm('Restart this bracket?', 'Your ' + battleState.currentRound + ' pick' + (battleState.currentRound === 1 ? '' : 's') + ' so far will be cleared and the matchups reshuffled.', doRestart, 'Restart');
+    } else {
+      doRestart();
+    }
   }
 
   function showMatchup(){
@@ -327,20 +392,25 @@
       rightCard.classList.remove('enter-right');
     }, 400);
 
-    // Wire click handlers
+    // Wire click handlers. Picks are ignored briefly while the new cards
+    // slide in, so a fast double-tap can't also decide the next round.
+    var readyAt = Date.now() + 380;
     function pickWinner(chosen, loser){
       return function(e){
         e.preventDefault();
+        if(Date.now() < readyAt) return;
+        readyAt = Infinity; // one pick per matchup
         if(typeof vib === 'function') vib(10);
 
-        // Record round
+        // Record round (with the pool position, so Undo can rewind exactly)
         battleState.rounds.push({
           round: battleState.currentRound + 1,
           left: battleState.left,
           right: battleState.right,
           winner: chosen,
           loser: loser,
-          category: battleState.category
+          category: battleState.category,
+          poolIndex: battleState.poolIndex
         });
 
         battleState.currentRound++;
@@ -350,15 +420,11 @@
           battleState.winner = chosen;
           showResults();
         } else {
-          // Next round: winner stays, new opponent, same category
+          // Next round: winner stays, new opponent (never the winner itself)
+          var next = drawOpponent(chosen);
+          if(!next){ battleState.winner = chosen; showResults(); renderProgress(); updateBattleUndoBtn(); return; }
           battleState.left = chosen;
-          battleState.right = battleState.tokenPool[battleState.poolIndex];
-          battleState.poolIndex++;
-          // If pool exhausted, refill
-          if(battleState.poolIndex >= battleState.tokenPool.length){
-            var more = shuffle(getTokensFromTray());
-            battleState.tokenPool = battleState.tokenPool.concat(more);
-          }
+          battleState.right = next;
           showMatchup();
         }
 
@@ -395,20 +461,7 @@
     function makeCircle(tok, circleClass){
       var circle = document.createElement('div');
       circle.className = circleClass;
-      if(tok.type === 'image'){
-        var img = document.createElement('img');
-        img.src = tok.src;
-        img.alt = tok.alt || '';
-        img.draggable = false;
-        circle.appendChild(img);
-      } else {
-        circle.style.background = tok.bg;
-        var lbl = document.createElement('div');
-        lbl.className = 'battle-label';
-        lbl.style.color = tok.textColor || '#fff';
-        lbl.textContent = tok.name;
-        circle.appendChild(lbl);
-      }
+      fillCircle(circle, tok);
       return circle;
     }
 
@@ -425,10 +478,13 @@
     champToken.className = 'champion-token';
     champToken.appendChild(makeCircle(w, 'champion-circle'));
 
-    var champName = document.createElement('div');
-    champName.className = 'champion-name';
-    champName.textContent = w.name || w.alt || '';
-    champToken.appendChild(champName);
+    // Name tokens carry their name inside the circle already
+    if(w.type === 'image' && w.alt){
+      var champName = document.createElement('div');
+      champName.className = 'champion-name';
+      champName.textContent = w.alt;
+      champToken.appendChild(champName);
+    }
 
     var champSub = document.createElement('div');
     champSub.className = 'champion-subtitle';
@@ -480,7 +536,7 @@
     var champLabel = resultsEl.querySelector('.champion-circle .battle-label');
     if(champLabel) fitBattleLabel(champLabel, champLabel.parentElement);
 
-    if(typeof live === 'function') live((w.name||w.alt||'Champion') + ' is the Ultimate Champion!');
+    if(typeof live === 'function') live(tokenLabel(w) + ' is the Ultimate Champion!');
   }
 
   function renderBracketToken(tok, isWinner){
@@ -489,27 +545,15 @@
 
     var circle = document.createElement('div');
     circle.className = 'bracket-circle';
-    if(tok.type === 'image'){
-      var img = document.createElement('img');
-      img.src = tok.src;
-      img.alt = tok.alt || '';
-      img.draggable = false;
-      circle.appendChild(img);
-    } else {
-      circle.style.background = tok.bg;
-      var lbl = document.createElement('div');
-      lbl.className = 'battle-label';
-      lbl.style.color = tok.textColor || '#fff';
-      lbl.textContent = tok.name;
-      circle.appendChild(lbl);
-    }
+    fillCircle(circle, tok);
     wrap.appendChild(circle);
 
-    var name = document.createElement('div');
-    name.className = 'bracket-token-name';
-    name.textContent = tok.name || tok.alt || '';
-    wrap.appendChild(name);
-
+    if(tok.type === 'image' && tok.alt){
+      var name = document.createElement('div');
+      name.className = 'bracket-token-name';
+      name.textContent = tok.alt;
+      wrap.appendChild(name);
+    }
     return wrap;
   }
 
@@ -525,103 +569,51 @@
       else if(typeof live === 'function') live('Finish the battle before saving the bracket.');
       return;
     }
+    if(typeof window.runExport !== 'function') return;
 
-    if(typeof htmlToImage === 'undefined' || typeof htmlToImage.toPng !== 'function'){
-      if(typeof window.showSaveToast === 'function') window.showSaveToast('Export library failed to load — check your connection', true);
-      return;
-    }
+    window.runExport(function(){
+      var bgColor = getComputedStyle(document.documentElement).getPropertyValue('--surface').trim() || '#0a0a0a';
 
-    // Busy state mirrors the other exports: blocks double-clicks, shows progress
-    var saveBtn = document.getElementById('saveBtn');
-    if(saveBtn && saveBtn.getAttribute('data-state') === 'saving') return;
-    var saveLabel = saveBtn ? saveBtn.querySelector('span:not(.ico)') : null;
-    var savedLabelText = saveLabel ? saveLabel.textContent : '';
-    if(saveBtn){
-      saveBtn.setAttribute('data-state','saving');
-      saveBtn.disabled = true;
-      if(saveLabel) saveLabel.textContent = 'Saving…';
-    }
-    function resetSaveBtn(){
-      if(!saveBtn) return;
-      saveBtn.removeAttribute('data-state');
-      saveBtn.disabled = false;
-      if(saveLabel) saveLabel.textContent = savedLabelText;
-    }
+      // Clone into an offscreen container for clean capture
+      var cloneWrap = document.createElement('div');
+      cloneWrap.style.position = 'fixed';
+      cloneWrap.style.left = '-99999px';
+      cloneWrap.style.top = '0';
 
-    var fontsReady = (typeof window.ensureExportFonts === 'function') ? window.ensureExportFonts() : Promise.resolve();
-    fontsReady.then(function(){
+      var clone = resultsEl.cloneNode(true);
+      clone.removeAttribute('id');
+      clone.classList.remove('hidden');
+      clone.style.width = '800px';
+      clone.style.maxWidth = '800px';
+      clone.style.padding = '32px';
+      clone.style.backgroundColor = bgColor;
+      clone.style.boxShadow = 'none';
+      clone.style.border = 'none';
 
-    var bgColor = getComputedStyle(document.documentElement).getPropertyValue('--surface').trim() || '#0a0a0a';
+      // Inject export styles to ensure consistent rendering
+      var style = document.createElement('style');
+      var exportCSS = [
+        '.battle-champion{ box-shadow:none !important; }',
+        '.bracket-round{ box-shadow:none !important; }',
+        '.bracket-circle{ width:90px !important; height:90px !important; box-shadow:none !important; }',
+        '.bracket-circle .battle-label{ font-size:20px !important; }',
+        '.bracket-token-name{ font-size:13px !important; }',
+        '.champion-circle{ box-shadow:none !important; }',
+        '.bracket-winner .bracket-circle{ box-shadow:none !important; }',
+        // One typeface across the app: Montserrat everywhere tokens/names appear
+        '.battle-label, .champion-title{ font-family:"Montserrat",ui-sans-serif,system-ui,-apple-system,sans-serif !important; font-weight:900 !important; }',
+        '.bracket-title, .bracket-round-num, .bracket-vs, .champion-subtitle{ font-family:"Montserrat",ui-sans-serif,system-ui,-apple-system,sans-serif !important; font-weight:900 !important; }'
+      ];
+      if(typeof _bowlbyFontFaceCSS === 'string' && _bowlbyFontFaceCSS) exportCSS.unshift(_bowlbyFontFaceCSS);
+      if(typeof _montserratFontFaceCSS === 'string' && _montserratFontFaceCSS) exportCSS.unshift(_montserratFontFaceCSS);
+      style.textContent = exportCSS.join('\n');
+      clone.prepend(style);
 
-    // Clone into an offscreen container for clean capture
-    var cloneWrap = document.createElement('div');
-    cloneWrap.style.position = 'fixed';
-    cloneWrap.style.left = '-99999px';
-    cloneWrap.style.top = '0';
-
-    var clone = resultsEl.cloneNode(true);
-    clone.classList.remove('hidden');
-    clone.style.width = '800px';
-    clone.style.maxWidth = '800px';
-    clone.style.padding = '32px';
-    clone.style.backgroundColor = bgColor;
-    clone.style.boxShadow = 'none';
-    clone.style.border = 'none';
-
-    // Inject export styles to ensure consistent rendering
-    var style = document.createElement('style');
-    var exportCSS = [
-      '.battle-champion{ box-shadow:none !important; }',
-      '.bracket-round{ box-shadow:none !important; }',
-      '.bracket-circle{ width:90px !important; height:90px !important; box-shadow:none !important; }',
-      '.bracket-circle .battle-label{ font-size:20px !important; }',
-      '.bracket-token-name{ font-size:13px !important; }',
-      '.champion-circle{ box-shadow:none !important; border:4px solid #8b7dff !important; }',
-      '.bracket-winner .bracket-circle{ box-shadow:none !important; }',
-      // One typeface across the app: Montserrat everywhere tokens/names appear
-      '.battle-label{ font-family:"Montserrat",ui-sans-serif,system-ui,-apple-system,sans-serif !important; font-weight:800 !important; }',
-      '.champion-title{ font-family:"Montserrat",ui-sans-serif,system-ui,-apple-system,sans-serif !important; font-weight:900 !important; }',
-      '.bracket-title{ font-family:"Montserrat",ui-sans-serif,system-ui,-apple-system,sans-serif !important; font-weight:700 !important; }',
-      '.bracket-round-num{ font-family:"Montserrat",ui-sans-serif,system-ui,-apple-system,sans-serif !important; font-weight:700 !important; }',
-      '.bracket-vs{ font-family:"Montserrat",ui-sans-serif,system-ui,-apple-system,sans-serif !important; font-weight:700 !important; }',
-      '.champion-subtitle{ font-family:"Montserrat",ui-sans-serif,system-ui,-apple-system,sans-serif !important; font-weight:700 !important; }'
-    ];
-    if(typeof _bowlbyFontFaceCSS === 'string'){
-      exportCSS.unshift(_bowlbyFontFaceCSS);
-    }
-    if(typeof _montserratFontFaceCSS === 'string' && _montserratFontFaceCSS){
-      exportCSS.unshift(_montserratFontFaceCSS);
-    }
-    style.textContent = exportCSS.join('\n');
-    clone.prepend(style);
-
-    cloneWrap.appendChild(clone);
-    document.body.appendChild(cloneWrap);
-
-    var exportOpts = {
-      backgroundColor: bgColor,
-      pixelRatio: 2
-    };
-    var _bFontCSS = (typeof _bowlbyFontFaceCSS === 'string' ? _bowlbyFontFaceCSS : '') + (typeof _montserratFontFaceCSS === 'string' ? _montserratFontFaceCSS : '');
-    if(_bFontCSS) exportOpts.fontEmbedCSS = _bFontCSS;
-    htmlToImage.toPng(clone, exportOpts).then(function(dataUrl){
-      cloneWrap.remove();
-      resetSaveBtn();
-      var link = document.createElement('a');
-      link.download = 'bracket-results.png';
-      link.href = dataUrl;
-      link.click();
-      if(typeof window.showSaveToast === 'function') window.showSaveToast('Saved!');
-      if(typeof live === 'function') live('Bracket saved!');
-    }).catch(function(err){
-      cloneWrap.remove();
-      resetSaveBtn();
-      if(window.DEBUG) console.error('Bracket save failed:', err);
-      if(typeof window.showSaveToast === 'function') window.showSaveToast('Export failed — try again', true);
-      else if(typeof live === 'function') live('Save failed. Try again.');
+      cloneWrap.appendChild(clone);
+      document.body.appendChild(cloneWrap);
+      var slug = String(battleState.category || 'bracket').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase();
+      return { node: clone, wrap: cloneWrap, backgroundColor: bgColor, filename: (slug ? slug + '-' : '') + 'bracket.png' };
     });
-
-    }); // end fontsReady.then
   }
 
   /* ---------- Undo (go back one round) ---------- */
@@ -638,10 +630,8 @@
 
     var lastRound = battleState.rounds.pop();
     battleState.currentRound--;
-    // The final pick never advanced poolIndex (no next opponent was drawn),
-    // so only rewind it when undoing a mid-battle round — otherwise the next
-    // opponent after replaying would repeat.
-    if(!fromResults) battleState.poolIndex--;
+    // Rewind the pool to exactly where it was before this round's draw
+    if(typeof lastRound.poolIndex === 'number') battleState.poolIndex = lastRound.poolIndex;
 
     // Restore previous matchup
     battleState.left = lastRound.left;
@@ -688,6 +678,7 @@
     if(!battleState || battleState.winner){
       startBattle();
     } else {
+      setEmptyState(false);
       showMatchup();
     }
     updateBattleUndoBtn();
@@ -697,6 +688,7 @@
     if(!bBoard) return;
     bBoard.classList.remove('active');
     document.body.classList.remove('battle-mode');
+    stopWaiting();
   }
 
   /* ---------- Expose globals ---------- */

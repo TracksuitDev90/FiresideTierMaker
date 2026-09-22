@@ -13,9 +13,11 @@
   padding:16px;
   background:rgba(0,0,0,.65);
   backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
-  opacity:1;transition:opacity .2s ease;
+  opacity:1;visibility:visible;transition:opacity .2s ease;
 }
-.img-search-overlay.hidden{opacity:0;pointer-events:none}
+/* visibility (delayed until the fade ends) takes the closed dialog out of the
+   tab order and the accessibility tree — opacity alone left it focusable */
+.img-search-overlay.hidden{opacity:0;visibility:hidden;pointer-events:none;transition:opacity .2s ease,visibility 0s linear .2s}
 
 /* ---------- Modal ---------- */
 .img-search-modal{
@@ -114,23 +116,29 @@
   transition:border-color .15s, transform .12s, box-shadow .15s;
   -webkit-tap-highlight-color:transparent;
 }
-.img-search-card:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.25)}
+@media (hover:hover){.img-search-card:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.25)}}
 .img-search-card:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .img-search-card.selected{
   border-color:var(--accent);
   box-shadow:0 0 0 3px rgba(139,125,255,.3);
 }
 
-/* Show the full image inside the card – contain keeps the whole photo visible */
+/* Preview exactly what the token will show: a centred square crop, with the
+   corners outside the token's circle dimmed (adjustable later via
+   "Adjust image"). */
 .img-search-card img{
   width:100%;height:100%;
-  object-fit:contain;
+  object-fit:cover;
   display:block;
   background:var(--surface);
 }
+.img-search-card::after{
+  content:'';position:absolute;inset:0;pointer-events:none;border-radius:inherit;
+  background:radial-gradient(circle closest-side, transparent calc(100% - 1.5px), rgba(255,255,255,.55) calc(100% - 1px), rgba(0,0,0,.42) 100%);
+}
 /* checkmark */
 .img-search-check{
-  position:absolute;top:6px;right:6px;
+  position:absolute;top:6px;right:6px;z-index:1;
   width:26px;height:26px;border-radius:50%;
   display:flex;align-items:center;justify-content:center;
   background:var(--accent);color:#fff;font-size:15px;font-weight:700;
@@ -205,6 +213,10 @@
 }
 .img-search-empty-title{font-size:15px;font-weight:800;color:var(--text);margin:0}
 .img-search-empty-sub{font-size:13px;margin:0;max-width:280px;line-height:1.45}
+.img-search-retry{
+  margin-top:6px;padding:10px 20px;border-radius:10px;
+  background:var(--accent);color:#fff;font-weight:700;font-size:14px;border:none;cursor:pointer;
+}
 
 /* ---------- Responsive: tablet ---------- */
 @media (max-width:640px){
