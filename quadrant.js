@@ -736,6 +736,9 @@
       if(tierBoard) tierBoard.classList.remove('hidden-mode');
       qBoard.classList.remove('active');
       if(typeof showPromptStack === 'function') showPromptStack();
+      // Tier labels fitted while the board was hidden had no real size to
+      // measure — refit now that it's visible again.
+      if(typeof window.refitAllLabels === 'function') requestAnimationFrame(window.refitAllLabels);
       qZones.forEach(function(z){
         $$('.q-pin',z).forEach(function(pin){ pin.remove(); });
         $$('.token',z).forEach(function(tok){ tok.remove(); });
@@ -1193,8 +1196,8 @@
         var dot = document.createElement('span');
         dot.className = 'dot';
         dot.textContent = labels[j];
-        dot.style.background = colors[j];
-        dot.style.color = (typeof contrastColor === 'function') ? contrastColor(colors[j]) : '#ffffff';
+        if(typeof paintTierChip === 'function') paintTierChip(dot, colors[j]);
+        else { dot.style.background = colors[j]; dot.style.color = '#ffffff'; }
         btn.appendChild(dot);
 
         on(btn,'click',function(){

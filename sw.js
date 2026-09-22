@@ -6,13 +6,13 @@
    - Font files and the version-pinned CDN export library: cache-first
      (their URLs are immutable).
    - Everything else (image search APIs, pasted image URLs) is left alone. */
-var VERSION = 'fireside-v1';
+var VERSION = 'fireside-v2';
 var SHELL = [
   './', 'index.html', 'manifest.webmanifest',
   'style.css', 'quadrant.css', 'image-search.css', 'battles.css',
   'script.js', 'image-search.js', 'battles.js', 'quadrant.js',
   'vendor/html-to-image.min.js',
-  'icons/moon.png', 'icons/pen-2-svgrepo-com.svg',
+  'icons/pen-2-svgrepo-com.svg',
   'icons/app/favicon.svg', 'icons/app/icon-192.png'
 ];
 

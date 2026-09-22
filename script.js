@@ -67,7 +67,6 @@ function pastePlainText(e){
 function hexToRgb(hex){ var m=hex.match(/rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/); if(m) return {r:parseInt(m[1],10),g:parseInt(m[2],10),b:parseInt(m[3],10)}; var h=hex.replace('#',''); if(h.length===3){ h=h.split('').map(function(x){return x+x;}).join(''); } var n=parseInt(h,16); return {r:(n>>16)&255,g:(n>>8)&255,b:n&255}; }
 function rgbToHex(r,g,b){ return '#'+[r,g,b].map(function(v){return v.toString(16).padStart(2,'0');}).join(''); }
 function relativeLuminance(rgb){ function srgb(v){ v/=255; return v<=0.03928? v/12.92 : Math.pow((v+0.055)/1.055,2.4); } return 0.2126*srgb(rgb.r)+0.7152*srgb(rgb.g)+0.0722*srgb(rgb.b); }
-function contrastColor(bgHex){ var L=relativeLuminance(hexToRgb(bgHex)); return L>0.179 ? '#000000' : '#ffffff'; }
 function darken(hex,p){ var c=hexToRgb(hex); var f=(1-(p||0)); return rgbToHex(Math.round(c.r*f),Math.round(c.g*f),Math.round(c.b*f)); }
 function lighten(hex,p){ var c=hexToRgb(hex), f=p||0; return rgbToHex(Math.round(c.r+(255-c.r)*f), Math.round(c.g+(255-c.g)*f), Math.round(c.b+(255-c.b)*f)); }
 function mixHex(aHex,bHex,t){ var a=hexToRgb(aHex), b=hexToRgb(bHex);
@@ -106,14 +105,29 @@ function desaturate(hex, amount){
   var toggle=$('#themeToggle');
   var prefersLight=(window.matchMedia&&window.matchMedia('(prefers-color-scheme: light)').matches);
 
-  // Sun icon SVG (orange center + lighter orange rays), Moon uses uploaded PNG
-  var SUN_HTML = '<svg class="sun-svg" viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="12" r="5" fill="#e8700a"/><line x1="12" y1="1" x2="12" y2="4" stroke="#f5a623" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="20" x2="12" y2="23" stroke="#f5a623" stroke-width="2" stroke-linecap="round"/><line x1="4.22" y1="4.22" x2="6.34" y2="6.34" stroke="#f5a623" stroke-width="2" stroke-linecap="round"/><line x1="17.66" y1="17.66" x2="19.78" y2="19.78" stroke="#f5a623" stroke-width="2" stroke-linecap="round"/><line x1="1" y1="12" x2="4" y2="12" stroke="#f5a623" stroke-width="2" stroke-linecap="round"/><line x1="20" y1="12" x2="23" y2="12" stroke="#f5a623" stroke-width="2" stroke-linecap="round"/><line x1="4.22" y1="19.78" x2="6.34" y2="17.66" stroke="#f5a623" stroke-width="2" stroke-linecap="round"/><line x1="17.66" y1="6.34" x2="19.78" y2="4.22" stroke="#f5a623" stroke-width="2" stroke-linecap="round"/></svg>';
-  var MOON_HTML = '<img class="btn-icon moon-icon" src="icons/moon.png" alt="" width="22" height="22" />';
-
   setTheme(lsGet('tm_theme') || (prefersLight ? 'light' : 'dark'));
 
   if(toggle){
-    on(toggle,'click', function(){ animateBtn(toggle); setTheme(root.getAttribute('data-theme')==='dark'?'light':'dark'); });
+    on(toggle,'click', function(){
+      var toDark = root.getAttribute('data-theme') !== 'dark';
+      clearTimeout(toggle._twinkleT);
+      toggle.classList.remove('twinkle','hold-moon');
+      var calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if(toDark && !calm){
+        // Tapping the moon: its stars twinkle while the page goes dark, then
+        // it turns into the sun (the icon swap waits for the twinkle).
+        void toggle.offsetWidth;
+        toggle.classList.add('twinkle','hold-moon');
+        setTheme('dark');
+        toggle._twinkleT = setTimeout(function(){
+          toggle.classList.remove('twinkle','hold-moon');
+          animateBtn(toggle);
+        }, 720);
+      } else {
+        animateBtn(toggle);
+        setTheme(toDark ? 'dark' : 'light');
+      }
+    });
   }
 
   function setTheme(mode){
@@ -123,22 +137,15 @@ function desaturate(hex, amount){
     if(metaTheme) metaTheme.setAttribute('content', mode==='light' ? '#f7f8fb' : '#0a0a0a');
     var target = mode==='dark' ? 'Light' : 'Dark';
     if(toggle){
-      var icon=$('.theme-icon',toggle), text=$('.theme-text',toggle);
+      // The sun/moon icon itself is chosen by CSS from data-theme
+      var text=$('.theme-text',toggle);
       if(text) text.textContent = target;
-      // This is an action button (switches theme), not a pressed/unpressed
-      // state toggle — an explicit action label is clearer than aria-pressed.
-      toggle.removeAttribute('aria-pressed');
       toggle.setAttribute('aria-label', 'Switch to ' + target.toLowerCase() + ' theme');
-      if(icon) icon.innerHTML = (target==='Light' ? SUN_HTML : MOON_HTML);
     }
     $$('.tier-row').forEach(function(row){
       var chip=$('.label-chip',row), drop=$('.tier-drop',row);
       var color = chip && chip.dataset.color ? chip.dataset.color : '#8b7dff';
-      if(chip){
-        var cc = tierChipColors(color);
-        chip.style.background = cc.bg;
-        chip.style.color = cc.fg;
-      }
+      if(chip) paintTierChip(chip, color);
       if (drop && drop.dataset.manual!=='true'){
         drop.style.background = tintFrom(color);
       }
@@ -146,20 +153,22 @@ function desaturate(hex, amount){
   }
 })();
 
-/* Tier chip colors: a theme-tuned background with a lightness floor, so every
-   chip — pastel, saturated or near-black — carries the same near-black text
-   instead of flipping between black and white from one tier to the next. */
-function liftToLuminance(hex, minL){
-  var c = colorToHsl(hex), out = hex, l = c.l;
-  for (var i = 0; i < 50 && relativeLuminance(hexToRgb(out)) < minL; i++){ l += 2; out = hslToHex(c.h, c.s, l); }
-  return out;
-}
+/* Tier chip colors: a theme-tuned background with white text. Light chips
+   (yellows, pastels) get a slightly stronger soft shadow behind the white
+   letters so they stay legible. */
 function tierChipColors(color){
   var isLight = document.documentElement.getAttribute('data-theme')==='light';
   var rgb = hexToRgb(color), sat = Math.max(rgb.r,rgb.g,rgb.b)-Math.min(rgb.r,rgb.g,rgb.b);
-  var bg = sat < 20 ? '#8a8a8a'   // grays (and black) read as a neutral chip
+  var bg = sat < 20 ? (isLight ? '#636363' : '#7d7d7d')   // grays (and black) read as a neutral chip
          : (isLight ? boostSaturation(color, 0.12) : desaturate(color, 0.12));
-  return { bg: liftToLuminance(bg, 0.22), fg: '#111111' };
+  return { bg: bg, fg: '#ffffff', light: relativeLuminance(hexToRgb(bg)) > 0.4 };
+}
+function paintTierChip(el, color){
+  var cc = tierChipColors(color);
+  el.style.background = cc.bg;
+  el.style.color = cc.fg;
+  el.classList.toggle('chip-light', cc.light);
+  return cc;
 }
 
 /* ---------- DOM refs ---------- */
@@ -246,49 +255,62 @@ function ensureId(el, prefix){ if(!el.id){ el.id=(prefix||'id')+'-'+uid(); } ret
 function rowLabel(row){ var chip=row?row.querySelector('.label-chip'):null; if(!chip) return 'row'; if(chip.classList.contains('has-crest')){ var img=chip.querySelector('.label-crest'); return img&&img.alt?img.alt:'crest'; } return chip.textContent.replace(/\s+/g,' ').trim()||'row'; }
 
 /* ---------- Chip label auto-sizer ---------- */
-/* Canvas-based measurement with word-wrap simulation.
-   Binary-searches for the largest font (12-48 px) where the label
-   text fits inside the chip, allowing word-wrap across multiple lines
-   but never breaking a word. */
+/* The tier box never changes size (its label area is absolutely positioned);
+   only the font does. A fast canvas estimate (binary search over word-wrap
+   simulation, never breaking a word) picks a starting size, then the real
+   rendering is checked and the size steps down until nothing spills — canvas
+   metrics are close but not exact for Bowlby One. Only when even the minimum
+   size can't fit a single long word may that word break. */
+function chipContentBox(chip){
+  var cs = getComputedStyle(chip);
+  var w = chip.clientWidth - (parseFloat(cs.paddingLeft)||0) - (parseFloat(cs.paddingRight)||0);
+  var h = chip.clientHeight;
+  // Measure against the tier's minimum height so every tier's letter matches
+  var labBox = chip.closest ? chip.closest('.tier-label') : null;
+  var minH = labBox ? parseFloat(getComputedStyle(labBox).minHeight) : 0;
+  if (minH > 0) h = Math.min(h, minH - 2);
+  h -= (parseFloat(cs.paddingTop)||0) + (parseFloat(cs.paddingBottom)||0);
+  return { w: w, h: h };
+}
+function chipOverflows(chip, box){
+  var r = document.createRange();
+  r.selectNodeContents(chip);
+  var b = r.getBoundingClientRect();
+  if (r.detach) r.detach();
+  return b.width > box.w + 0.5 || b.height > box.h + 0.5;
+}
 function fitChipLabel(chip){
   if (!chip) return;
   if (chip.classList.contains('has-crest')) return;
   var text = chip.textContent.replace(/\s+/g,' ').trim();
+  chip.classList.remove('chip-wrap-any');
   if (!text) { chip.style.fontSize = ''; return; }
 
-  // Available space inside the chip (total size minus padding)
-  var chipW = chip.clientWidth || chip.offsetWidth;
-  var chipH = chip.clientHeight || chip.offsetHeight;
-  if (!chipW) chipW = isSmall() ? 130 : 180;
-  if (!chipH) chipH = 99;
-  // Size against the tier's minimum height, not its current one — otherwise a
-  // tier that grew with extra rows of tokens gets a bigger letter than its
-  // neighbours.
-  var labBox = chip.closest ? chip.closest('.tier-label') : null;
-  var minH = labBox ? parseFloat(getComputedStyle(labBox).minHeight) : 0;
-  if (minH > 0) chipH = Math.min(chipH, minH - 2);
-  var availW = chipW - 16;   // 8px padding each side
-  var availH = chipH - 12;   // 6px padding top + bottom
+  var measured = chip.isConnected && chip.clientWidth > 0 && chip.clientHeight > 0;
+  var box = measured ? chipContentBox(chip) : { w: (isSmall() ? 130 : 180) - 16, h: 99 - 12 };
+  var availW = box.w, availH = box.h;
+  var narrow = availW < 104;
 
   var upper = text.toUpperCase();
-
-  // Binary search: largest px in [minPx..maxPx] that fits. Narrow (phone)
-  // labels may go smaller before a long word is allowed to break.
   // Bowlby One's glyphs sit taller than its 1.1 line box, so short labels
-  // also cap by height to stay fully inside compact (phone) chips.
-  var maxPx = Math.max(12, Math.min(48, Math.floor((chipH - 14) / 1.25))), minPx = chipW < 120 ? 9 : 12;
+  // also cap by height.
+  var maxPx = Math.max(12, Math.min(48, Math.floor((availH - 2) / 1.25)));
+  var minPx = narrow ? 9 : 12;
   var lo = minPx, hi = maxPx;
   while (lo < hi) {
     var mid = Math.ceil((lo + hi) / 2);
-    if (labelFitsAt(upper, mid, availW, availH)) {
-      lo = mid;       // fits — try larger
-    } else {
-      hi = mid - 1;   // overflow — try smaller
-    }
+    if (labelFitsAt(upper, mid, availW, availH)) lo = mid;  // fits — try larger
+    else hi = mid - 1;                                        // overflow — try smaller
   }
-
   chip.style.fontSize = lo + 'px';
-  chip.classList.toggle('chip-wrap-any', !labelFitsAt(upper, lo, availW, availH));
+
+  if (measured) {
+    // Verify with the browser's real layout and step down until it fits
+    while (lo > minPx && chipOverflows(chip, box)) { lo--; chip.style.fontSize = lo + 'px'; }
+    if (chipOverflows(chip, box)) chip.classList.add('chip-wrap-any');
+  } else if (!labelFitsAt(upper, lo, availW, availH)) {
+    chip.classList.add('chip-wrap-any');
+  }
   chip.scrollLeft = 0;
 }
 
@@ -349,8 +371,7 @@ function applyTierColor(node, color){
   var colorBtn = node.querySelector('.color-pick-btn');
   var colorInput = node.querySelector('.color-pick-input');
 
-  var cc = tierChipColors(color);
-  if(chip){ chip.dataset.color = color; chip.style.background = cc.bg; chip.style.color = cc.fg; }
+  if(chip){ chip.dataset.color = color; paintTierChip(chip, color); }
   if(del) del.style.background = darken(color, 0.35);
   if(drop){ drop.style.background = tintFrom(color); drop.dataset.manual = 'false'; }
   if(colorBtn){ var dot = colorBtn.querySelector('.color-dot-indicator'); if(dot) dot.style.background = colorPickDotColor(color); }
@@ -491,7 +512,7 @@ function pickTextColor(bgHex){
   return darken(bgHex, 0.50);
 }
 
-/* ---------- Chromatic-aberration aura ---------- */
+/* ---------- Color → HSL ---------- */
 /* Parse #hex or rgb() to HSL (h 0-360, s/l 0-100); hexToRgb handles both forms */
 function colorToHsl(color){
   var c = hexToRgb(color), r=c.r/255, g=c.g/255, b=c.b/255;
@@ -505,39 +526,6 @@ function colorToHsl(color){
   }
   return { h:h*360, s:s*100, l:l*100 };
 }
-function hslCss(h,s,l){
-  h=((h%360)+360)%360; s=Math.max(0,Math.min(100,s)); l=Math.max(0,Math.min(100,l));
-  return 'hsl('+h.toFixed(1)+','+s.toFixed(1)+'%,'+l.toFixed(1)+'%)';
-}
-/* FNV-1a string hash — deterministic per name so rings survive save/restore */
-function auraHash(str){
-  var h=2166136261;
-  for(var i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=(h*16777619)>>>0; }
-  return h;
-}
-/* Tonal rim: shades and tints of the base color itself (hue drift capped at
-   6°) so the ring reads as depth/texture in the same material, not a prism
-   fringe. Per-token swirl rotation and cover offset stay seeded by name. */
-function applyTokenAura(el, bgColor, name){
-  var hsl, seed;
-  try { hsl = colorToHsl(bgColor); } catch(e){ return; }
-  if(!isFinite(hsl.h)||!isFinite(hsl.s)||!isFinite(hsl.l)) return;
-  seed = auraHash(String(name||''));
-  var h=hsl.h, s=hsl.s, l=hsl.l;
-  var rs = Math.min(Math.max(s, 20), 85); // stay near the base saturation; gray stays gray
-  function tl(dl){ return Math.min(Math.max(l+dl, 10), 90); }
-  el.style.setProperty('--aura-base', bgColor);
-  el.style.setProperty('--aura-rot', (seed%360)+'deg');
-  el.style.setProperty('--aura-cx', (46+((seed>>>9)%9))+'%');
-  el.style.setProperty('--aura-cy', (46+((seed>>>13)%9))+'%');
-  el.style.setProperty('--aura-c1', hslCss(h-5, rs, tl(-12)));                 // cool shade
-  el.style.setProperty('--aura-c2', hslCss(h, Math.max(rs-10,15), tl(9)));     // soft tint (kept gentle — a bright band reads as a specular sphere)
-  el.style.setProperty('--aura-c3', hslCss(h+6, rs, tl(5)));                   // warm tint
-  el.style.setProperty('--aura-c4', hslCss(h+3, Math.max(rs-6,15), tl(-16)));  // deep shade
-  el.style.setProperty('--aura-c5', hslCss(h-3, Math.min(rs+8,90), tl(-7)));   // mid shade
-  el.classList.add('aura');
-}
-
 /* Fisher-Yates shuffle so tokens get different colors each page load */
 function shuffleArray(arr){
   for(var i=arr.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var tmp=arr[i]; arr[i]=arr[j]; arr[j]=tmp; }
@@ -922,7 +910,6 @@ function buildTokenBase(isCustom){
 function buildNameToken(name, bgColor, isCustom, textColor){
   var el = buildTokenBase(isCustom);
   el.style.background = bgColor;
-  applyTokenAura(el, bgColor, name);
   var label = document.createElement('div'); label.className='label'; label.textContent=name;
   label.style.color = textColor || pickTextColor(bgColor);
   el.appendChild(label);
@@ -1960,7 +1947,6 @@ function openRadial(token){
   radialOpts.appendChild(buildRadialHead(token, currentRow ? 'Move' : 'Place'));
   rows.forEach(function(row, j){
     var chipEl = row.querySelector('.label-chip');
-    var cc = tierChipColors(chipEl && chipEl.dataset.color ? chipEl.dataset.color : '#8b7dff');
     var btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'radial-option radial-btn';
@@ -1969,8 +1955,7 @@ function openRadial(token){
     var dot = document.createElement('span');
     dot.className = 'dot';
     dot.textContent = rowLabel(row);
-    dot.style.background = cc.bg;
-    dot.style.color = cc.fg;
+    paintTierChip(dot, chipEl && chipEl.dataset.color ? chipEl.dataset.color : '#8b7dff');
     btn.appendChild(dot);
     if (row === currentRow){
       btn.classList.add('is-current');
@@ -2301,7 +2286,7 @@ on($('#saveBtn'),'click', function(){
       '  text-align:center !important;',
       // color intentionally NOT forced — each chip carries its own inline color
       '  padding:6px 8px !important; margin:0 !important;',
-      '  white-space:normal !important; word-break:normal !important; overflow-wrap:normal !important; overflow:hidden !important;',
+      '  white-space:normal !important; overflow:hidden !important;',
       '}',
       '.board-title-wrap{ display:block !important; text-align:center !important; margin-bottom:20px !important; }',
       '.board-title{ display:block !important; text-align:center !important; font-size:28px !important; white-space:normal !important; word-wrap:break-word !important; overflow-wrap:break-word !important; }',
@@ -3967,7 +3952,7 @@ document.addEventListener('DOMContentLoaded', function start(){
     var tipData = isSmall() ? [
       'Tap anyone — in storage or already ranked — to pick their tier, send them back to storage, or delete them.',
       'Press and hold a ranked token for a moment, then drag to reorder it.',
-      'Tap a tier name to rename it. Tap the small colored dot on a tier to change its color.',
+      'Tap a tier name to rename it — a color dot and a delete button pop up on its corners.',
       'Press and hold a tier name, then drag up or down to reorder tiers.',
       'Tap a suggestion card to use it as your title, swipe it left to skip, or tap “Browse all prompts”.',
       'Add images by upload, pasted link or the built-in search. Tap an image token → Adjust image to reframe it.',
